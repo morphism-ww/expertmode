@@ -1,0 +1,10 @@
+<Atlas><Texture filename="tabs.tex" /><Elements>
+<Element name="tab_archaeology.tex" u1="0.0" u2="0.1" v1="0" v2="1" />
+<Element name="nauticaltab.png" 	u1="0.1" u2="0.2" v1="0" v2="1" />
+<Element name="tab_home_decor.tex" 	u1="0.2" u2="0.3" v1="0" v2="1" />
+<Element name="tab_city.tex" 		u1="0.3" u2="0.4" v1="0" v2="1" />
+<Element name="tab_volcano.tex" 	u1="0.4" u2="0.5" v1="0" v2="1" />
+<Element name="tab_portal_key.tex" 	u1="0.5" u2="0.6" v1="0" v2="1" />
+<Element name="quagmire_safe.tex" 	u1="0.6" u2="0.7" v1="0" v2="1" />
+</Elements>
+</Atlas>
