@@ -10,7 +10,7 @@ local debuff_defs={
 	{
 		name="curse_fire",
 		prefabs={ "cursefire_fx" },
-		TICK_RATE = 1,
+		TICK_RATE = 2,
 		TICK_FN=function(inst, target,data)
 			if target.components.health ~= nil and
 				not target.components.health:IsDead() then
@@ -23,11 +23,11 @@ local debuff_defs={
 		buff_fx = "cursefire_fx",
 		postinit=function(inst)
 			inst.duration=10
-			inst.damage=3
+			inst.damage=6
 		end,
 		onextendedfn=function(inst,target,data)
 			if data and data.upgrade then
-				inst.damage=math.min(inst.damage+2,6)
+				inst.damage=math.min(inst.damage+2,10)
 			end
 		end
 	},
@@ -119,7 +119,7 @@ local debuff_defs={
 	},
 	corrupt=
 	{
-		name="corrupt",
+		name="vulnerable",
 		onattachedfn=function(inst,target,data)
 			if target.components.combat then
 				target.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 2)
@@ -143,7 +143,7 @@ local debuff_defs={
 		name="exhaustion",
 		TICK_RATE = 5,
 		TICK_FN=function(inst,target)
-			if target.components.health ~= nil then
+			if target:HasTag("player") and target.components.health ~= nil then
 				target.components.health:DeltaPenalty(0.05)
 			end
 		end,

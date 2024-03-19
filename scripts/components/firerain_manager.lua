@@ -192,7 +192,7 @@ function self:FirstAttack()
         self:EnableFire()
         TheNet:Announce("古老的龙与火已经苏醒")
         self.inst:DoTaskInTime(60, ScheduleSpawn)
-        ResetAttacks()
+        --ResetAttacks()
     end
 end
 

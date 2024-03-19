@@ -13,7 +13,7 @@ end
 
 
 local function OnAnimOver(inst)
-    inst:DoTaskInTime(2, inst.Remove)
+    inst:DoTaskInTime(3, inst.Remove)
 end
 
 local function OnThrown(inst)

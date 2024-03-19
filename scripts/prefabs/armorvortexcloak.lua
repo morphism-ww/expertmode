@@ -158,7 +158,6 @@ local function fn()
     inst.entity:AddMiniMapEntity()
 
     MakeInventoryPhysics(inst)
-    --MakeInventoryFloatable(inst, "small", 0.2, 0.80, nil, nil, swap_data)
     MakeInventoryFloatable(inst, "idle_water", "anim")
 
 
@@ -184,8 +183,7 @@ local function fn()
 
     inst:AddComponent("inventoryitem")
     inst.components.inventoryitem.cangoincontainer = false
-    inst.components.inventoryitem.imagename = "armorvortexcloak"
-	inst.components.inventoryitem.atlasname = "images/inventoryimages/armorvortexcloak.xml"
+
 
 
     inst:AddComponent("fueled")
@@ -218,14 +216,7 @@ local function fn()
 
     inst:AddComponent("container")
     inst.components.container:WidgetSetup("armorvortexcloak")
-    --[[inst.components.container:SetNumSlots(#slotpos)
-    inst.components.container.widgetslotpos = slotpos
-    inst.components.container.widgetanimbank = "ui_piggyback_2x6"
-    inst.components.container.widgetanimbuild = "ui_krampusbag_2x5"
-    inst.components.container.widgetpos = Vector3(-5,-70,0)
-    inst.components.container.side_widget = true
-    inst.components.container.type = "pack"]]
-
+    
     inst:AddComponent("shadowlevel")
 	inst.components.shadowlevel:SetDefaultLevel(TUNING.ARMOR_SKELETON_SHADOW_LEVEL)
 	inst.components.shadowlevel:SetLevelFn(GetShadowLevel)

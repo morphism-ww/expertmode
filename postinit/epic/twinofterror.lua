@@ -336,8 +336,34 @@ local function hookup_twin_listeners(inst, twin)
     end, twin)
 end
 
+
+local function  Dont_skip(inst)
+    local x, y, z = inst.Transform:GetWorldPosition()
+
+    local has_other=false
+    local no_twin=true
+	local bosscount = TheSim:FindEntities(x, y, z, 60, {"epic"})
+
+	for k,v in ipairs(bosscount) do
+        if v.twin1 or v.twin2 then
+            no_twin=false
+        end
+        if not v:HasTag("eyeofterror") then
+            has_other=true
+        end
+    end
+    if no_twin or has_other then
+        inst:PushEvent("leave")
+        inst:PushEvent("turnoff_terrarium")
+    end
+end
+
+
+
 AddPrefabPostInit("twinmanager",function(inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("set_spawn_target", make_team)
+
+    --inst:DoPeriodicTask(10, Dont_skip,30)
     debug.setupvalue(inst.OnLoadPostPass,1,hookup_twin_listeners)
 end)

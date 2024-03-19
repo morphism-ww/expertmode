@@ -128,10 +128,10 @@ if GetModConfigData("ancient") then
             ["Barracks3"] = 1,
         }
     end)
-    Layouts["MilitaryEntrance"].layout["shadowdragon_spawner"]={{x=-3,y=3}}
-    Layouts["BrokenAltar"].layout["shadowdragon_spawner"]={{x=1,y=-3}}
+    Layouts["MilitaryEntrance"].layout["shadowdragon_spawner"]={{x=-4,y=4}}
+    Layouts["BrokenAltar"].layout["shadowdragon_spawner"]={{x=1,y=-4}}
     Layouts["SacredBarracks"].layout["scanner_spawn"]={{x=-3,y=0},{x=0,y=0}}
     Layouts["Barracks"].layout["scanner_spawn"]={{x=0,y=0}}
     Layouts["AltarRoom"].layout["shadoweyeturret_spawner"]={{x=0,y=4}}
-    Layouts["AltarRoom"].layout["scanner_spawn"]={{x=1,y=1}}
+    Layouts["AltarRoom"].layout["scanner_spawn"]={{x=2,y=2}}
 end

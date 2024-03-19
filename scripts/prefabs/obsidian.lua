@@ -24,7 +24,6 @@ local function fn()
 
     -- waterproofer (from waterproofer component) added to pristine state for optimization
     inst:AddTag("waterproofer")
-    inst:AddTag("health_obsidian")
 
     MakeInventoryFloatable(inst, "med", .145, { .77, .75, .77 })
 
@@ -45,7 +44,8 @@ local function fn()
     inst.components.waterproofer:SetEffectiveness(0)
 
     inst:AddComponent("repairer")
-    inst.components.repairer.repairmaterial="obsidian"
+    inst.components.repairer.repairmaterial=MATERIALS.OBSIDIAN
+    inst.components.repairer.finiteusesrepairvalue = 50
 
 
     inst:ListenForEvent("floater_startfloating", hitwater)

@@ -65,9 +65,8 @@ local function demonfn()
 
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "constant_soul"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/constant_soul.xml"
-
+    inst.components.inventoryitem.imagename = "wortox_soul"
+    
     inst:AddComponent("healer")
     inst.components.healer:SetHealthAmount(150)
     inst.components.healer.onhealfn=Maxhealer

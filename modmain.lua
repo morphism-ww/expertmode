@@ -1,4 +1,4 @@
-GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
+--GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
 local TUNING = GLOBAL.TUNING
 
 
@@ -15,8 +15,6 @@ Asset("ATLAS", "images/inventoryimages/volcanoinventory.xml"),
 Asset("IMAGE", "images/inventoryimages/volcanoinventory.tex" ),
 Asset("ATLAS", "images/tabs.xml"),
 Asset("IMAGE", "images/tabs.tex" ),
-Asset("IMAGE","images/inventoryimages/constant_soul.tex"),
-Asset("ATLAS","images/inventoryimages/constant_soul.xml"),
 Asset("IMAGE","images/inventoryimages/armorvortexcloak.tex"),
 Asset("ATLAS","images/inventoryimages/armorvortexcloak.xml"),
 Asset("IMAGE","images/inventoryimages/obsidian_hat.tex"),
@@ -26,12 +24,37 @@ Asset("ATLAS","images/inventoryimages/lunar_blast.xml"),
 Asset("IMAGE","images/inventoryimages/quaker.tex"),
 Asset("ATLAS","images/inventoryimages/quaker.xml"),
 Asset("ATLAS", "images/fx4te.xml"),
-Asset("IMAGE", "images/fx4te.tex"),}
+Asset("IMAGE", "images/fx4te.tex")}
 
-
+local atlas = "images/inventoryimages/volcanoinventory.xml"
+local function ProcessAtlas(atlas, ...)
+  local path = resolvefilepath_soft(atlas)
+  if not path then
+    print("[API]: The atlas \"" .. atlas .. "\" cannot be found.")
+    return
+  end
+  local success, file = pcall(io.open, path)
+  if not success or not file then
+    print("[API]: The atlas \"" .. atlas .. "\" cannot be opened.")
+    return
+  end
+  local xml = file:read("*all")
+  file:close()
+  local images = xml:gmatch("<Element name=\"(.-)\"")
+  for tex in images do
+    RegisterInventoryItemAtlas(path, tex)
+    RegisterInventoryItemAtlas(path, hash(tex))
+  end
+end
+ProcessAtlas(atlas)
 RegisterInventoryItemAtlas("images/inventoryimages/lunar_blast.xml", "lunar_blast.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/quaker.xml", "quaker.tex")
+
+RegisterInventoryItemAtlas("images/inventoryimages/armorvortexcloak.xml", "armorvortexcloak.tex")
+
+
+
 
 AddMinimapAtlas("images/inventoryimages/armorvortexcloak.xml")
 
@@ -54,7 +77,7 @@ PrefabFiles={"twin_flame","twin_laser","armorvortexcloak","leechterror","shadowf
             "meteor_impact","firerain","lavapool","dragoonheart","dragoonspit","dragoon","dragoonegg",
             "superbrilliance_projectile_fx","true_staff_lunarplant","klaus_soul",
             "super_boat","quaker","fire_tornado","alter_light","lunar_blast","lunar_shield",
-            "fast_buff","make_buffs","cursefire_fx","poison_spore","brightshade_queen","anti_poison"}
+            "fast_buff","make_buffs","cursefire_fx","poison_spore","brightshade_queen","anti_poison","obsidianstaff"}
 
 if GetModConfigData("pig") then
     modimport("postinit/epic/daywalker")
@@ -99,11 +122,14 @@ end
 
 if GetModConfigData("ancient") then
     modimport("postinit/shadowmachine")
-    modimport("postinit/ruins")
 end
 
 if GetModConfigData("gestalt") then
     modimport("postinit/gestalt")
+end
+
+if GetModConfigData("ruins") then
+    modimport("postinit/ruins")
 end
 
 
@@ -155,8 +181,8 @@ TUNING.TOADSTOOL_DARK_HEALTH = 50000
 ----------------------------------------------------
 --黑曜石科技
 ----------------------------------------------------
-local _G = GLOBAL
-local require = _G.require
+local GLOBAL = GLOBAL
+local require = GLOBAL.require
 local TechTree = require("techtree")
 table.insert(TechTree.AVAILABLE_TECH, "OBSIDIAN")
 TechTree.Create = function(t)
@@ -167,9 +193,9 @@ TechTree.Create = function(t)
 	return t
 end
 
-_G.TECH.NONE.OBSIDIAN = 0
-_G.TECH.OBSIDIAN_ONE = { OBSIDIAN = 1 }
-_G.TECH.OBSIDIAN_TWO = { OBSIDIAN = 2 }
+GLOBAL.TECH.NONE.OBSIDIAN = 0
+GLOBAL.TECH.OBSIDIAN_ONE = { OBSIDIAN = 1 }
+GLOBAL.TECH.OBSIDIAN_TWO = { OBSIDIAN = 2 }
 
 for k,v in pairs(TUNING.PROTOTYPER_TREES) do
     v.OBSIDIAN = 0
@@ -182,13 +208,13 @@ TUNING.PROTOTYPER_TREES.OBSIDIAN_TWO = TechTree.Create({
      OBSIDIAN = 2,
  })
 
-for i, v in pairs(_G.AllRecipes) do
+for i, v in pairs(GLOBAL.AllRecipes) do
     if v.level.OBSIDIAN == nil then
         v.level.OBSIDIAN = 0
     end
 end
 
-_G.RECIPETABS['OBSIDIANTAB'] = {str = "OBSIDIANTAB", sort=90, icon = "tab_volcano.tex", icon_atlas = "images/tabs.xml", crafting_station = true}
+GLOBAL.RECIPETABS['OBSIDIANTAB'] = {str = "OBSIDIANTAB", sort=90, icon = "tab_volcano.tex", icon_atlas = "images/tabs.xml", crafting_station = true}
 AddPrototyperDef("dragonflyfurnace", {action_str = "OBSIDIANTAB", icon_image = "tab_volcano.tex", icon_atlas = "images/tabs.xml", is_crafting_station = true})
 AddPrototyperDef("lava_pond", {action_str = "OBSIDIANTAB", icon_image = "tab_volcano.tex", icon_atlas = "images/tabs.xml", is_crafting_station = true})
-modimport("other/recipes_change")
+modimport("other/recipes")

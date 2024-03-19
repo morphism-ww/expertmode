@@ -15,7 +15,7 @@ local function OnLoad(inst, data)
 end
 local function PercentChanged(inst)
     local owner = inst.components.inventoryitem ~= nil and inst.components.inventoryitem.owner or nil
-    if owner ~= nil and owner.sg:HasStateTag("prechop") then
+    if owner ~= nil and owner.sg and owner.sg:HasStateTag("prechop") then
         inst.components.obsidiantool:Use(owner, owner.bufferedaction.target)
     end
 end	
@@ -75,8 +75,7 @@ local function obsidianfn()
 	inst:AddComponent("waterproofer")
 	
     inst:AddComponent("inventoryitem")
-	inst.components.inventoryitem.atlasname = "images/inventoryimages/volcanoinventory.xml"
-	inst.caminho = "images/inventoryimages/volcanoinventory.xml"
+
 	
     inst:AddComponent("equippable")
 	inst.components.equippable:SetOnEquip(onequipobsidian)

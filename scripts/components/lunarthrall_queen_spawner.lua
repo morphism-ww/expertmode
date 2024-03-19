@@ -4,7 +4,7 @@
 local function SpawnQueen()
     local self = TheWorld.components.lunarthrall_queen_spawner
     --print("self.waves_to_release",self.waves_to_release)
-    TheNet:Announce("queen is come")
+
     self.currentrift.SoundEmitter:PlaySound("monkeyisland/portal/buildup_burst")
     self.inst:DoTaskInTime(4,function()
         
@@ -19,7 +19,6 @@ local function SpawnQueen()
                 table.insert(plants,member)
             end
         else
-            TheNet:Announce("find_nothing")
             return
         end
 
@@ -38,13 +37,12 @@ local function OnLunarRiftReachedMaxSize(source, rift)
     end
 
     if not self.attack then
+        self.attack=true
         if not self:HasQueen() then
-            self.attack=true
+            
             SpawnQueen()
         end
     end    
-
-
 end
 
 local function OnQueenDeath(inst, data)

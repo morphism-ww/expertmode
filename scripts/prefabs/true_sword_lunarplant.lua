@@ -132,26 +132,68 @@ local function onunequip(inst, owner)
 end
 
 ----
-local HARVEST_MUSTTAGS  = {"_health","_combat"}
-local HARVEST_CANTTAGS  = {"INLIMBO", "FX","character","DECOR"}
 
 local function doswordshoot(inst,target,doer)
-    if target.components.health ~= nil then
-        local doer_pos = doer:GetPosition()
-        local x, y, z = doer_pos:Get()
+    if target~=nil and target:IsValid() and
+		not target:IsInLimbo() then
 
-        local doer_rotation = doer.Transform:GetRotation()
-        local combat0=doer.components.combat
-        local ents = TheSim:FindEntities(x, y, z, 8, HARVEST_MUSTTAGS, HARVEST_CANTTAGS, nil)
-        for _, ent in pairs(ents) do
-            if ent:IsValid() and ent~=target then
-                if inst:IsEntityInFront(ent, doer_rotation, doer_pos,PI/18) then
-                    local dmg, spdmg = combat0:CalcDamage(ent, inst)
-			        ent.components.combat:GetAttacked(doer, dmg, inst, nil, spdmg)
-                end
-            end
-        end
-    end
+        local x, y, z = doer.Transform:GetWorldPosition()
+		local rot=doer.Transform:GetRotation() * DEGREES
+		local x1=x + 10* math.cos(rot)
+		local z1=z - 10* math.sin(rot)
+		
+		local doer_combat = doer.components.combat
+    	--doer_combat:EnableAreaDamage(false)
+
+		local p1 = { x = x, y = z }
+		local p2 = { x = x1, y = z1 }
+		local dx, dy = p2.x - p1.x, p2.y - p1.y
+		local dist = dx * dx + dy * dy
+		local toskip = {target=true}
+		local pv = {}
+		local r, cx, cy
+		if dist > 0 then
+			dist = math.sqrt(dist)
+			r = (dist + doer_combat.hitrange * 0.5 + 3) * 0.5
+			dx, dy = dx / dist, dy / dist
+			cx, cy = p1.x + dx * r, p1.y + dy * r
+
+
+			local c_hit_targets = TheSim:FindEntities(cx, 0, cy, r, {"_combat","_health"}, {"FX", "DECOR", "INLIMBO","player"} )
+			for _, hit_target in ipairs(c_hit_targets) do
+				toskip[hit_target] = true
+				if hit_target ~= target and doer_combat:CanTarget(hit_target) and not doer_combat:IsAlly(hit_target)
+						and not (hit_target.components.health and hit_target.components.health:IsDead()) then
+					pv.x, pv._, pv.y = hit_target.Transform:GetWorldPosition()
+					local vrange = 2 + hit_target:GetPhysicsRadius(0.5)
+					if DistPointToSegmentXYSq(pv, p1, p2) < vrange * vrange then
+						local dmg, spdmg = doer_combat:CalcDamage(hit_target, inst)
+			        	hit_target.components.combat:GetAttacked(doer, dmg, inst, nil, spdmg)
+					end
+				end
+			end
+
+		end
+
+		local angle = (doer.Transform:GetRotation() + 90) * DEGREES
+		local p3 = { x = p2.x + doer_combat.hitrange * math.sin(angle), y = p2.y + doer_combat.hitrange * math.cos(angle) }
+		local p2_hit_targets = TheSim:FindEntities(p2.x, 0, p2.y, doer_combat.hitrange + 3,{"_combat","_health"}, {"FX", "DECOR", "INLIMBO","player"})
+		for _, hit_target in ipairs(p2_hit_targets) do
+			if not toskip[hit_target] and doer_combat:CanTarget(hit_target) and not doer_combat:IsAlly(hit_target)
+					and not (hit_target.components.health and hit_target.components.health:IsDead()) then
+				pv.x, pv._, pv.y = hit_target.Transform:GetWorldPosition()
+				local vradius = hit_target:GetPhysicsRadius(0.5)
+				local vrange = doer_combat.hitrange + vradius
+				if distsq(pv.x, pv.y, p2.x, p2.y) < vrange * vrange then
+					vrange = 2 + vradius
+					if DistPointToSegmentXYSq(pv, p2, p3) < vrange * vrange then
+						local dmg, spdmg = doer_combat:CalcDamage(hit_target, inst)
+			        	hit_target.components.combat:GetAttacked(doer, dmg, inst, nil, spdmg)
+					end
+				end
+			end
+		end
+	end
 end
 
 local function OnAttack(inst, attacker, target)

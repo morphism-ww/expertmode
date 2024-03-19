@@ -434,8 +434,8 @@ local states =
             if target ~= nil and target:IsValid() then
                 inst:ForceFacePoint(target.Transform:GetWorldPosition())
             end
-            inst.Physics:SetMotorVelOverride(27, 0, 0)
-            inst.sg:SetTimeout(0.6)
+            inst.Physics:SetMotorVelOverride(28, 0, 0)
+            inst.sg:SetTimeout(0.7)
 
 
             inst.sg.statemem.collisiontime = 0
@@ -747,7 +747,7 @@ local states =
 
             inst.AnimState:PlayAnimation("charge_loop", true)
 
-            inst.Physics:SetMotorVelOverride(12, 0, 0)
+            inst.Physics:SetMotorVelOverride(13, 0, 0)
 
             inst.sg:SetTimeout(0.8)
 

@@ -1,7 +1,6 @@
 UPGRADETYPES.IRON_SOUL="IRON_SOUL"
 UPGRADETYPES.INSIGHT_SOUL="INSIGHT_SOUL"
---MATERIALS.OBSIDIAN="obsidan"
-
+MATERIALS.OBSIDIAN="obsidian"
 
 --[[local function GetPointSpecialActions(inst, pos, useitem, right)
     if right and useitem == nil then

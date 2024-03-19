@@ -1,8 +1,6 @@
 local function PoisonOther(inst, data)
-    --inst.components.stuckdetection:Reset()
-
     if data.target ~= nil and data.target:HasTag("player") then
-		data.target:AddDebuff("bee_poison", "poison",{upgrade=true,duration=10})
+		data.target:AddDebuff("beequeen_poison", "poison_2",{upgrade=true,duration=30})
     end
 end
 AddPrefabPostInit("beequeen",function(inst)

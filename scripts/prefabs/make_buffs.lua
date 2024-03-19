@@ -32,19 +32,6 @@ local function MakeBuff(defs)
 	local function OnExtended(inst, target,followsymbol, followoffset, data)
         --local extend_duration = inst.duration
         --local timer_left=inst.components.timer:GetTimeLeft("buffover")--获取定时器剩余时间
-		--[[if data and timer_left then
-			--延长时间而不是直接用原来的固定时间替换
-            if data.extend_duration then
-                local max_duration_mult = data.max_duration_mult or 2--最大时长倍数，默认2倍
-                extend_duration = data.extend_duration + math.ceil(timer_left * (1 - 1 / max_duration_mult))
-            --消耗时间
-            elseif data.consume_duration then
-                extend_duration = math.max(0, timer_left - data.consume_duration)
-            --或者自定义一个计算函数？是增是减随便咯
-            elseif data.extend_durationfn then
-                extend_duration = data.extend_durationfn(timer_left)
-            end
-		end]]
         local duration=data and data.duration or inst.duration
         inst.components.timer:StopTimer("buffover")
         inst.components.timer:StartTimer("buffover", duration)

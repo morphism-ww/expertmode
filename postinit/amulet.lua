@@ -1,28 +1,5 @@
 TUNING.BLUEAMULET_FUEL=TUNING.TOTAL_DAY_TIME
 
---[[local function CLIENT_PlayFuelSound(inst)
-	local parent = inst.entity:GetParent()
-	local container = parent ~= nil and (parent.replica.inventory or parent.replica.container) or nil
-	if container ~= nil and container:IsOpenedBy(ThePlayer) then
-		TheFocalPoint.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
-	end
-end
-
-
-local function SERVER_PlayFuelSound(inst)
-	local owner = inst.components.inventoryitem.owner
-	if owner == nil then
-		inst.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
-	elseif inst.components.equippable:IsEquipped() and owner.SoundEmitter ~= nil then
-		owner.SoundEmitter:PlaySound("dontstarve/common/nightmareAddFuel")
-	else
-		inst.playfuelsound:push()
-		--Dedicated server does not need to trigger sfx
-		if not TheNet:IsDedicated() then
-			CLIENT_PlayFuelSound(inst)
-		end
-	end
-end]]
 
 local function onequip_blue(inst, owner)
     owner.AnimState:OverrideSymbol("swap_body", "torso_amulets", "blueamulet")

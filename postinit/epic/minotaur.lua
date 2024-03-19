@@ -75,20 +75,28 @@ local function TryShadowFire(inst, doer,pos)
 end
 
 
+local function OnHitOther(inst, data)
+	if data.target ~= nil and inst.sg:HasStateTag("runningattack") then
+        data.target:PushEvent("knockback", { knocker = inst, radius = 1, strengthmult = 2})
+    end
 
+end
 
+local function  hitmonster(target)
+    return not target:HasTag("player")
+end
 
 AddPrefabPostInit("minotaur",function(inst)
 
     if not TheWorld.ismastersim then return end
     inst.components.freezable:SetResistance(8)
     inst.components.sleeper:SetResistance(12)
-    inst:AddComponent("damagetyperesist")
-    inst.components.damagetyperesist:AddResist("monster", inst, 0.2)
-    --inst.shadow1.entity:AddFollower():FollowSymbol(inst.GUID, "leechterror", 0, 0, 0)
+
+    inst.components.combat:SetAreaDamage(5, 1.5, hitmonster)
+
     inst:DoTaskInTime(0, function() shadowremains(inst) end)
     inst:ListenForEvent("attacked", shadowremains)
-    --inst:ListenForEvent("doleapattack",leapcount)
+    inst:ListenForEvent("onhitother",OnHitOther)
 end)
 
 AddStategraphState("minotaur",

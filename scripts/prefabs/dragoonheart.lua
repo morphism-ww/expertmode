@@ -43,11 +43,13 @@ local function item_commonfn(bank, build, masterfn)
 	--inst.caminho = "images/inventoryimages/volcanoinventory.xml"
 	
     inst:AddComponent("tradable")
+    inst.components.tradable.goldvalue = 20
+
     inst:AddComponent("edible")
 
-    --[[inst:AddComponent("repairer")
+    inst:AddComponent("repairer")
     inst.components.repairer.repairmaterial="obsidian"
-    inst.components.repairer.healthrepairvalue=1]]
+    inst.components.repairer.finiteusesrepairvalue = 50
 
     inst:AddComponent("perishable")
     inst.components.perishable:SetPerishTime(TUNING.PERISH_MED)

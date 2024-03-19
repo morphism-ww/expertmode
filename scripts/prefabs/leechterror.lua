@@ -3,7 +3,7 @@ local assets =
     Asset("ANIM", "anim/shadow_oceanhorror.zip"),
 }
 
-local function retargetfn(inst)
+--[[local function retargetfn(inst)
     local target = inst.components.combat.target
     if target ~= nil then
         if target:HasTag("player") then
@@ -22,12 +22,34 @@ local function retargetfn(inst)
         end
     end
     return target, true
+end]]
+
+local RETARGET_MUST_TAGS = { "_combat", "_health" }
+local RETARGET_CANT_TAGS = { "minotaur","chess" }
+local function retargetfn(inst)
+    return FindEntity(
+        inst,
+        TUNING.TENTACLE_ATTACK_DIST,
+        function(guy)
+            return guy.prefab ~= inst.prefab
+                and guy.entity:IsVisible()
+                and not guy.components.health:IsDead()
+                and (guy.components.combat.target == inst or
+                    guy:HasTag("character") or
+                    guy:HasTag("monster") or
+                    guy:HasTag("animal"))
+				and (guy:HasTag("player") or
+					not (guy.sg and guy.sg:HasStateTag("hiding")))
+        end,
+        RETARGET_MUST_TAGS,
+        RETARGET_CANT_TAGS)
 end
 
 local function shouldKeepTarget(inst, target)
     return target ~= nil
         and target:IsValid()
         and target.components.health ~= nil
+        and not target.components.health:IsDead()
 end
 
 local function OnHitOther(inst, data)

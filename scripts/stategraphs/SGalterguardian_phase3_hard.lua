@@ -438,7 +438,7 @@ local function testforfailheal(inst)
 end
 
 local function SummonHolyLight(inst,target,num,radius)
-    if target~=nil then
+    if target~=nil and target:IsValid() then
         local a, b, c = target.Transform:GetWorldPosition()
         local angle=PI2*math.random()
         local angle_delta=PI2/num

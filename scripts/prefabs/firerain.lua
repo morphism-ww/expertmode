@@ -46,7 +46,6 @@ local function DoStep(inst)
     elseif IsOceanTile(tile) then
         SpawnAttackWaves(pos, 0, 2, 8,360)
         inst.SoundEmitter:PlaySound("ia/common/volcano/rock_splash")
-        --inst.components.groundpounder.numRings = 0
         inst.components.groundpounder.burner = false
         inst.components.groundpounder.groundpoundfx = nil
     end
@@ -54,12 +53,6 @@ local function DoStep(inst)
     if not remove then
         inst.components.groundpounder:GroundPound()
     end
-
-	--[[for num, player in pairs(AllPlayers) do
-		local distToPlayer = inst:GetPosition():Dist(player:GetPosition())
-		local power = Lerp(3, 1, distToPlayer / 180)
-		player:ShakeCamera(CAMERASHAKE.FULL, 0.5, 0.03, power, 40)
-	end]]
 end
 
 local function StartStep(inst)
@@ -77,7 +70,7 @@ end
 
 
 
-local function DestroyPoints(self, points, breakobjects, dodamage)
+--[[local function DestroyPoints(self, points, breakobjects, dodamage)
 	local getEnts = breakobjects or dodamage
 
 	for k,v in pairs(points) do
@@ -121,7 +114,7 @@ local function DestroyPoints(self, points, breakobjects, dodamage)
 			SpawnPrefab(self.groundpoundfx).Transform:SetPosition(v.x, 0, v.z)
 		end
 	end
-end
+end]]
 
 local function firerainfn()
 	local inst = CreateEntity()
@@ -147,13 +140,14 @@ local function firerainfn()
 	inst.components.groundpounder.initialRadius = 1
 	inst.components.groundpounder.radiusStepDistance = 2
 	inst.components.groundpounder.pointDensity = .25
-	inst.components.groundpounder.damageRings = 2
+	inst.components.groundpounder.damageRings = 3
+	inst.components.groundpounder.platformPushingRings=4
 	inst.components.groundpounder.destructionRings = 3
 	inst.components.groundpounder.destroyer = true
 	inst.components.groundpounder.burner = true
 	inst.components.groundpounder.ring_fx_scale = 0.75
-	--inst.components.groundpounder.GroundPound = GroundPound
-	inst.components.groundpounder.DestroyPoints = DestroyPoints
+	inst.components.groundpounder.noTags={ "FX", "NOCLICK", "DECOR", "INLIMBO" ,"dragoonegg"}
+
 
 	inst:AddComponent("combat")
 	inst.components.combat:SetDefaultDamage(200)
@@ -225,5 +219,60 @@ local function shadowfn()
 	return inst
 end
 
+
+local function StartStep2(inst)
+	local shadow = SpawnPrefab("firerainshadow")
+	shadow.Transform:SetPosition( inst.Transform:GetWorldPosition() )
+	shadow.Transform:SetRotation( math.random(0, 360) )--(GetRotation(inst))
+	inst.SoundEmitter:PlaySound("ia/common/bomb_fall")
+	inst:DoTaskInTime(1.2, function()
+		inst:Show()
+		inst.components.groundpounder:GroundPound()
+		inst.AnimState:PlayAnimation("idle")
+		inst:ListenForEvent("animover",inst.Remove)
+	end)
+end
+local function summonfn()
+	local inst = CreateEntity()
+	local trans = inst.entity:AddTransform()
+	local anim = inst.entity:AddAnimState()
+	local sound = inst.entity:AddSoundEmitter()
+	inst.entity:AddNetwork()
+
+	trans:SetFourFaced()
+	anim:SetBank("meteor")
+	anim:SetBuild("ia_meteor")
+
+	inst:AddTag("FX")
+	inst:AddTag("explosive")
+
+	if not TheWorld.ismastersim then
+        return inst
+    end
+
+	inst:AddComponent("groundpounder")
+	inst.components.groundpounder.numRings = 3
+	inst.components.groundpounder.initialRadius = 1
+	inst.components.groundpounder.radiusStepDistance = 2
+	inst.components.groundpounder.pointDensity = .25
+	inst.components.groundpounder.damageRings = 1
+	inst.components.groundpounder.destructionRings = 1
+	inst.components.groundpounder.destroyer = true
+	inst.components.groundpounder.burner = true
+	inst.components.groundpounder.noTags = { "FX", "NOCLICK", "DECOR", "INLIMBO" ,"player"}
+	inst.components.groundpounder.ring_fx_scale = 0.75
+	--inst.components.groundpounder.DestroyPoints = DestroyPoints
+
+	inst:AddComponent("combat")
+	inst.components.combat:SetDefaultDamage(80)
+
+	inst.StartStep = StartStep2
+
+	inst:Hide()
+
+	return inst
+end
+
 return Prefab("firerain", firerainfn, assets, prefabs),
-		Prefab("firerainshadow", shadowfn, assets, prefabs)
+		Prefab("firerainshadow", shadowfn, assets, prefabs),
+		Prefab("firerain_summon",summonfn,assets,prefabs)

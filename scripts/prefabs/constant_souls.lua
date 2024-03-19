@@ -30,8 +30,8 @@ local function commonfn()
 
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "constant_soul"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/constant_soul.xml"
+    inst.components.inventoryitem.imagename = "wortox_soul"
+    --inst.components.inventoryitem.atlasname = "images/inventoryimages/constant_soul.xml"
 
     inst:AddComponent("inspectable")
 
