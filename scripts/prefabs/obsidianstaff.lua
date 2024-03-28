@@ -177,8 +177,8 @@ local function volcano()
 
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetOnFinished(onfinished)
-    inst.components.finiteuses:SetMaxUses(50)
-    inst.components.finiteuses:SetUses(50)
+    inst.components.finiteuses:SetMaxUses(80)
+    inst.components.finiteuses:SetUses(80)
 
 
     inst:AddComponent("repairable")

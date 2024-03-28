@@ -5,6 +5,7 @@ local assets =
 
 local function buff_OnAttached(inst, target)
     target:AddTag("lunar_protect")
+	target:AddTag("stun_immune")
 	if target.sg~=nil then
 		target.sg:AddStateTag("nointerrupt")
 		target.sg:AddStateTag("nofreeze")
@@ -26,6 +27,7 @@ end
 local function buff_OnDetached(inst, target)
 	if target ~= nil and target:IsValid() then
 		target:RemoveTag("lunar_protect")
+		target:RemoveTag("stun_immune")
 	end
     inst:Remove()
 end

@@ -12,7 +12,7 @@ TUNING.TWIN2_MOUTHCHARGECD	= 14   ---10
 -----------------------------------------------------------------
 local RETARGET_MUST_TAGS = { "_combat" }
 local RETARGET_CANT_TAGS = { "decor", "eyeofterror", "FX", "INLIMBO", "NOCLICK", "notarget", "playerghost", "wall" }
-local RETARGET_ONEOF_TAGS = { "epic", "player" }    -- The eye tries to fight players and also other Epic monsters
+local RETARGET_ONEOF_TAGS = { "player" }    -- The eye tries to fight players and also other Epic monsters
 local function update_targets(inst)
     local to_remove = {}
     local pos = inst:GetPosition()

@@ -70,7 +70,7 @@ end
 
 
 
---[[local function DestroyPoints(self, points, breakobjects, dodamage)
+local function DestroyPoints(self, points, breakobjects, dodamage)
 	local getEnts = breakobjects or dodamage
 
 	for k,v in pairs(points) do
@@ -114,7 +114,7 @@ end
 			SpawnPrefab(self.groundpoundfx).Transform:SetPosition(v.x, 0, v.z)
 		end
 	end
-end]]
+end
 
 local function firerainfn()
 	local inst = CreateEntity()
@@ -141,13 +141,13 @@ local function firerainfn()
 	inst.components.groundpounder.radiusStepDistance = 2
 	inst.components.groundpounder.pointDensity = .25
 	inst.components.groundpounder.damageRings = 3
-	inst.components.groundpounder.platformPushingRings=4
+	--inst.components.groundpounder.platformPushingRings=4
 	inst.components.groundpounder.destructionRings = 3
 	inst.components.groundpounder.destroyer = true
 	inst.components.groundpounder.burner = true
 	inst.components.groundpounder.ring_fx_scale = 0.75
-	inst.components.groundpounder.noTags={ "FX", "NOCLICK", "DECOR", "INLIMBO" ,"dragoonegg"}
-
+	--inst.components.groundpounder.noTags={ "FX", "NOCLICK", "DECOR", "INLIMBO" ,"dragoonegg"}
+	inst.components.groundpounder.DestroyPoints = DestroyPoints
 
 	inst:AddComponent("combat")
 	inst.components.combat:SetDefaultDamage(200)

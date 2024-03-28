@@ -3,7 +3,7 @@ local assets =
 	Asset("ANIM", "anim/hat_dragonhead.zip"),
 }
 
-local temperature_thresholds = { 20, 30, 40, 50 }
+--[[local temperature_thresholds = { 20, 30, 40, 50 }
 
 local function GetRateForTemperature(temp)
     local rate=0
@@ -13,10 +13,10 @@ local function GetRateForTemperature(temp)
         end
     end
     return rate
-end
+end]]
 
 
-local function DoRegen(inst, owner)
+--[[local function DoRegen(inst, owner)
     local rate = GetRateForTemperature(inst.components.temperature:GetCurrent())
     inst.components.armor:Repair(3*rate)
 	if not inst.components.armor:IsDamaged() then
@@ -36,7 +36,7 @@ local function StopRegen(inst)
 		inst.regentask:Cancel()
 		inst.regentask = nil
 	end
-end
+end]]
 
 
 
@@ -61,11 +61,11 @@ local function onequip(inst, owner)
         owner.components.health.externalfiredamagemultipliers:SetModifier(inst, 0)
     end
 
-    if inst.components.armor:IsDamaged() then
+    --[[if inst.components.armor:IsDamaged() then
 		StartRegen(inst, owner)
 	else
 		StopRegen(inst)
-	end
+	end]]
 end
 
 local function onunequip(inst, owner)
@@ -89,15 +89,26 @@ local function onunequip(inst, owner)
 end
 
 
-local function OnTakeDamage(inst, amount)
+--[[local function OnTakeDamage(inst, amount)
 	if inst.regentask == nil and inst.components.equippable:IsEquipped() then
 		local owner = inst.components.inventoryitem.owner
 		if owner ~= nil then
 			StartRegen(inst, owner)
 		end
 	end
-end
+end]]
 
+local function SelfRepair(inst,data)
+    if  inst.components.armor:IsDamaged() then
+        local last=data.last
+        local new=data.new
+        local delta=new-last
+        if new>25 and delta>0 then
+            local tempbonus=new>50 and 0.1 or 0
+            inst.components.armor:Repair(math.max(tempbonus,4*delta))
+        end
+    end
+end
 
 local function fn()
 	local inst = CreateEntity()
@@ -128,27 +139,27 @@ local function fn()
 
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/obsidian_hat.xml"
-    inst.components.inventoryitem.imagename = "obsidian_hat"
+   
 
     inst:AddComponent("armor")
     inst.components.armor:InitCondition(735, 0.8)
-    inst.components.armor.ontakedamage = OnTakeDamage
+    
 
     inst:AddComponent("temperature")
     inst.components.temperature.current = TheWorld.state.temperature
-    inst.components.temperature.inherentinsulation = TUNING.INSULATION_LARGE
+    inst.components.temperature.inherentinsulation = TUNING.INSULATION_MED
     inst.components.temperature.mintemp= 0
 
     inst:AddComponent("waterproofer")
-    inst.components.waterproofer:SetEffectiveness(0.5)
+    inst.components.waterproofer:SetEffectiveness(0.4)
 
     inst:AddComponent("equippable")
     inst.components.equippable.equipslot = EQUIPSLOTS.HEAD
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
-    inst.components.equippable.walkspeedmult = 1.2
+    inst.components.equippable.walkspeedmult = 1.15
 
+    inst:ListenForEvent("temperaturedelta",SelfRepair)
 
     MakeHauntableLaunch(inst)
 

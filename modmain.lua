@@ -23,6 +23,10 @@ Asset("IMAGE","images/inventoryimages/lunar_blast.tex"),
 Asset("ATLAS","images/inventoryimages/lunar_blast.xml"),
 Asset("IMAGE","images/inventoryimages/quaker.tex"),
 Asset("ATLAS","images/inventoryimages/quaker.xml"),
+Asset("IMAGE","images/inventoryimages/demon_soul.tex"),
+Asset("ATLAS","images/inventoryimages/demon_soul.xml"),
+Asset("IMAGE","images/inventoryimages/lunarlight.tex"),
+Asset("ATLAS","images/inventoryimages/lunarlight.xml"),
 Asset("ATLAS", "images/fx4te.xml"),
 Asset("IMAGE", "images/fx4te.tex")}
 
@@ -53,8 +57,11 @@ RegisterInventoryItemAtlas("images/inventoryimages/quaker.xml", "quaker.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/armorvortexcloak.xml", "armorvortexcloak.tex")
 
+RegisterInventoryItemAtlas("images/inventoryimages/demon_soul.xml", "demon_soul.tex")
 
+RegisterInventoryItemAtlas("images/inventoryimages/lunarlight.xml", "lunarlight.tex")
 
+RegisterInventoryItemAtlas("images/inventoryimages/obsidian_hat.xml", "obsidian_hat.tex")
 
 AddMinimapAtlas("images/inventoryimages/armorvortexcloak.xml")
 
@@ -77,7 +84,8 @@ PrefabFiles={"twin_flame","twin_laser","armorvortexcloak","leechterror","shadowf
             "meteor_impact","firerain","lavapool","dragoonheart","dragoonspit","dragoon","dragoonegg",
             "superbrilliance_projectile_fx","true_staff_lunarplant","klaus_soul",
             "super_boat","quaker","fire_tornado","alter_light","lunar_blast","lunar_shield",
-            "fast_buff","make_buffs","cursefire_fx","poison_spore","brightshade_queen","anti_poison","obsidianstaff"}
+            "fast_buff","make_buffs","cursefire_fx","poison_spore","brightshade_queen","anti_poison","obsidianstaff",
+            "lunar_light","lunarlight_flame","magic_fx","shadow_mfz","god_judge"}
 
 if GetModConfigData("pig") then
     modimport("postinit/epic/daywalker")
@@ -106,6 +114,7 @@ end
 if GetModConfigData("dragon_fire") then
     modimport("postinit/epic/dragonfly")
     modimport("postinit/dragonflyfurnace")
+
 end
 
 if GetModConfigData("klaus") then
@@ -115,7 +124,7 @@ end
 
 if GetModConfigData("poison") then
     modimport("postinit/epic/beequeen")
-    modimport("postinit/epic/toadstool")
+
     modimport("postinit/mushroom_hat")
     modimport("postinit/poison_creature")
 end
@@ -132,7 +141,7 @@ if GetModConfigData("ruins") then
     modimport("postinit/ruins")
 end
 
-
+modimport("postinit/components/explosive")
 modimport("postinit/dont_skip")
 --modimport("other/playercharge.lua")
 
@@ -141,7 +150,7 @@ modimport("postinit/area_weapon")
 
 ---------------------------------------
 
-
+modimport("postinit/fuel")
 modimport("postinit/amulet")
 --modimport("postinit/winter_hunter")
 modimport("postinit/lunarplant_staff")
@@ -165,7 +174,9 @@ modimport("postinit/epic/lunarthrall_plant")
 
 modimport("postinit/anti_poison")
 
-
+modimport("postinit/epic/toadstool")
+modimport("postinit/epic/warg")
+modimport("postinit/punchingbag")
 
 modimport("other/new_loot")
 modimport("other/newstring.lua")

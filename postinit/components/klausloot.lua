@@ -78,20 +78,19 @@ AddComponentPostInit("klaussackloot", function(KlausSackLoot)
         table.insert(self.loot, items)
 
         items = {}
-        if math.random() < .4 then
+        if math.random() < .5 then
             table.insert(items, "yellowamulet")
         end
-        table.insert(items, "goldnugget")
-        if math.random()< .25 then
+        if math.random()< .75 then
             FillItems(items, "bluegem")
         else
-            FillItems(items, "charcoal")
+            FillItems(items, "yellowgem")
         end
 
         table.insert(self.loot, items)
 
         items = {}
-        if math.random() < .3 then
+        if math.random() < .5 then
             table.insert(items, "krampus_sack")
         end
         table.insert(items, "goldnugget")

@@ -14,16 +14,7 @@ local function eyeofterror_should_crazy(inst, health_data)
     end
 end
 
-local function CanSpawnEgg(inst)
-	return not inst.sg.mem.transformed
-end
 
-local function EggOnSpawned(inst, minion_egg)
-    minion_egg.Transform:SetPosition(inst.Transform:GetWorldPosition())
-    minion_egg:PushEvent("on_landed")
-
-    inst.components.commander:AddSoldier(minion_egg)
-end
 
 AddPrefabPostInit("eyeofterror",function(inst)
     if not TheWorld.ismastersim then return end
@@ -35,12 +26,6 @@ AddPrefabPostInit("eyeofterror",function(inst)
     inst.components.locomotor.walkspeed=9
     inst:ListenForEvent("healthdelta", eyeofterror_should_crazy)
 
-    inst:AddComponent("periodicspawner")
-    inst.components.periodicspawner:SetPrefab("eyeofterror_mini_grounded")
-    inst.components.periodicspawner:SetRandomTimes(15, 20)
-	inst.components.periodicspawner:SetSpawnTestFn(CanSpawnEgg)
-    inst.components.periodicspawner:SetOnSpawnFn(EggOnSpawned)
-    inst.components.periodicspawner:Start()
 end)
 
 --------------------------------------------------------------
@@ -90,7 +75,7 @@ State {
             if target ~= nil and target:IsValid() then
                 inst:ForceFacePoint(target.Transform:GetWorldPosition())
             end
-            inst.Physics:SetMotorVelOverride(22, 0, 0)
+            inst.Physics:SetMotorVelOverride(21, 0, 0)
             inst.sg:SetTimeout(0.7)
 
 

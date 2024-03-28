@@ -34,7 +34,7 @@ local debuff_defs={
 	poison=
 	{
 		name="poison",
-		TICK_RATE = 10,
+		TICK_RATE = 15,
 		TICK_FN=function(inst,target,data)
 			target.components.health:DoDelta(-inst.damage, nil,"poison")
 			if target:HasTag("player") then
@@ -59,11 +59,11 @@ local debuff_defs={
 			target.components.health:DoDelta(-inst.damage, nil,"poison")
 			if target.components.hunger ~= nil then
 				if target.components.hunger.current > 0 then
-					target.components.hunger:DoDelta(-10)
+					target.components.hunger:DoDelta(-4)
 				end
 			end
 			if target.components.sanity~=nil then
-				target.components.sanity:DoDelta(-8)
+				target.components.sanity:DoDelta(-4)
 			end
 			if target:HasTag("player") and not target:HasTag("playerghost") then
 				target.player_classified.poisonover:set_local(true)
@@ -75,7 +75,7 @@ local debuff_defs={
 		end,
 		onextendedfn=function(inst,target,data)
 			if data and data.upgrade then
-				inst.damage=math.min(inst.damage+2,10)
+				inst.damage=math.min(inst.damage+2,8)
 			end
 		end
 	},

@@ -46,7 +46,7 @@ local function settarget(inst,target,life,source)
                 inst.shadow_ember_target = nil
 
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local ents = TheSim:FindEntities(x, y, z, 20, TARGETS_MUST, TARGETS_CANT)
+                local ents = TheSim:FindEntities(x, y, z, 20, TARGETS_MUST, TARGETS_CANT,{_"combat"})
                 if #ents > 0 then
                     local targets = {}
                     local flameents = TheSim:FindEntities(x, y, z, 20, FLAME_MUST)
@@ -127,7 +127,7 @@ local function settarget(inst,target,life,source)
                 fire:settarget(target,life-1, source)
             end
         end)
-    elseif life==0 then
+    elseif life<=0 then
         local x, y, z = inst.Transform:GetWorldPosition()
         local tent = SpawnPrefab("bigshadowtentacle")
         tent.Transform:SetPosition(x,y,z)
@@ -233,6 +233,28 @@ local function settarget2(inst,target,life,source)
                 end
             end
 
+            if #ents > 0 then
+
+                local anglediffs = {}
+
+                local lowestdiff = nil
+                local lowestent = nil
+
+                for i, ent in ipairs(ents) do
+
+                    local ex,ey,ez = ent.Transform:GetWorldPosition()
+                    local diff = math.abs(inst:GetAngleToPoint(ex,ey,ez) - inst.Transform:GetRotation())
+                    if diff > 180 then diff = math.abs(diff - 360) end
+
+                    if not lowestdiff or lowestdiff > diff then
+                        lowestdiff = diff
+                        lowestent = ent
+                    end                        
+                end
+
+                target = lowestent
+            end
+
 			if target then
                 local dist = inst:GetDistanceSqToInst(target)
 
@@ -242,7 +264,8 @@ local function settarget2(inst,target,life,source)
                     local pos = Vector3(target.Transform:GetWorldPosition())
                     blast.Transform:SetPosition(pos.x,pos.y,pos.z)
 
-                    inst.components.combat:DoAttack(target)
+                    --inst.components.combat:DoAttack(target)
+                    target.components.combat:GetAttacked(source,25)
 
                     theta = nil
                 else
@@ -320,9 +343,7 @@ local function fn()
     inst.components.firefx:SetLevel(math.random(1,4))
 
     inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(20)
-    inst:AddComponent("planardamage")
-    inst.components.planardamage:SetBaseDamage(10)
+    --inst.components.combat:SetDefaultDamage(20)
 
 
     inst:ListenForEvent("animover", function()

@@ -434,7 +434,7 @@ local states =
             if target ~= nil and target:IsValid() then
                 inst:ForceFacePoint(target.Transform:GetWorldPosition())
             end
-            inst.Physics:SetMotorVelOverride(28, 0, 0)
+            inst.Physics:SetMotorVelOverride(26, 0, 0)
             inst.sg:SetTimeout(0.7)
 
 

@@ -23,8 +23,7 @@ local _worldsettingstimer = TheWorld.components.worldsettingstimer
 
 local _spawntime = 5
 local _fireduration = 90
-local _timetofire = 0
-local _attackdelay = 0
+local _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME/2 
 local _warning= false
 local _warnduration = 60
 local _timetonextwarningsound=0
@@ -34,8 +33,7 @@ local _scheduleddrops=nil
 --[[ Private member functions ]]
 --------------------------------------------------------------------------
 local function CanFire()
-    return self.firerain_enabled and TheWorld.state.cycles > TUNING.NO_BOSS_TIME
-            and (_worldstate.season == "summer") and #_activeplayers>0
+    return self.firerain_enabled and (_worldstate.season == "summer") and #_activeplayers>0
 end
 local function PauseAttacks()
     _warning = false
@@ -155,7 +153,7 @@ end
 
 local function OnFireRainTimerDone()
     _warning = false
-    if #_activeplayers==0 then
+    if #_activeplayers<=0 then
         TargetLost()
     else
         ScheduleSpawn()
@@ -199,11 +197,9 @@ end
 function self:OnPostInit()
     -- Shorten the time used for winter to account for the time deerclops spends stomping around
     -- Then add one to _attacksperseason to shift the attacks so the last attack isn't right when the season changes to spring
-    _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME 
+    _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME/2 
     _worldsettingstimer:AddTimer("FireRain", _attackdelay, true, OnFireRainTimerDone)
-    if _timetofire then
-        _worldsettingstimer:StartTimer("FireRain", math.min(_timetofire, _attackdelay))
-    end
+    
     TryStartAttacks()
 end
 
@@ -269,9 +265,6 @@ end
 function self:OnLoad(data)
     _warning=data.warning
     self.firerain_enabled = data._firerain_enabled or false
-    if data.timetofire then
-        _timetofire = data.timetofire
-    end
 end
 --------------------------------------------------------------------------
 --[[ Debug ]]

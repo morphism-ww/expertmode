@@ -38,9 +38,8 @@ local function item_commonfn(bank, build, masterfn)
 
     inst:AddComponent("inspectable")
     inst:AddComponent("inventoryitem")
-	inst.components.inventoryitem.imagename = "dragoonheart"
-    inst.components.inventoryitem.atlasname = "images/inventoryimages/volcanoinventory.xml"	
-	--inst.caminho = "images/inventoryimages/volcanoinventory.xml"
+	--inst.components.inventoryitem.imagename = "dragoonheart"
+    --inst.components.inventoryitem.atlasname = "images/inventoryimages/volcanoinventory.xml"	
 	
     inst:AddComponent("tradable")
     inst.components.tradable.goldvalue = 20
@@ -49,7 +48,7 @@ local function item_commonfn(bank, build, masterfn)
 
     inst:AddComponent("repairer")
     inst.components.repairer.repairmaterial="obsidian"
-    inst.components.repairer.finiteusesrepairvalue = 50
+    inst.components.repairer.finiteusesrepairvalue =80
 
     inst:AddComponent("perishable")
     inst.components.perishable:SetPerishTime(TUNING.PERISH_MED)

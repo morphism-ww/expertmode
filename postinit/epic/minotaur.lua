@@ -395,6 +395,10 @@ end
 
 
 AddPrefabPostInit("minotaurchestspawner",function (inst)
+    if inst.task ~= nil then
+        inst.task:Cancel()
+        inst.task = nil
+    end    
     inst.task = inst:DoTaskInTime(3, dospawnchest)
     inst.OnLoad = OnLoadChest
 end)

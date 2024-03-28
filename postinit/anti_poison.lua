@@ -16,6 +16,7 @@ end)
 local function HealBee(inst,target)
 	if target.components.debuffable then
 		target.components.debuffable:RemoveDebuff("bee_poison")
+		target.components.debuffable:RemoveDebuff("beequeen_poison")
 	end
 end
 

@@ -113,8 +113,9 @@ function Queen_spawner:FindWildPatch()
             
 			local x = points_x[1]
 			local z = points_y[1]
+            local noqueen=TheSim:FindEntities(x, 0, z, 40, {"no_queen"})
             local ents = TheSim:FindEntities(x, 0, z, 14, PLANTS_MUST)
-            if #ents >7 then
+            if #ents >7 and #noqueen<=0 then
                 table.insert(tries,ents)
             end
         end   

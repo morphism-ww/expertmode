@@ -1,6 +1,5 @@
 --spider,spider_warrieor,spider_dropper,spider_water,spiderqueen
 
-local poison_spider={"spider","spider_warrieor","spider_water"}
 local total_day_time=TUNING.TOTAL_DAY_TIME
 
 local function dospiderpoison1(inst,data)
@@ -13,12 +12,11 @@ local function dospiderpoison1(inst,data)
     end
 end
 
-for i,v in ipairs(poison_spider) do
-    AddPrefabPostInit(v,function(inst)
-        if not TheWorld.ismastersim then return end
-        inst:ListenForEvent("onhitother",dospiderpoison1)
-    end)
-end
+AddPrefabPostInit("spider_warrieor",function(inst)
+    if not TheWorld.ismastersim then return end
+    inst:ListenForEvent("onhitother",dospiderpoison1)
+end)
+
 
 local dead_poison_spider={"spiderqueen","spider_dropper","spider_hider","spider_moon"}
 
@@ -57,7 +55,6 @@ AddPrefabPostInit("spider_spitter",function (inst)
 end)
 
 
-
 -----------------------------------------------------------
 local function dobeepoison(inst,data)
     if data then
@@ -69,14 +66,8 @@ local function dobeepoison(inst,data)
     end
 end
 
-AddPrefabPostInit("bee",function (inst)
-    if not TheWorld.ismastersim then return end
-    inst:ListenForEvent("onhitother",dobeepoison)
-end)
-
 
 AddPrefabPostInit("killerbee",function (inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("onhitother",dobeepoison)
 end)
-----------------------------------------------------------

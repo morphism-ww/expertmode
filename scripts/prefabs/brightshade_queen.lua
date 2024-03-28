@@ -28,6 +28,7 @@ local loot = {
     "purebrilliance",
     "purebrilliance",
     "purebrilliance",
+    "lunarlight_blueprint"
 }
 
 local function customPlayAnimation(inst,anim,loop)
@@ -107,7 +108,6 @@ local function infest(inst,target)
         end
         inst:customPlayAnimation("idle_"..inst.targetsize )
         inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()) - 1)
-        TheWorld:PushEvent("lunarthrallplant_infested",target)
     end
 end
 
@@ -392,15 +392,15 @@ local function GetLargeGrowTime(inst)
     return 10
 end
 
-local function declare_queen(inst)
+--[[local function declare_queen(inst)
     local x,y,z=inst.Transform:GetWorldPosition()
     SpawnPrefab("moonpulse_spawner").Transform:SetPosition(x, y, z)
-end
+end]]
 
 local growth_stages =
 {
     { name = "med",     time = GetMedGrowTime,      fn = SetMedium        },
-    { name = "large",   time = GetLargeGrowTime,    fn = SetLarge    ,pregrowfn=declare_queen     },
+    { name = "large",   time = GetLargeGrowTime,    fn = SetLarge         },
 }
 
 
@@ -499,8 +499,6 @@ local function fn()
     inst:AddTag("NPCcanaggro")
     inst:AddTag("noauradamage")
     inst:AddTag("brightmareboss")
-    inst:AddTag("flight")
-    inst:AddTag("flying")
 
 	inst.highlightchildren = {}
 

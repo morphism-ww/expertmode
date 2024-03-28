@@ -1,5 +1,5 @@
 local function CanBeUpgraded(inst, item)
-    return not inst.components.equippable:IsEquipped()
+    return inst.components.equippable~=nil and not inst.components.equippable:IsEquipped()
 end
 
 local function OnUpgraded(inst, upgrader, item)

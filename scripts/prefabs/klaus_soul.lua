@@ -65,7 +65,6 @@ local function demonfn()
 
 
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "wortox_soul"
     
     inst:AddComponent("healer")
     inst.components.healer:SetHealthAmount(150)

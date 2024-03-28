@@ -1,23 +1,4 @@
 --------------------------------------------------------
---lureplant
---------------------------------------------------------
-
-
-local function OnCollide(inst, other)
-    if other ~= nil and
-        other:IsValid() and
-        other:HasTag("epic") then
-        inst.components.health:Kill()
-    end
-end
-AddPrefabPostInit("lureplant",function(inst)
-    if not TheWorld.ismastersim then return end
-    inst.Physics:SetCollisionCallback(OnCollide)
-end)
-
-
-
---------------------------------------------------------
 --rocky
 --------------------------------------------------------
 TUNING.ROCKY_DAMAGE = 40
@@ -56,4 +37,18 @@ AddBrainPostInit("rockybrain", function(self)
             },
             UseShield(self.inst, DAMAGE_UNTIL_SHIELD, SHIELD_TIME, AVOID_PROJECTILE_ATTACKS, HIDE_WHEN_SCARED),
         }
+end)
+
+local function ShouldSleep(inst)
+    return inst.components.sleeper:GetTimeAwake() > 0.6*TUNING.TOTAL_DAY_TIME
+end
+
+local function ShouldWake(inst)
+    return inst.components.sleeper:GetTimeAsleep() > 3*TUNING.TOTAL_DAY_TIME
+end
+
+AddPrefabPostInit("rocky",function(inst)
+    if not TheWorld.ismastersim then return end
+    inst.components.sleeper:SetWakeTest(ShouldWake)
+    inst.components.sleeper:SetSleepTest(ShouldSleep)
 end)

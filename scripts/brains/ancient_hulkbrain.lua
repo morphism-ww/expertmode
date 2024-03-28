@@ -22,10 +22,8 @@ local function GoHomeAction(inst)
     local homePos = inst.components.knownlocations:GetLocation("home")
     local dx, dy, dz = inst.Transform:GetWorldPosition()
     local dist_sq = inst:GetDistanceSqToPoint(homePos:Get())
-    if inst.components.combat.target ~= nil and dist_sq<GO_HOME_DIST*GO_HOME_DIST then
-        return
-    end
-    if not inst:IsOnValidGround() or dist_sq> 1024 then
+    inst:SetEngaged(false)
+    if not inst:IsOnValidGround() or dist_sq> 1296 then
         inst.sg.mem.teleporthome=true
         return BufferedAction(inst, nil, ACTIONS.GOHOME)
     end
@@ -57,8 +55,8 @@ function Ancient_hulkBrain:OnStart()
         PriorityNode(
         { WhileNode(function() return ShouldGoHome(self.inst) end, "ShouldGoHome",
                     DoAction(self.inst, GoHomeAction, "Go Home", false)),
-            ChaseAndAttack(self.inst, 10, 30, nil, nil, true),    --60,120
-          Leash(self.inst, HomePoint, 20, 16),
+        ChaseAndAttack(self.inst, 10, 30, nil, nil, true),    --60,120
+        Leash(self.inst, HomePoint, 20, 16),
           Wander(self.inst, HomePoint, 15)
         }, .5)
     

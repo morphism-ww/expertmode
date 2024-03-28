@@ -35,17 +35,6 @@ local function GetRangeForTemperature(temp, ambient)
     return range
 end
 
-local temperature_thresholds = { 20, 30, 40, 50 }
-
-local function GetRateForTemperature(temp)
-    local rate=0
-    for i,v in ipairs(temperature_thresholds) do
-        if temp > v then
-            rate = rate + 1
-        end
-    end
-    return rate
-end
 
 -- Heatrock emits constant temperatures depending on the temperature range it's in
 local emitted_temperatures = { 0, 20, 40, 60, 80 }
@@ -55,7 +44,7 @@ local function HeatFn(inst, observer)
     return emitted_temperatures[range]
 end
 
-local function DoRegen(inst, owner)
+--[[local function DoRegen(inst, owner)
     local rate = GetRateForTemperature(inst.components.temperature:GetCurrent())
     inst.components.armor:Repair(3*rate)
 	if not inst.components.armor:IsDamaged() then
@@ -75,7 +64,7 @@ local function StopRegen(inst)
 		inst.regentask:Cancel()
 		inst.regentask = nil
 	end
-end
+end]]
 
 local function onequip(inst, owner)
     owner.AnimState:OverrideSymbol("swap_body", "armor_obsidian", "swap_body")
@@ -86,12 +75,6 @@ local function onequip(inst, owner)
     if owner.components.health ~= nil then
         owner.components.health.externalfiredamagemultipliers:SetModifier(inst, 1 - TUNING.ARMORDRAGONFLY_FIRE_RESIST)
     end
-
-    if inst.components.armor:IsDamaged() then
-		StartRegen(inst, owner)
-	else
-		StopRegen(inst)
-	end
 end
 
 local function onunequip(inst, owner)
@@ -106,13 +89,25 @@ local function onunequip(inst, owner)
 
 end
 
-local function OnTakeDamage(inst, amount)
+--[[local function OnTakeDamage(inst, amount)
 	if inst.regentask == nil and inst.components.equippable:IsEquipped() then
 		local owner = inst.components.inventoryitem.owner
 		if owner ~= nil then
 			StartRegen(inst, owner)
 		end
 	end
+end]]
+
+local function SelfRepair(inst,data)
+    if  inst.components.armor:IsDamaged() then
+        local last=data.last
+        local new=data.new
+        local delta=new-last
+        if new>25 and delta>0 then
+            local tempbonus=new>50 and 0.1 or 0
+            inst.components.armor:Repair(math.max(tempbonus,4*delta))
+        end
+    end
 end
 
 local function fn()
@@ -153,13 +148,11 @@ local function fn()
     inst:AddComponent("heater")
     inst.components.heater.heatfn = HeatFn
     inst.components.heater.carriedheatfn = HeatFn
-    inst.components.heater.carriedheatmultiplier = 0.8
     inst.components.heater:SetThermics(true, true)
     inst.components.temperature:IgnoreTags("obsidian")
 
     inst:AddComponent("armor")
     inst.components.armor:InitCondition(1350, 0.9)
-    inst.components.armor.ontakedamage = OnTakeDamage
 
     --[[inst:AddComponent("repairable")
     inst.components.repairable.repairmaterial="obsidian"
@@ -173,7 +166,7 @@ local function fn()
     inst.components.equippable:SetOnUnequip(onunequip)
 
 
-
+    inst:ListenForEvent("temperaturedelta",SelfRepair)
 
 	MakeHauntableLaunch(inst)	
 	

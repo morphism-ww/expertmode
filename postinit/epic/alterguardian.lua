@@ -399,7 +399,7 @@ end)
 
 --三阶段激光
 
-local function DoEraser(inst,target)
+local function DoEraser(inst,target,caster)
     if target.components.inventory~=nil then
         for k, v in pairs(target.components.inventory.equipslots) do
             if v.components.finiteuses ~= nil then
@@ -419,11 +419,12 @@ local function DoEraser(inst,target)
     if target.components.burnable~=nil then
         target.components.burnable:Ignite()
     end
-    target.components.health:DoDelta(-100000,false,"alterguardian_phase3",true,nil,true)
+    target.components.health:DoDelta(-100000,false,caster,true,nil,true)
+    --target.components.health:SetVal(0,caster,caster)
     target.components.health:DeltaPenalty(0.2)
 end
 
-local DAMAGE_CANT_TAGS = { "brightmareboss", "brightmare", "playerghost", "INLIMBO", "DECOR", "FX" }
+local DAMAGE_CANT_TAGS = { "brightmareboss", "brightmare", "playerghost", "INLIMBO", "DECOR", "FX" ,"god" }
 local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
 local LAUNCH_MUST_TAGS = { "_inventoryitem" }
 local LAUNCH_CANT_TAGS = { "locomotor", "INLIMBO" }
@@ -515,7 +516,7 @@ local function DoDamage(inst, targets, skiptoss, skipscorch)
                 elseif inst.components.combat:CanTarget(v) then
                     targets[v] = true
                     if inst.type=="eraser" and v.components.health~=nil then
-                        DoEraser(inst,v)
+                        DoEraser(inst,v,inst.caster)
                     else
                         if inst.caster ~= nil and inst.caster:IsValid() then
                             inst.caster.components.combat.ignorehitrange = true

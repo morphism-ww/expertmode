@@ -70,15 +70,20 @@ local function FindGestaltSpawnPtForPlayer(player, wantstomorph)
 	return offset
 end
 
+local function RemoveMare(ent)
+	--print("    - RemoveMare", ent)
+    ent:DoTaskInTime(0, ent.Remove)
+end
+
+
 local function TrySpawnGestaltForPlayer(player, level, data)
 	local pt = FindGestaltSpawnPtForPlayer(player, false)
 	if pt ~= nil then
 		if level==3 then
 			local ent = SpawnPrefab("gestalt_guard")
-			_gestalts[ent] = {}
-			inst:ListenForEvent("onremove", StopTracking, ent)
+			ent.persists = false
+			ent:ListenForEvent("entitysleep", RemoveMare)
 			ent.Transform:SetPosition(pt.x, 0, pt.z)
-			ent.components.combat:SetTarget(player)
 		else
 			local ent = SpawnPrefab("gestalt")
 			_gestalts[ent] = {}

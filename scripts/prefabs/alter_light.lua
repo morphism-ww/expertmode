@@ -5,17 +5,17 @@ local assets =
 
 local function DoDamage(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, 0, z, 3, nil, {"FX","playerghost","brightmareboss"},{"structure","character","epic","shadow_aligned","monster"})
+    local ents = TheSim:FindEntities(x, 0, z, 3, nil, {"FX","playerghost","brightmareboss","god"},{"structure","character","epic","shadow_aligned","monster"})
     for i, v in ipairs(ents) do
         if v:IsValid() and v.components.health ~= nil then
             if v:HasTag("shadow_aligned") then
                 v.components.health:Kill()
             elseif v:HasTag("player") then
-                v.components.health:DoDelta(-20,false,"alterguardian_phase3",true,nil,true)
+                v.components.health:DoDelta(-20,false,inst,true,nil,true)
                 inst.components.combat:DoAttack(v)
                 v.components.sanity:DoDelta(30)
             else
-                v.components.health:DoDelta(-1000,false,"alterguardian_phase3",true,nil,true)
+                v.components.health:DoDelta(-1000,false,inst,true,nil,true)
             end
         end
         if v.components.workable ~= nil and

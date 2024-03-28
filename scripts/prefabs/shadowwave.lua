@@ -24,7 +24,7 @@ local function DoSplash(inst)
             if v.components.health~=nil then
                 v.components.health:DoDelta(-10)
             end
-            v:PushEvent("knockback", { knocker = inst, radius = 1,strengthmult=1.5,propsmashed=true})
+            v:PushEvent("knockback", { knocker = inst, radius =1,strengthmult=1.5,propsmashed=true})
         end
     end
     inst.Physics:ClearCollisionMask()

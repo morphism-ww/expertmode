@@ -72,7 +72,6 @@ local function obsidianfn()
     inst.components.finiteuses:SetOnFinished(inst.Remove)
 
     inst:AddComponent("inspectable")
-	inst:AddComponent("waterproofer")
 	
     inst:AddComponent("inventoryitem")
 

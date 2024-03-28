@@ -150,10 +150,10 @@ local function UpdatePopulation(player, params)
     local targetpop = params.targetpop
     local sanity = is_insanity_mode and player.components.sanity:GetPercent() or 1
 
-    if sanity > 0.3 then
+    if sanity > 0.2 then
         --We're pretty sane. Clean up the monsters
         maxpop = 0
-    elseif sanity > 0.2 and canspawn then
+    elseif sanity > 0.1 and canspawn then
         --Have at most one monster, sometimes
         maxpop = 1
         if targetpop >= maxpop then

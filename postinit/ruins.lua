@@ -89,6 +89,8 @@ AddPrefabPostInit("ruins_bat", function(inst)
     inst.components.aoetargeting.reticule.ease = true
     inst.components.aoetargeting.reticule.mouseenabled = true
 
+
+
 	if not TheWorld.ismastersim then
 		return inst
 	end
@@ -98,8 +100,6 @@ AddPrefabPostInit("ruins_bat", function(inst)
 	inst:AddComponent("aoespell")
     inst.components.aoespell:SetSpellFn(SpellFn)
 
-    inst:AddComponent("spellbook")
-    inst.components.spellbook:SetSpellName("格挡")
 
 
     inst:AddComponent("parryweapon")

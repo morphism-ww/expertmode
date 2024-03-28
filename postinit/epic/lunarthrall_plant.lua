@@ -116,44 +116,58 @@ AddComponentPostInit('lunarthrall_plantspawner',function (self)
             end
         end
 
-        local targets = {}
-        local SPACE = 2.5
-        local MAX_SPACE = 8
-        local number_spawned = 0
         
-        while #plants > 0 and number_spawned < 3 do
+        for i=1,5 do
             local random = math.random(1,#plants)
             local plant = plants[random]
             if plant then
-
                 local eligable = true
 
-                if eligable and #targets > 0 then
-                    -- NO TARGETED PLANTS ARE TOO CLOSE.
-                    for t,target in ipairs(targets)do
-                        if target:GetDistanceSqToInst(plant) < SPACE*SPACE then
-                            eligable = false
-                        end
-                    end
-
-                    -- FIND PLACE CLOSEISH TO TARGETED PLANTS.
-                    for t,target in ipairs(targets)do
-                        if target:GetDistanceSqToInst(plant) > MAX_SPACE*MAX_SPACE then
-                            eligable = false
-                        end
-                    end
+                    -- NO EXISTING PLANTS TOO CLOSE.
+                local x,y,z = plant.Transform:GetWorldPosition()
+                local ents = TheSim:FindEntities(x,y,z, 40, {"lunarthrall_plant","no_queen"})
+                if #ents > 0 then
+                    eligable = false
+                    table.remove(plants,random)
                 end
 
                 if eligable then
-                    number_spawned = number_spawned + 1
-                    table.insert(targets,plant)
+                    self:InvadeTarget(plant)
+                    break
                 end
             end
-            table.remove(plants,random)
+        end    
+    end
+    function self:FindHerd()
+        local choices = {}
+        for i, herd in ipairs(self.plantherds)do
+            table.insert(choices,herd)
         end
-
-        for i,target  in ipairs(targets)do
-            self:InvadeTarget(target)
+    
+        local num = 0
+        local choice = {}
+        for i, herd in ipairs(choices)do
+            local count = 0
+            for member, i in pairs(herd.components.herd.members) do
+                local pt = Vector3(member.Transform:GetWorldPosition())
+                local ents = TheSim:FindEntities(pt.x,pt.y,pt.z, 30, {"lunarthrall_plant","no_queen"})
+                if #ents <= 0 then
+                    if not member.lunarthrall_plant and
+                        (not member.components.witherable or not member.components.witherable:IsWithered()) then
+                        count = count +1
+                    end
+                end
+            end
+    
+            if count > 0 then
+                table.insert(choice,{herd=herd, count=count}) 
+            end
+        end
+    
+        table.sort(choice, function(a,b) return a.count > b.count end)
+    
+        if #choice > 0 then
+            return choice[math.random(1,math.min(5, #choice))].herd
         end
     end
 end)

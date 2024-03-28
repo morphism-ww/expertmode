@@ -37,14 +37,15 @@ SetSharedLootTable('ancient_hulk',
     {'gears',           1.0},
     {'gears',           1.0},
     {'gears',           1.0},
-    {'thulecite',       1.0},
-    {'thulecite',       1.0},
-    {'thulecite',       1.0},
-    {'thulecite',       1.0},
     {'opalpreciousgem', 1.0},
     {'iron_soul', 1.0},
 })
 
+
+local many_ruins={}
+for i=1,30 do
+    table.insert(many_ruins,"thulecite")
+end
 local PHASES =
 {
 	[1] = {
@@ -261,7 +262,7 @@ end
 local TARGET_DIST = 30
 
 local function CalcSanityAura(inst, observer)
-    if inst.components.combat.target then
+    if inst.components.combat:HasTarget() then
         return -TUNING.SANITYAURA_HUGE
     end
 
@@ -292,7 +293,7 @@ end
 local function KeepTargetFn(inst, target)
 
     local homePos = inst.components.knownlocations:GetLocation("home")
-    return homePos ~= nil and inst:GetDistanceSqToPoint(homePos:Get()) < 1600
+    return homePos ~= nil and inst:GetDistanceSqToPoint(homePos:Get()) < 900
 end
 
 
@@ -357,8 +358,8 @@ local function LaunchProjectile(inst, targetpos)
     local dz = targetpos.z - z
     --local rangesq = dx * dx + dz * dz
     --local maxrange = 15  --FIRE_DETECTOR_RANGE
-    local speed = 60
-    projectile.components.complexprojectile:SetHorizontalSpeed(speed)
+    --local speed = 60
+    projectile.components.complexprojectile:SetHorizontalSpeed(60)
     projectile.components.complexprojectile:SetGravity(25)
     projectile.components.complexprojectile:Launch(targetpos, inst, inst)
     projectile.owner = inst
@@ -384,9 +385,9 @@ local function ShootProjectile(inst, targetpos)
     --local rangesq = dx * dx + dz * dz
     --local maxrange = 24  --FIRE_DETECTOR_RANGE
     local speed =    65--easing.linear(rangesq, 15, 3, maxrange * maxrange)
-    projectile.components.complexprojectile:SetHorizontalSpeed(speed)
-    projectile.components.complexprojectile:SetGravity(25)
-    projectile.components.complexprojectile:Launch(targetpos, inst, inst)
+    projectile.components.linearprojectile:SetHorizontalSpeed(speed)
+    --projectile.components.linearprojectile:SetGravity(25)
+    projectile.components.linearprojectile:Launch(targetpos, inst, inst)
     projectile.owner = inst
     --projectile.components.projectile:Throw(inst, target, inst)
 end
@@ -490,7 +491,7 @@ end]]
 local function EnterShield(inst)
     inst._is_shielding = true
 
-    inst.components.health:SetAbsorptionAmount(100)
+    inst.components.health:SetAbsorptionAmount(1)
 
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
@@ -513,14 +514,15 @@ end
 
 
 local function rememberhome(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
+    --[[local x,y,z=inst.Transform:GetWorldPosition()
     local pos=inst:GetPosition()
     for i, v in ipairs(TheSim:FindEntities(x, 0, z,40, {"CLASSIFIED"})) do
         if v.prefab=="ancient_hulk_ruinsrespawner_inst" then
             pos=v:GetPosition()
         end
     end
-    inst.components.knownlocations:RememberLocation("home",pos)
+    inst.components.knownlocations:RememberLocation("home",pos)]]
+    inst.components.knownlocations:RememberLocation("home", inst:GetPosition())
 end
 local function OnSave(inst, data)
 
@@ -537,7 +539,25 @@ local function SparkOnSpawned(inst, poop)
     poop.Transform:SetPosition(pos.x, 2, pos.z)
 end
 
+local function OnNewTarget(inst, data)
+    if data.target ~= nil then
+        inst:SetEngaged(true)
+    end
+end
 
+local function SetEngaged(inst, engaged)
+    --NOTE: inst.engaged is nil at instantiation, and engaged must not be nil
+    if inst.engaged ~= engaged then
+        inst.engaged = engaged
+        if engaged then
+            inst.components.health:StopRegen()
+            inst:RemoveEventCallback("newcombattarget", OnNewTarget)
+        else
+            inst.components.health:StartRegen(30, 1)
+            inst:ListenForEvent("newcombattarget", OnNewTarget)
+        end
+    end
+end
 local function fn()
     local inst = CreateEntity()
     inst.entity:AddTransform()
@@ -643,7 +663,7 @@ local function fn()
     --inst:AddComponent("epicscare")
     --inst.components.epicscare:SetRange(TUNING.STALKER_EPICSCARE_RANGE)
     local stunnable = inst:AddComponent("stunnable")
-    stunnable.stun_threshold = 900
+    stunnable.stun_threshold = 1000
     stunnable.stun_period = 5
     stunnable.stun_duration = 10
     stunnable.stun_resist = 0
@@ -666,7 +686,7 @@ local function fn()
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable("ancient_hulk")
-    
+    inst.components.lootdropper:SetLoot(many_ruins)
     ------------------------------------------
 
     inst:AddComponent("inspectable")
@@ -689,13 +709,12 @@ local function fn()
     inst.ShootProjectile = ShootProjectile
     inst.DoDamage = DoDamage
     inst.spawnbarrier = spawnbarrier
-    inst.dropparts = dropparts
+    --inst.dropparts = dropparts
     inst.SetLightValue = SetLightValue
-
+    inst.SetEngaged = SetEngaged
 
     inst:ListenForEvent("attacked", OnAttacked)
     --inst:DoPeriodicTask(1,function() checkforAttacks(inst) end)
-
     inst:ListenForEvent( "onremove", function() inst.SoundEmitter:KillSound("gears") print("KILLLL GEARS!!!!!!!!!")  end, inst )
     
     ------------------------------------------
@@ -720,15 +739,15 @@ local function fn()
         local follower = inst.shotspawn.entity:AddFollower()
         follower:FollowSymbol( inst.GUID, "hand01", 0,0,0 )
     end
-
+    SetEngaged(inst, false)
 
 
     return inst
 end
 
-local function OnMineCollide(inst, other)
+--[[local function OnMineCollide(inst, other)
     -- may want to do some charging damage?
-end
+end]]
 
 local function OnHit(inst, dist)    
     inst.AnimState:PlayAnimation("land")
@@ -815,7 +834,7 @@ local function minefn()
     inst:AddComponent("locomotor")
     inst:AddComponent("complexprojectile")
     inst.components.complexprojectile:SetOnHit(OnHit)
-    inst.components.complexprojectile.yOffset = 2.5
+    --inst.components.complexprojectile.yOffset = 2.5
 
     inst:AddComponent("combat")
     inst.components.combat:SetDefaultDamage(100)  --ANCIENT_HULK_MINE_DAMAGE
@@ -888,9 +907,9 @@ local function orbfn()
 
     inst:AddComponent("locomotor")
 
-    inst:AddComponent("complexprojectile")
-    inst.components.complexprojectile:SetOnHit(OnHitOrb)
-    inst.components.complexprojectile:SetLaunchOffset(Vector3(0,2.5,0))
+    inst:AddComponent("linearprojectile")
+    inst.components.linearprojectile:SetOnHit(OnHitOrb)
+    
 
     --[[inst:AddComponent("projectile")
     inst.components.projectile:SetSpeed(28)
@@ -917,40 +936,35 @@ local function orbfn()
     return inst
 end
 
-local function OnCollidesmall(inst,other)
-    if other~=nil and other:IsValid() then
-        applydamagetoent(inst,other,nil,nil,true)
+local function OnCollidesmall(inst,owner,target)
+    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
+        target.components.health:DoDelta(-20,false,owner,true,nil,true)
+        target.components.health:DeltaPenalty(0.05)
     end
-    local explosion = SpawnPrefab("laser_explosion")
-    explosion.Transform:SetPosition(inst.Transform:GetWorldPosition())  
-    explosion.Transform:SetScale(0.4,0.4,0.4)
-
     -- DANY SOUND          inst.SoundEmitter:PlaySound( smallexplosion )  
     inst:Remove()
 end
 
-local function orbsmallfn(Sim)
+local function orbsmallfn()
     local inst = CreateEntity()
-    local trans = inst.entity:AddTransform()
-    local anim = inst.entity:AddAnimState()
-    local sound = inst.entity:AddSoundEmitter()
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
-    MakeCharacterPhysics(inst, 1, 0.5)
 
-	-- Don't collide with the land edge
-    inst.Physics:ClearCollisionMask()
-    inst.Physics:CollidesWith(COLLISION.OBSTACLES)
-    inst.Physics:CollidesWith(COLLISION.CHARACTERS)
+    MakeInventoryPhysics(inst)
+    RemovePhysicsColliders(inst)
 	--[[inst.Physics:CollidesWith(COLLISION.WAVES)
     inst.Physics:CollidesWith(COLLISION.INTWALL)]]
     
-    inst.Physics:SetCollisionCallback(OnCollidesmall)
+    inst.Transform:SetFourFaced()
 
-    anim:SetBank("metal_hulk_projectile")
-    anim:SetBuild("metal_hulk_projectile")
-    anim:PlayAnimation("spin_loop", true)    
+    inst.AnimState:SetBank("metal_hulk_projectile")
+    inst.AnimState:SetBuild("metal_hulk_projectile")
+    inst.AnimState:PlayAnimation("spin_loop")    
+    inst.AnimState:SetMultColour(0,0,0,0.5)
+    inst:AddTag("projectile")
 
-    inst.Transform:SetScale(0.5,0.5,0.5)
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
@@ -960,27 +974,30 @@ local function orbsmallfn(Sim)
 
     inst.persists = false
 
-    inst:AddComponent("locomotor")
-    inst:AddTag("projectile")
+    --inst:AddComponent("locomotor")
+    inst:AddComponent("weapon")
+    
+    inst:AddComponent("projectile")
+    inst.components.projectile:SetSpeed(40)
+    inst.components.projectile:SetHoming(false)
+    inst.components.projectile:SetHitDist(2)
+    inst.components.projectile:SetOnHitFn(OnCollidesmall)
+    inst.components.projectile:SetOnMissFn(inst.Remove)
 
-    inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(100/3)   --ANCIENT_HULK_MINE_DAMAGE
-    inst.components.combat.playerdamagepercent = 0.5
 
-    inst.Physics:SetMotorVelOverride(60,0,0)
+    inst:DoTaskInTime(4,inst.Remove)
 
-    inst:DoTaskInTime(2,function() inst:Remove() end)
-
-    inst:AddComponent("fader")
+    --[[inst:AddComponent("fader")
     inst.glow = inst.entity:AddLight()    
     inst.glow:SetIntensity(.6)
     inst.glow:SetRadius(3)
     inst.glow:SetFalloff(1)
     inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(true)
+    inst.glow:Enable(true)]]
 
-    inst.SetLightValue = SetLightValue
+    --inst.SetLightValue = SetLightValue
 
+    
 
     return inst
 end
@@ -1057,7 +1074,7 @@ local function orbchargefn(Sim)
     return inst
 end
 
-local function markerfn(Sim)
+local function markerfn()
     local inst = CreateEntity()
     local trans = inst.entity:AddTransform()
     inst.entity:AddNetwork()

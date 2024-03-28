@@ -13,6 +13,7 @@ AddPrefabPostInit("lavae", function(inst)
     inst.components.explosive.explosiverange = 8
     inst.components.explosive.explosivedamage = 20
     inst.components.explosive.buildingdamage=600
+    inst.components.explosive.notags={"dragonfly","lavae"}
     inst:ListenForEvent("timerdone", OnTimerDone)
 end)
 
@@ -49,9 +50,6 @@ end
 
 AddPrefabPostInit("dragonfly", function(inst)
     if not TheWorld.ismastersim then return end
-    inst:AddComponent("damagetyperesist")
-    inst.components.damagetyperesist:AddResist("explosive", inst, 0)
-    inst.components.damagetyperesist:AddResist("projectile", inst, 0.5)
     inst.components.freezable:SetResistance(8)
     inst:DoPeriodicTask(8,Dofire)
     inst:ListenForEvent("death", StartFireEra)

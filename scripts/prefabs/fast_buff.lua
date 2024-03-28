@@ -3,7 +3,7 @@
 -------------------------------------------------------------------------
 local function fast_attach(inst, target)
     if target.components.locomotor ~= nil then
-        target.components.locomotor:SetExternalSpeedMultiplier(inst,"fast_buff",1.4)
+        target.components.locomotor:SetExternalSpeedMultiplier(inst,"fast_buff",1.3)
     end
 end
 
