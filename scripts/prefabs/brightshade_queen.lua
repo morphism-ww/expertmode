@@ -392,10 +392,6 @@ local function GetLargeGrowTime(inst)
     return 10
 end
 
---[[local function declare_queen(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
-    SpawnPrefab("moonpulse_spawner").Transform:SetPosition(x, y, z)
-end]]
 
 local growth_stages =
 {
@@ -463,6 +459,8 @@ local function TryStartCorrupt(inst)
     end
 end
 
+
+
 local function fn()
     local inst = CreateEntity()
 
@@ -476,7 +474,9 @@ local function fn()
 	inst:SetPhysicsRadiusOverride(.4) --V2C: WARNING intentionally reducing range for incoming attacks; make sure everyone can still reach!
 
     inst.MiniMapEntity:SetIcon("lunarthrall_plant.png")
-    inst.MiniMapEntity:SetPriority(5)
+    inst.MiniMapEntity:SetCanUseCache(false)
+    inst.MiniMapEntity:SetDrawOverFogOfWar(true)
+    inst.MiniMapEntity:SetPriority(22)
 
     inst.AnimState:SetBank("lunarthrall_plant")
     inst.AnimState:SetBuild("lunarthrall_plant_front")

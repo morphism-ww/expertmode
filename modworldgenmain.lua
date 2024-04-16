@@ -32,20 +32,17 @@ if GetModConfigData("ancient") then
         tags = {"Labyrinth", "Nightmare"},
         --internal_type = NODE_INTERNAL_CONNECTION_TYPE.EdgeCentroid,
         contents =  {
-            distributepercent = 0.2,
+            distributepercent = 0.15,
             distributeprefabs = {
 
-                ruins_rubble_vase = 0.05,
-                ruins_rubble_chair = 0.05,
-                ruins_rubble_table = 0.05,
 
                 chessjunk_spawner = 0.1,
 
-                shadoweyeturret_spawner=0.04,
-                scanner_spawn=0.06,
+                shadoweyeturret_spawner=0.05,
+                scanner_spawn=0.05,
                 bishop_nightmare_spawner = 0.1,
                 knight_nightmare_spawner = 0.1,
-
+                
                 thulecite_pieces = 0.1,
             },
         }
@@ -63,67 +60,185 @@ if GetModConfigData("ancient") then
                 ["WalledGarden2"] = 1,
             },
             countprefabs= {
-
-                flower_cave = function () return 5 + math.random(3) end,
                 chessjunk_spawner = function () return 4 + math.random(4) end
             }
         }
     })
-
+    --[[locks={LOCKS.TIER4, LOCKS.RUINS,LOCKS.Sacred},
+        keys_given= {KEYS.TIER5, KEYS.RUINS},]]
 
     AddTask("MeTal_Labyrinth_Task", {
-        locks={LOCKS.TIER3, LOCKS.RUINS},
-        keys_given= {KEYS.TIER3, KEYS.RUINS},
+        locks={ LOCKS.RUINS,LOCKS.SACRED},
+        keys_given= {KEYS.RUINS},
         room_tags = {"Nightmare"},
         entrance_room="LabyrinthEntrance",
         room_choices={
-            ["Metal_Labyrinth"] = function() return 1+math.random(2) end,
+            ["Metal_Labyrinth"] = function() return 3+math.random(1) end,
             ["HulkGuarden"] = 1,
         },
         room_bg=WORLD_TILES.IMPASSABLE,
         background_room="Metal_Labyrinth",
         colour={r=0.4,g=0.4,b=0.0,a=1},
     })
-    --[[AddTaskPreInit("BigBatCave",function(task)
-        task.room_choices={
-        ["BatCave"] = 1,
-        ["BattyCave"] = 1,
-        ["FernyBatCave"] = 1,
-        ["PitRoom"] = 1,
+    AddRoom("BGMilitaryRoom",  {
+        colour={r=0.3,g=0.2,b=0.1,a=0.3},
+        value = WORLD_TILES.UNDERROCK,
+        tags = {"Maze","Nightmare"},
+        contents =  {
+            distributepercent = 0.1,
+            distributeprefabs= 
+            {				                    
+                nightmarelight = 0.2,
+
+                scanner_spawn=0.05,
+
+                shadoweyeturret_spawner=0.04,
+
+                ruins_statue_head_spawner = .1,
+                ruins_statue_mage_spawner=.1,
+                
+                rook_nightmare_spawner = 0.1,
+
+                bishop_nightmare_spawner = 0.1,
+            }
         }
-    end)]]
+        })
+    AddRoom("MilitaryMazeRoom",  {
+        colour={r=0.3,g=0.2,b=0.1,a=0.3},
+        value = WORLD_TILES.UNDERROCK,
+        tags = {"Maze", "Nightmare"},
+    })
     AddTaskSetPreInit("cave_default", function(task)
-        table.insert(task.tasks, "MeTal_Labyrinth_Task")
+        task.tasks={
+            "MudWorld",
+            "MudCave",
+            "MudLights",
+            "MudPit",
+    
+            "BigBatCave",
+            "RockyLand",
+            "RedForest",
+            "GreenForest",
+            "BlueForest",
+            "SpillagmiteCaverns",
+    
+            "MoonCaveForest",
+            "ArchiveMaze",
+    
+            "CaveExitTask1",
+            "CaveExitTask2",
+            "CaveExitTask3",
+            "CaveExitTask4",
+            "CaveExitTask5",
+            "CaveExitTask6",
+            "CaveExitTask7",
+            "CaveExitTask8",
+            "CaveExitTask9",
+            "CaveExitTask10",
+    
+            "ToadStoolTask1",
+            "ToadStoolTask2",
+            "ToadStoolTask3",
+    
+            -- ruins
+            "LichenLand",
+            "CaveJungle",
+            "Residential",
+            "Military",
+            "Sacred",
+            "TheLabyrinth",
+            "AtriumMaze",
+            "MeTal_Labyrinth_Task",
+        }
+        task.numoptionaltasks = 6
+        task.optionaltasks = {
+            "SwampySinkhole",
+            "CaveSwamp",
+            "UndergroundForest",
+            "PleasantSinkhole",
+            "BatCloister",
+            "RabbitTown",
+            "RabbitCity",
+            "SpiderLand",
+            "RabbitSpiderWar"
+        }
+        task.set_pieces = { -- if you add or remove tasks, don't forget to update this list!
+        ["TentaclePillar"] = { count = 11, tasks= { -- Note: An odd number because AtriumMaze contains one
+            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
+        } },
+        ["ResurrectionStone"] = { count = 2, tasks={
+            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
+        } },
+        ["skeleton_notplayer"] = { count = 1, tasks={
+            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
+        } },
+    }
+    end)
+    
+    AddTaskPreInit("Sacred",function (task)
+        task.keys_given= { KEYS.RUINS, KEYS.SACRED}
+        task.room_choices={
+            ["SacredBarracks"] = function() return math.random(1,2) end,
+            ["Bishops"] = function() return math.random(1,2) end,
+            ["Spiral"] = function() return math.random(1,2) end,
+            ["BrokenAltar"] = function() return math.random(1,2) end,
+            ["Altar"] = 1,
+        }
+        task.room_bg=WORLD_TILES.BRICK
+        task.background_room="BGSacred"
+        end)
+
+    AddTaskPreInit("Military",function (task)
+
+        task.room_choices =
+        {
+            ["MilitaryMaze"] = 6,
+            ["Barracks"] = 1
+        }
+        task.background_room="BGMilitaryRoom"
+    end)
+    AddTaskPreInit("Residential",function(task)
+        task.room_choices =
+    {
+        ["CaveJungle"] = 1,
+        ["Vacant"] = 3,
+    }
+    end)
+    AddTaskPreInit("CaveJungle",function(task)
+        task.room_choices={
+            ["LichenMeadow"] = 1,
+            ["CaveJungle"] = 1,
+            ["Vacant"] = 1,
+            ["MonkeyMeadow"] = 1,
+        }
+    end)
+    AddRoomPreInit("RuinedCity",function (room)
+        room.value = WORLD_TILES.MUD
     end)
     AddRoomPreInit("Barracks",function (room)
-        room.contents.distributeprefabs.scanner_spawn=0.1
+        room.contents.distributepercent=0.06
     end)
     AddRoomPreInit("BGSacred",function (room)
-        room.contents.distributepercent = 0.05
+        room.contents.distributepercent = 0.1
+        room.value = WORLD_TILES.TILES
         room.contents.distributeprefabs=
         {
-            chessjunk_spawner = .3,
+            chessjunk_spawner = .2,
 
-            nightmarelight = 1,
-
-            pillar_ruins = 0.5,
+            nightmarelight = 0.25,
 
             ruins_statue_head_spawner = .1,
-            ruins_statue_head_nogem_spawner = .2,
 
-            scanner_spawn=0.01,
-            shadoweyeturret_spawner=0.02,
-            shadowdragon_spawner=0.04,
+            shadowdragon_spawner=.05,
 
-            ruins_statue_mage_spawner =.1,
-            ruins_statue_mage_nogem_spawner = .2,
+            rook_nightmare_spawner = .05,
 
-            rook_nightmare_spawner = .07,
-            bishop_nightmare_spawner = .07,
-            knight_nightmare_spawner = .07,
+            ruins_statue_mage_spawner = .1,
+
         }
     end)
     AddRoomPreInit("Bishops",function(room)
+        room.internal_type=nil
         room.contents.countstaticlayouts={
             ["Barracks3"] = 1,
         }
@@ -132,6 +247,5 @@ if GetModConfigData("ancient") then
     Layouts["BrokenAltar"].layout["shadowdragon_spawner"]={{x=1,y=-4}}
     Layouts["SacredBarracks"].layout["scanner_spawn"]={{x=-3,y=0},{x=0,y=0}}
     Layouts["Barracks"].layout["scanner_spawn"]={{x=0,y=0}}
-    Layouts["AltarRoom"].layout["shadoweyeturret_spawner"]={{x=0,y=4}}
-    Layouts["AltarRoom"].layout["scanner_spawn"]={{x=2,y=2}}
+    Layouts["AltarRoom"].layout["shadoweyeturret_spawner"]={{x=0,y=3}}
 end

@@ -17,6 +17,13 @@ AddPrefabPostInit("walrus",function(inst)
     inst.components.lootdropper:AddChanceLoot("walrus_tusk", 1)
 end)
 
+AddPrefabPostInit("lightninggoat",function(inst)
+    if not TheWorld.ismastersim then return end
+
+    inst.components.lootdropper:AddChanceLoot("lightninggoathorn", 0.75)
+end)
+
+
 AddPrefabPostInit("daywalker_pillar",function(inst)
     if not TheWorld.ismastersim then return end
 

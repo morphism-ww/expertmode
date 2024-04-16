@@ -938,7 +938,7 @@ end
 
 local function OnCollidesmall(inst,owner,target)
     if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-20,false,owner,true,nil,true)
+        target.components.health:DoDelta(-20,owner.prefab,nil,true,owner,true)
         target.components.health:DeltaPenalty(0.05)
     end
     -- DANY SOUND          inst.SoundEmitter:PlaySound( smallexplosion )  
@@ -976,10 +976,11 @@ local function orbsmallfn()
 
     --inst:AddComponent("locomotor")
     inst:AddComponent("weapon")
-    
+    inst.components.weapon:SetDamage(100)
+
+
     inst:AddComponent("projectile")
     inst.components.projectile:SetSpeed(40)
-    inst.components.projectile:SetHoming(false)
     inst.components.projectile:SetHitDist(2)
     inst.components.projectile:SetOnHitFn(OnCollidesmall)
     inst.components.projectile:SetOnMissFn(inst.Remove)

@@ -21,8 +21,8 @@ local prefabs =
 }
 
 local LAUNCH_SPEED = .2
-local RADIUS = 1.7
-local LASER_DAMAGE = 50
+local RADIUS = 0.9
+local LASER_DAMAGE = 75
 
 local function SetLightRadius(inst, radius)
     inst.Light:SetRadius(radius)
@@ -31,6 +31,12 @@ end
 local function DisableLight(inst)
     inst.Light:Enable(false)
 end
+
+local DAMAGE_CANT_TAGS = { "laser_immune", "playerghost", "INLIMBO", "DECOR", "FX","shadow" }
+local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
+local LAUNCH_MUST_TAGS = { "_inventoryitem" }
+local LAUNCH_CANT_TAGS = { "locomotor", "INLIMBO" }
+
 local function setfires(x,y,z)
     for i, v in ipairs(TheSim:FindEntities(x, 0, z, RADIUS, nil, { "laser", "DECOR", "INLIMBO" })) do 
         if v.components.burnable then
@@ -38,11 +44,14 @@ local function setfires(x,y,z)
         end
     end
 end
-local function DoDamage(inst, targets, skiptoss)
+local function DoDamage(inst, targets, skiptoss, skipscorch, scale, scorchscale, hitscale, heavymult, mult, forcelanded)
     inst.task = nil
 
     local x, y, z = inst.Transform:GetWorldPosition()
     if inst.AnimState ~= nil then
+        if scale then
+			inst.AnimState:SetScale(scale, math.abs(scale))
+		end
         inst.AnimState:PlayAnimation("hit_"..tostring(math.random(5)))
         inst:Show()
         inst:DoTaskInTime(inst.AnimState:GetCurrentAnimationLength() + 2 * FRAMES, inst.Remove)
@@ -51,134 +60,123 @@ local function DoDamage(inst, targets, skiptoss)
         inst:DoTaskInTime(4 * FRAMES, SetLightRadius, .5)
         inst:DoTaskInTime(5 * FRAMES, DisableLight)
 
-        SpawnPrefab("laserscorch").Transform:SetPosition(x, 0, z)
+        if not skipscorch and TheWorld.Map:IsPassableAtPoint(x, 0, z, false) then
+			local scorch = SpawnPrefab("laserscorch")
+			scorch.Transform:SetPosition(x, 0, z)
+			if scorchscale then
+				scorch.AnimState:SetScale(scorchscale, math.abs(scorchscale))
+			end
+        end
+       
         local fx = SpawnPrefab("lasertrail")
         fx.Transform:SetPosition(x, 0, z)
         fx:FastForward(GetRandomMinMax(.3, .7))
     else
         inst:DoTaskInTime(2 * FRAMES, inst.Remove)
     end
-    setfires(x,y,z)
+    local disttocaster = mult and inst.caster and inst.caster:IsValid() and math.sqrt(inst.caster:GetDistanceSqToPoint(x, y, z)) or nil
     inst.components.combat.ignorehitrange = true
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z, RADIUS + 3, nil, { "laser", "DECOR", "INLIMBO" })) do  --  { "_combat", "pickable", "campfire", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
-        if not targets[v] and v:IsValid() and not v:IsInLimbo() and not (v.components.health ~= nil and v.components.health:IsDead()) and not v:HasTag("laser_immune") then            
+    local hitradius = RADIUS * (hitscale or 1)
+    for _, v in ipairs(TheSim:FindEntities(x, 0, z, hitradius + 3, nil, DAMAGE_CANT_TAGS, DAMAGE_ONEOF_TAGS)) do
+        if not targets[v] and v:IsValid() and
+            not (v.components.health ~= nil and v.components.health:IsDead()) then
+        local range = hitradius + v:GetPhysicsRadius(.5)
+        local dsq_to_laser = v:GetDistanceSqToPoint(x, y, z)
+        if dsq_to_laser < range * range then
+            
 
-
-            local vradius = 0
-            if v.Physics then
-                vradius = v.Physics:GetRadius()
-            end
-
-            local range = RADIUS + vradius
-            if v:GetDistanceSqToPoint(Vector3(x, y, z)) < range * range then
-                local isworkable = false
-                if v.components.workable ~= nil then
-                    local work_action = v.components.workable:GetWorkAction()
-                    --V2C: nil action for campfires
-                    isworkable =
-                        (   work_action == nil and v:HasTag("campfire")    ) or
-                        
-                            (   work_action == ACTIONS.CHOP or
-                                work_action == ACTIONS.HAMMER or
-                                work_action == ACTIONS.MINE or   
-                                work_action == ACTIONS.DIG
+            local isworkable = false
+            if v.components.workable ~= nil then
+                local work_action = v.components.workable:GetWorkAction()
+                --V2C: nil action for NPC_workable (e.g. campfires)
+                isworkable =
+                    (   work_action == nil and v:HasTag("NPC_workable") ) or
+                    (   v.components.workable:CanBeWorked() and
+                        (   work_action == ACTIONS.CHOP or
+                            work_action == ACTIONS.HAMMER or
+                            work_action == ACTIONS.MINE or
+                            (   work_action == ACTIONS.DIG and
+                                v.components.spawner == nil and
+                                v.components.childspawner == nil
                             )
+                        )
+                    )
+            end
+            if isworkable then
+                targets[v] = true
+                v.components.workable:Destroy(inst.caster and inst.caster:IsValid() and inst.caster or inst)
+
+                -- Completely uproot trees.
+                if v:HasTag("stump") then
+                    v:Remove()
                 end
-                if isworkable then
-                    targets[v] = true
-                    v:DoTaskInTime(0.6, function() 
-                        if v.components.workable then
-                            v.components.workable:Destroy(inst) 
-                            v:DoTaskInTime(0,function() setfires(x,y,z) end)
-                        end
-                     end)
-                    if v:IsValid() and v:HasTag("stump") then
-                        v:Remove()
-                    end
-                elseif v.components.pickable ~= nil
+            end    
+            elseif v.components.pickable ~= nil
                     and v.components.pickable:CanBePicked()
                     and not v:HasTag("intense") then
-                    targets[v] = true
-                    local num = v.components.pickable.numtoharvest or 1
-                    local product = v.components.pickable.product
-                    local x1, y1, z1 = v.Transform:GetWorldPosition()
-                    v.components.pickable:Pick(inst) -- only calling this to trigger callbacks on the object
-                    if product ~= nil and num > 0 then
-                        for i = 1, num do
-                            local loot = SpawnPrefab(product)
-                            loot.Transform:SetPosition(x1, 0, z1)
-                            skiptoss[loot] = true
-                            targets[loot] = true
-                            --Launch(loot, inst, LAUNCH_SPEED)
+                targets[v] = true
+                local success, loots = v.components.pickable:Pick(inst)
+                if loots then
+                    for i, v in ipairs(loots) do
+                        skiptoss[v] = true
+                        targets[v] = true
+                        Launch(v, inst, LAUNCH_SPEED)
+                    end
+                end
+            elseif v.components.combat == nil and v.components.health ~= nil then
+                targets[v] = true
+            elseif inst.components.combat:CanTarget(v) then
+                targets[v] = true
+
+                --for knockback
+                local strengthmult = mult and ((v.components.inventory and v.components.inventory:ArmorHasTag("heavyarmor") or v:HasTag("heavybody")) and heavymult or mult) or nil
+
+                if inst.caster ~= nil and inst.caster:IsValid() then
+                    inst.caster.components.combat.ignorehitrange = true
+                    inst.caster.components.combat:DoAttack(v)
+                    if strengthmult and v:HasTag("player")  then
+                        v:PushEvent("knockback", { knocker = inst.caster, radius = disttocaster + hitradius, strengthmult = strengthmult, forcelanded = forcelanded })
+                        --v.sg:GoToState("knockback",{ knocker = inst.caster, radius = disttocaster + hitradius, strengthmult = strengthmult, forcelanded = forcelanded })
+                        
+                    end
+                    if  v.components.burnable ~= nil and
+                        not v.components.burnable:IsBurning() then
+                        v.components.burnable:Ignite()
+                    end
+                else
+                    inst.components.combat:DoAttack(v)
+                    if strengthmult then
+                        v:PushEvent("knockback", { knocker = inst, radius = hitradius, strengthmult = strengthmult, forcelanded = forcelanded })
+                    end
+                end    
+
+                SpawnPrefab("laserhit"):SetTarget(v)
+
+                if not v.components.health:IsDead() then
+                    if v.components.freezable ~= nil then
+                        if v.components.freezable:IsFrozen() then
+                            v.components.freezable:Unfreeze()
+                        elseif v.components.freezable.coldness > 0 then
+                            v.components.freezable:AddColdness(-2)
                         end
                     end
-                    --[[
-                elseif inst.components.combat:CanTarget(v) then
-                    targets[v] = true
-                    if inst.caster ~= nil and inst.caster:IsValid() then
-                        inst.caster.components.combat.ignorehitrange = true
-                        inst.caster.components.combat:DoAttack(v)
-                        inst.caster.components.combat.ignorehitrange = false
-                    else
-                        inst.components.combat:DoAttack(v)
-                    end                    
-
-                    if v:IsValid() then
-                        if not v.components.health or not v.components.health:IsDead() then
-                            if v.components.freezable ~= nil then
-                                if v.components.freezable:IsFrozen() then
-                                    v.components.freezable:Unfreeze()
-                                elseif v.components.freezable.coldness > 0 then
-                                    v.components.freezable:AddColdness(-2)
-                                end
-                            end
-                            if v.components.temperature ~= nil then
-                                local maxtemp = math.min(v.components.temperature:GetMax(), 10)
-                                local curtemp = v.components.temperature:GetCurrent()
-                                if maxtemp > curtemp then
-                                    v.components.temperature:DoDelta(math.min(10, maxtemp - curtemp))
-                                end
-                            end
+                    if v.components.temperature ~= nil then
+                        local maxtemp = math.min(v.components.temperature:GetMax(), 10)
+                        local curtemp = v.components.temperature:GetCurrent()
+                        if maxtemp > curtemp then
+                            v.components.temperature:DoDelta(math.min(10, maxtemp - curtemp))
                         end
-                    end]]
-
-                elseif v.components.health then                    
-                    inst.components.combat:DoAttack(v)                
-                    if v:IsValid() then
-                        if not v.components.health or not v.components.health:IsDead() then
-                            if v.components.freezable ~= nil then
-                                if v.components.freezable:IsFrozen() then
-                                    v.components.freezable:Unfreeze()
-                                elseif v.components.freezable.coldness > 0 then
-                                    v.components.freezable:AddColdness(-2)
-                                end
-                            end
-                            if v.components.temperature ~= nil then
-                                local maxtemp = math.min(v.components.temperature:GetMax(), 10)
-                                local curtemp = v.components.temperature:GetCurrent()
-                                if maxtemp > curtemp then
-                                    v.components.temperature:DoDelta(math.min(10, maxtemp - curtemp))
-                                end
-                            end
-                        end
-                    end                   
+                    end
                 end
-                if v:IsValid() and v.AnimState then
-                    SpawnPrefab("laserhit"):SetTarget(v)
-                end
-
             end
         end
     end
     inst.components.combat.ignorehitrange = false
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z, RADIUS + 3, { "_inventoryitem" }, { "locomotor", "INLIMBO" })) do
+
+    for i, v in ipairs(TheSim:FindEntities(x, 0, z, hitradius + 3,  LAUNCH_MUST_TAGS, LAUNCH_CANT_TAGS)) do
         if not skiptoss[v] then
-            local radius = 0
-            if v.Physics then
-                radius = v.Physics:GetRadius()
-            end            
-            local range = RADIUS + radius
-            if v:GetDistanceSqToPoint(Vector3(x, y, z) ) < range * range then
+			local range = hitradius + v:GetPhysicsRadius(.5)
+            if v:GetDistanceSqToPoint(x, y, z) < range * range then
                 if v.components.mine ~= nil then
                     targets[v] = true
                     skiptoss[v] = true
@@ -194,13 +192,14 @@ local function DoDamage(inst, targets, skiptoss)
     end
 end
 
-local function Trigger(inst, delay, targets, skiptoss)
+
+local function Trigger(inst, delay, targets, skiptoss, skipscorch, scale, scorchscale, hitscale, heavymult, mult, forcelanded)
     if inst.task ~= nil then
         inst.task:Cancel()
         if (delay or 0) > 0 then
-            inst.task = inst:DoTaskInTime(delay, DoDamage, targets or {}, skiptoss or {})
+			inst.task = inst:DoTaskInTime(delay, DoDamage, targets or {}, skiptoss or {}, skipscorch, scale, scorchscale, hitscale, heavymult, mult, forcelanded)
         else
-            DoDamage(inst, targets or {}, skiptoss or {})
+			DoDamage(inst, targets or {}, skiptoss or {}, skipscorch, scale, scorchscale, hitscale, heavymult, mult, forcelanded)
         end
     end
 end
@@ -211,6 +210,7 @@ end
 
 local function common_fn(isempty)
     local inst = CreateEntity()
+
     inst.entity:AddTransform()
     inst.entity:AddNetwork()
 	
@@ -233,7 +233,7 @@ local function common_fn(isempty)
 
     inst:AddTag("notarget")
     inst:AddTag("hostile")
-    inst:AddTag("laser")
+
 
     inst:SetPrefabNameOverride("deerclops")
 
@@ -256,9 +256,7 @@ local function common_fn(isempty)
 end
 
 local function fn()
-    local inst = common_fn(false)
-    inst.Light:Enable(false)
-    return inst
+    return common_fn(false)
 end
 
 local function emptyfn()
@@ -364,7 +362,6 @@ local function trailfn()
     inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
 
     inst.entity:SetPristine()
-
     if not TheWorld.ismastersim then
         return inst
     end

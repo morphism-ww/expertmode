@@ -34,9 +34,41 @@ local function GetLevelForTarget(target)
 end
 
 
+local attack_any_tags = {"player","gestalt_possessable","nightmarecreature", "shadowcreature", "shadow", "shadowminion", "stalker", "stalkerminion", "nightmare", "shadow_fire"}
+local watch_must_tags = {"player"}
+local function Retarget(inst)
+	local targets_level = 1
+	local function attacktargetcheck(target)
+        if target.components.inventory ~= nil and target.components.inventory:EquipHasTag("gestaltprotection") then
+            return false
+        end
+		targets_level = GetLevelForTarget(target)
+		return targets_level == 3
+	end
+	local function watchtargetcheck(target)
+        if target.components.inventory ~= nil and target.components.inventory:EquipHasTag("gestaltprotection") then
+            return false
+        end
+		targets_level = GetLevelForTarget(target)
+		return targets_level == 2
+	end
+
+	local target = FindEntity(inst, TUNING.GESTALTGUARD_AGGRESSIVE_RANGE, attacktargetcheck, nil, nil, attack_any_tags)
+					or FindEntity(inst, TUNING.GESTALTGUARD_WATCHING_RANGE, watchtargetcheck, watch_must_tags)
+
+	if target == nil and inst.components.combat.target ~= nil then
+		inst.components.combat:DropTarget()
+	elseif target == inst.components.combat.target then
+		inst.behaviour_level = target ~= nil and targets_level or 1
+	end
+
+	return target, target ~= inst.components.combat.target
+end
 AddPrefabPostInit("gestalt_guard",function(inst)
-    if not TheWorld.ismastersim then return end
-    debug.setupvalue(inst.components.combat.targetfn,1,GetLevelForTarget)
+    if not TheWorld.ismastersim then
+        return inst
+    end
+	inst.components.combat:SetRetargetFunction(1, Retarget)
 end)
 
 

@@ -68,7 +68,23 @@ local function spawnshadow(inst)
     dragon.Transform:SetPosition(x,y,z)
 end
 
+
+local function spawn_defender(inst)
+    local pos=inst:GetPosition()
+    if TheWorld.components.ancient_defender ~= nil and TheWorld.components.ancient_defender:AllowSpawn() then
+        local node,node_index = TheWorld.Map:FindNodeAtPoint(pos:Get())
+        if string.find(TheWorld.topology.ids[node_index],"Military") then
+            local offset=FindWalkableOffset(pos,0,6,9)
+            if offset~=nil then
+                SpawnPrefab("spider_robot").Transform:SetPosition(pos.x+offset.x,0,pos.z+offset.z)
+            end
+        end    
+    end   
+end
+
+
 AddPrefabPostInit("ancient_altar_broken",function(inst)
     if not TheWorld.ismastersim then return end
+    inst:DoTaskInTime(0,spawn_defender)
     inst:ListenForEvent("onprefabswaped",spawnshadow)
 end)

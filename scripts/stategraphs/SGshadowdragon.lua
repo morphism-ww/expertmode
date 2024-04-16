@@ -230,7 +230,7 @@ local states =
         {
             TimeEvent(25*FRAMES, function(inst)
                 local target=inst.components.combat.target
-                if target~=nil then
+                if target~=nil and target:IsValid() then
                     TryShadowWave(inst,target)
                 end
             end),

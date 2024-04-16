@@ -286,14 +286,8 @@ function self:GetDebugString()
     return s
 end
 
-function self:SummonMonster(time)
-    if _worldsettingstimer:ActiveTimerExists("FireRain") then
-        _worldsettingstimer:SetTimeLeft("FireRain", 10)
-        _worldsettingstimer:ResumeTimer("FireRain")
-    else
-        _worldsettingstimer:StartTimer("FireRain", 10)
-    end
-	self.inst:StartUpdatingComponent(self)
+function self:SummonMonster()
+    self.inst:DoTaskInTime(20, ScheduleSpawn)
 end
 
 

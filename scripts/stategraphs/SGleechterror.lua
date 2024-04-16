@@ -1,26 +1,14 @@
 local events=
 {
     EventHandler("death", function(inst) inst.sg:GoToState("death") end),
-    EventHandler("newcombattarget", function(inst,data)
-            if inst.sg:HasStateTag("idle") and data.target then
-                inst.sg:GoToState("attack")
-            end
-        end)
+    EventHandler("doattack", function(inst)
+
+        if not inst.sg:HasStateTag("busy") then
+            inst.sg:GoToState("attack")
+        end
+    end),
 }
 
-local function DoAttack(inst)
-	local target = inst.components.combat.target
-	inst.components.combat:DoAttack()
-	if inst.owner ~= nil and
-		target ~= nil and
-		target.components.combat ~= nil and
-		target.components.combat:TargetIs(inst) and
-		target.components.combat:CanTarget(inst.owner)
-	then
-		--forward aggro back to our owner
-		target.components.combat:SetTarget(inst.owner)
-	end
-end
 
 local states=
 {
@@ -45,16 +33,21 @@ local states=
 
     State{
         name ="attack",
-        tags = {"attack"},
+        tags = {"busy"},
         onenter = function(inst)
             inst.components.combat:StartAttack()
             inst.AnimState:PlayAnimation("atk_pre")
             inst.AnimState:PushAnimation("atk", false)
+            inst.sg.statemem.target=inst.components.combat.target
         end,
         timeline =
         {
-            TimeEvent(7*FRAMES,DoAttack),
-            TimeEvent(17*FRAMES,DoAttack),
+            TimeEvent(10*FRAMES,function (inst)
+                inst.components.combat:DoAttack(inst.sg.statemem.target)
+            end),
+            TimeEvent(17*FRAMES,function (inst)
+                inst.components.combat:DoAttack(inst.sg.statemem.target)
+            end),
         },
         events =
         {

@@ -1,4 +1,3 @@
-TUNING.KLAUS_HIT_RANGE = 5
 local function SpawnSpell(inst, x, z)
     local spell = SpawnPrefab(inst.castfx)
     spell.Transform:SetPosition(x, 0, z)
@@ -31,7 +30,7 @@ local function  DoSacrifice(inst,targets)
     local spells = {}
     if targets==nil then return end
     for i, v in ipairs(targets) do
-        if v:IsValid() and v:IsNear(inst, 20) then
+        if v:IsValid() and v:IsNear(inst, 16) then
             local x, y, z = v.Transform:GetWorldPosition()
             local spell = SpawnPrefab("deer_soul_circle")
             spell.Transform:SetPosition(x, 0, z)
@@ -344,14 +343,28 @@ AddPrefabPostInit("klaus", function(inst)
     inst:ListenForEvent("onhitother",SoulHunter)
 end)
 
+local function LaunchItem(inst, target, item)
+    if item.Physics ~= nil and item.Physics:IsActive() then
+        local x, y, z = item.Transform:GetWorldPosition()
+        item.Physics:Teleport(x, .1, z)
 
+        x, y, z = inst.Transform:GetWorldPosition()
+        local x1, y1, z1 = target.Transform:GetWorldPosition()
+        local angle = math.atan2(z1 - z, x1 - x) + (math.random() * 20 - 10) * DEGREES
+        local speed = 5 + math.random() * 2
+        item.Physics:SetVel(math.cos(angle) * speed, 10, math.sin(angle) * speed)
+    end
+end
 local function dropeverthing(inst)
     local x,y,z=inst.Transform:GetWorldPosition()
-    local players=FindPlayersInRange(x,y,z,15)
+    local players=FindPlayersInRange(x,y,z,12,true)
     for i,v in ipairs(players) do
-        if not v:HasTag("playerghost") and v.components.inventory~=nil then
-            v.components.inventory:DropEquipped(true)
+        local item = v.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+        if item ~= nil then
+            v.components.inventory:DropItem(item)
+            LaunchItem(inst, v, item)
         end
+        v:AddDebuff("vulnerable","vulnerable",{duration=20})
     end
 end
 
@@ -401,17 +414,17 @@ State{
         name = "hip_in",
         tags = { "busy", "attack","nosleep","nofreeze" },
 
-        onenter = function(inst)
+        onenter = function(inst,targetpos)
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("taunt1")
             inst.components.timer:StartTimer("hip_cd", 10)
             local x, y, z = inst.Transform:GetWorldPosition()
             SpawnPrefab("wortox_portal_jumpin_fx").Transform:SetPosition(x, y, z)
             inst.sg:SetTimeout(11 * FRAMES)
-            local dest = inst.components.combat.target:GetPosition()
-            if dest ~= nil then
-                inst.sg.statemem.dest = dest
-                inst:ForceFacePoint(dest:Get())
+
+            if targetpos ~= nil then
+                inst.sg.statemem.dest = targetpos
+                inst:ForceFacePoint(targetpos:Get())
             else
                 inst.sg.statemem.dest = Vector3(x, y, z)
             end
@@ -514,9 +527,7 @@ local function DoFoleySounds(inst, volume)
     inst:DoFoleySounds(volume)
 end
 
-local function DoBodyfall(inst)
-    inst.SoundEmitter:PlaySound("dontstarve/creatures/together/klaus/bodyfall")
-end
+
 AddStategraphState("SGklaus",
 State{
         name = "sacrifice_pre",
@@ -525,6 +536,7 @@ State{
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("command_pre")
+            inst.sg.mem.wantstosacrifice=nil
             DoFoleySounds(inst, .5)
         end,
 
@@ -585,25 +597,54 @@ State{
 )    
 
 
+AddStategraphEvent("SGklaus",
+EventHandler("sacrifice", function(inst)
+    if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
+        inst.sg:GoToState("sacrifice_pre")
+    else
+        inst.sg.mem.wantstosacrifice=true
+    end        
+end))
 
---[[local function ChooseAttack(inst)
-    if inst.components.commander:GetNumSoldiers() > 0 and
-        not inst.components.timer:TimerExists("command_cd") then
-        local deer = PickCommandDeer(inst, nil, inst.sg.mem.last_command_deer)
-        if deer ~= nil then
-            inst.sg:GoToState("command_pre", deer)
-            return true
+AddStategraphEvent("SGklaus",
+EventHandler("soul_hip", function(inst,target)
+    if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) 
+        and target~=nil and target:IsValid() then
+        inst.sg:GoToState("hip_in",target:GetPosition())
+    end    
+end))
+
+local function TryChomp(inst)
+    local target = inst:FindChompTarget()
+    if target ~= nil then
+        if not inst.components.combat:TargetIs(target) then
+            inst.components.combat:SetTarget(target)
         end
+        inst.sg:GoToState("attack_chomp", target)
+        return true
     end
-    inst.sg:GoToState("attack")
-    return true
-end]]
+end
 
 AddStategraphPostInit("SGklaus",function(sg)
     sg.states.taunt_roar.onenter =function(inst)
         inst.components.locomotor:StopMoving()
         inst.AnimState:PlayAnimation("taunt2")
         dropeverthing(inst)
+    end
+    sg.states.idle.onenter=function (inst)
+        if inst.sg.mem.sleeping then
+            inst.sg:GoToState("sleep")
+        elseif inst.sg.mem.wantstotransition ~= nil then
+            inst.sg:GoToState("transition", inst.sg.mem.wantstotransition)
+        elseif inst.sg.mem.laughsremaining ~= nil then
+            inst.sg:GoToState("laugh_pre")
+        elseif inst.sg.mem.wantstosacrifice then
+            inst.sg:GoToState("sacrifice_pre")    
+        elseif not (inst.sg.mem.wantstochomp and TryChomp(inst)) then
+            inst.Physics:Stop()
+            inst.AnimState:PlayAnimation("idle_loop")
+        end
+        
     end
     --debug.setupvalue(sg.events["doattack"].fn,1,ChooseAttack)
 end)
@@ -613,14 +654,13 @@ local function ShouldEnrage(inst)
         and (inst.components.commander:GetNumSoldiers() < 2 or inst.soulcount>=20)
 end
 
-local function  ShouldHip(inst)
+local function ShouldHip(inst)
     return inst.soulcount>=5 and inst.components.combat:HasTarget()
     and not inst.components.timer:TimerExists("hip_cd")
 end
 
 local function ShouldSacrifice(inst)
-    return not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy"))
-            and (inst.components.health:GetPercent()<0.3 or inst:IsUnchained())
+    return  (inst.components.health:GetPercent()<0.3 or inst:IsUnchained())
             and not inst.components.timer:TimerExists("sacrifice_cd")
 end
 
@@ -630,10 +670,10 @@ AddBrainPostInit("klausbrain", function(self)
             ActionNode(function() self.inst:PushEvent("enrage") end))
     table.insert(self.bt.root.children, 3,
             WhileNode(function() return ShouldSacrifice(self.inst) end, "Sacrifice",
-            ActionNode(function() self.inst.sg:GoToState("sacrifice_pre") end)))
+            ActionNode(function() self.inst:PushEvent("sacrifice") end)))
     table.insert(self.bt.root.children, 4,
             WhileNode(function() return ShouldHip(self.inst) end, "Sacrifice",
-            ActionNode(function() self.inst.sg:GoToState("hip_in") end)))        
+            ActionNode(function() self.inst:PushEvent("soul_hip",self.inst.components.combat.target) end)))        
 
 end)
 

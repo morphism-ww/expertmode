@@ -2,6 +2,7 @@
 local function HealSpider(inst,target)
 	if target.components.debuffable then
 		target.components.debuffable:RemoveDebuff("spider_poison")
+		target.components.debuffable:RemoveDebuff("spider_dead_poison")
 	end
 end
 

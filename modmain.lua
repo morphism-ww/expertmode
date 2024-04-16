@@ -1,4 +1,4 @@
---GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
+GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
 local TUNING = GLOBAL.TUNING
 
 
@@ -32,7 +32,7 @@ Asset("IMAGE", "images/fx4te.tex")}
 
 local atlas = "images/inventoryimages/volcanoinventory.xml"
 local function ProcessAtlas(atlas, ...)
-  local path = resolvefilepath_soft(atlas)
+  local path = softresolvefilepath(atlas)
   if not path then
     print("[API]: The atlas \"" .. atlas .. "\" cannot be found.")
     return
@@ -51,6 +51,7 @@ local function ProcessAtlas(atlas, ...)
   end
 end
 ProcessAtlas(atlas)
+
 RegisterInventoryItemAtlas("images/inventoryimages/lunar_blast.xml", "lunar_blast.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/quaker.xml", "quaker.tex")
@@ -84,8 +85,9 @@ PrefabFiles={"twin_flame","twin_laser","armorvortexcloak","leechterror","shadowf
             "meteor_impact","firerain","lavapool","dragoonheart","dragoonspit","dragoon","dragoonegg",
             "superbrilliance_projectile_fx","true_staff_lunarplant","klaus_soul",
             "super_boat","quaker","fire_tornado","alter_light","lunar_blast","lunar_shield",
-            "fast_buff","make_buffs","cursefire_fx","poison_spore","brightshade_queen","anti_poison","obsidianstaff",
-            "lunar_light","lunarlight_flame","magic_fx","shadow_mfz","god_judge"}
+            "fast_buff","make_buffs","cursefire_fx","brightshade_queen","anti_poison","obsidianstaff",
+            "lunar_light","lunarlight_flame","magic_fx","shadow_mfz","god_judge",
+            "ancient_robots","corrupt_heart"}
 
 if GetModConfigData("pig") then
     modimport("postinit/epic/daywalker")
@@ -100,6 +102,7 @@ end
 
 if GetModConfigData("alter") then
     modimport("postinit/epic/alterguardian")
+    modimport("postinit/components/meteorshower")
 end
 
 if GetModConfigData("rook") then
@@ -134,6 +137,7 @@ if GetModConfigData("ancient") then
 end
 
 if GetModConfigData("gestalt") then
+    TUNING.ALLOW_LUNAR_QUEEN=true
     modimport("postinit/gestalt")
 end
 
@@ -147,12 +151,12 @@ modimport("postinit/dont_skip")
 
 
 modimport("postinit/area_weapon")
-
+modimport("postinit/epic/stalker")
 ---------------------------------------
 
 modimport("postinit/fuel")
 modimport("postinit/amulet")
---modimport("postinit/winter_hunter")
+modimport("postinit/town_portal")
 modimport("postinit/lunarplant_staff")
 modimport("postinit/planar_armor")
 modimport("postinit/repair_material")
@@ -161,12 +165,13 @@ modimport("postinit/invade")
 ---------------------------------------------
 --modimport("postinit/ocean/cannon")
 
-
+TUNING.NEW_CONSTANT_SHADOWDRAGON=GetModConfigData("shadowdragon")
 
 modimport("postinit/components/cn_boatphysics")
 --modimport("postinit/components/growable")
+modimport("postinit/components/ambientlighting")
 
-
+modimport("postinit/epic/shadowchesspieces")
 modimport("postinit/food")
 
 
@@ -177,6 +182,8 @@ modimport("postinit/anti_poison")
 modimport("postinit/epic/toadstool")
 modimport("postinit/epic/warg")
 modimport("postinit/punchingbag")
+modimport("postinit/farming")
+
 
 modimport("other/new_loot")
 modimport("other/newstring.lua")
@@ -184,7 +191,6 @@ modimport("other/newstring.lua")
 ----------------------------------------------------
 TUNING.SHIELDOFTERROR_ARMOR = 840
 
-TUNING.MINOTAUR_HEALTH=12000
 TUNING.EYEOFTERROR_HEALTH = 8000
 TUNING.TOADSTOOL_HEALTH = 35000
 TUNING.TOADSTOOL_DARK_HEALTH = 50000

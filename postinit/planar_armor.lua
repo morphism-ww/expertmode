@@ -185,7 +185,7 @@ local function SpawnShadowFire(owner,target)
 	local burst = 3
     for i=1,burst do
         local theta = startangle-PI/2+i*PI/2
-		local offset = Vector3(12  * math.cos( startangle ), 0,1 * math.sin( startangle ))
+		local offset = Vector3( -math.cos( startangle ), 0,math.sin( startangle ))
         local newpos = Vector3(owner.Transform:GetWorldPosition())+offset
         local fire = SpawnPrefab("void_flame")
         fire.Transform:SetRotation(theta/DEGREES)

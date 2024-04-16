@@ -48,6 +48,7 @@ local function ToggleOnPhysics(inst)
     inst.Physics:CollidesWith(COLLISION.OBSTACLES)
     inst.Physics:CollidesWith(COLLISION.CHARACTERS)
     inst.Physics:CollidesWith(COLLISION.GIANTS)
+    inst.Physics:CollidesWith(COLLISION.GROUND)
 end
 
 local function shoot_laser(inst,target)
@@ -105,7 +106,7 @@ local states=
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
                
-            inst.AnimState:PlayAnimation("idle_loop", true)
+            inst.AnimState:PlayAnimation("idle_loop")
 
         end,
         
@@ -127,7 +128,7 @@ local states=
             inst.SoundEmitter:PlaySound("dontstarve_DLC003/common/crafted/iron_lord/charge_up_LP", "chargedup")
             inst.sg.statemem.target=inst.components.combat.target  
             inst.sg:SetTimeout(0.5)  
-            
+            inst.components.talker:Chatter("WHY_YOU_HERE",nil, nil, CHATPRIORITIES.HIGH)
         end,
         onupdate = function(inst)
             if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then             
@@ -222,12 +223,13 @@ local states=
                     inst:DoTaskInTime(trigger_time, function(inst,num)
                         local fx = SpawnPrefab(prefab)
                         fx.caster = inst
-                        fx.type="eraser"
                         fx.Transform:SetPosition(x1, 0, z1)
                         fx:Trigger(0, targets, skiptoss)
                         if num%5==0 and num>0 then
                             local spell = SpawnPrefab("alter_light")
+                            spell.killer=true
                             spell.Transform:SetPosition(x1, 0, z1)
+                            spell.caster=inst
                         end
                     end,i)
                     
@@ -251,9 +253,9 @@ local states=
             inst.AnimState:PlayAnimation("charge_pst")
             inst.components.combat:StartAttack()       
             --inst.Physics:Stop()
-            inst.components.locomotor:Stop()
+            inst.components.locomotor:StopMoving()
             inst.sg.statemem.target=target
-            inst:FacePoint(target:GetPosition())
+            
         end,
         
         timeline=
@@ -282,6 +284,7 @@ local states=
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("item_out")
             --TheNet:Announce("会赢的")
+            inst.components.talker:Chatter("I_WILL_WIN",math.random(2),nil, nil, CHATPRIORITIES.HIGH)
         end,
 
         events =
@@ -485,7 +488,8 @@ local states=
         
         onenter = function(inst)     
             inst.components.locomotor:Stop()
-            inst.AnimState:PlayAnimation("suit_destruct")		
+            inst.AnimState:PlayAnimation("suit_destruct")
+            inst.components.talker:Chatter("MFZ_KNOW_YOU",1,nil, nil, CHATPRIORITIES.HIGH)		
         end,
         
         timeline=

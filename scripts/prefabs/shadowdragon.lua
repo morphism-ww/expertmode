@@ -51,14 +51,10 @@ local function canbeattackedfn(inst, attacker)
 		(attacker and attacker.components.sanity and attacker.components.sanity:IsCrazy())
 end
 
-local function CanShareTargetWith(dude)
-    return dude:HasTag("nightmarecreature")
-end
 
 local function OnAttacked(inst, data)
     if data.attacker ~= nil then
         inst.components.combat:SetTarget(data.attacker)
-        inst.components.combat:ShareTarget(data.attacker, 22, CanShareTargetWith, 1)
     end
 end
 

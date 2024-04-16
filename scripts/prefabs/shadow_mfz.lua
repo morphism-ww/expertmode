@@ -120,22 +120,6 @@ local function onpreload(inst, data)
     end
 end
 
---[[local function OnEntitySleep(inst)
-    if inst.components.health:IsDead() then
-        return
-    end
-
-    for k,v in pairs(AllPlayers) do
-        if v:IsValid() and not v:HasTag("playerghost") then
-            local pt=v:GetPosition()
-            local offset = FindWalkableOffset(pt, PI2*math.random(), 6, 10, true) 
-            or FindWalkableOffset(pt, PI2*math.random(), 12, 8, true, false)
-            TheNet:Announce("哼，想逃？")
-            inst.Transform:SetPosition(pt.x+offset.x, 0, pt.z+offset.z)
-            return
-        end    
-    end
-end]]
 -------------------------------------------
 local function fn()
 	local inst = CreateEntity()
@@ -183,7 +167,7 @@ local function fn()
     inst.components.talker.fontsize = 40
     inst.components.talker.font = TALKINGFONT
     inst.components.talker.colour = Vector3(238 / 255, 69 / 255, 105 / 255)
-    inst.components.talker.offset = Vector3(0, -700, 0)
+    inst.components.talker.offset = Vector3(0, -400, 0)
     inst.components.talker.symbol = "fossil_chest"
     inst.components.talker:MakeChatter()
 
@@ -241,7 +225,7 @@ local function fn()
     inst:AddComponent("bloomer")
 
     inst:AddComponent("named")
-    inst.components.named.possiblenames = {"邪恶海棠","莫则非","???"}
+    inst.components.named.possiblenames = {"邪恶海棠","莫则非"}
     inst.components.named:PickNewName()
 
     local groundpounder = inst:AddComponent("groundpounder")

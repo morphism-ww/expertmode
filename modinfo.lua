@@ -1,6 +1,6 @@
 name = "永恒新界"
 author = "莫非则"
-version = "3.2"
+version = "3.5.0"
 forumthread = ""
 
 description = [[一个困难模式的mod。主要内容有生物增强，物品增强，原版内容优化，单机版内容引入
@@ -17,6 +17,9 @@ description = [[一个困难模式的mod。主要内容有生物增强，物品�
 远古难度大增！
 杀死龙蝇后开启新的火雨事件，小心你的家！
 生物进化出了剧毒来保护自己！
+月岛变得更加危险，注意你的启蒙值！
+
+懒人传送塔大加强，单人即可使用
 
 新增隐藏boss，给拳击袋一根香蕉即可召唤
 
@@ -167,6 +170,16 @@ configuration_options = {
         name = "ruins",
         label = "铥棒格挡，铥甲抗毒",
         hover = "ruins",
+        options = {
+            { description = "开启", data = true },
+            { description = "关闭", data = false },
+        },
+        default = true,
+
+    },
+    {
+        name = "shadowdragon",
+        label = "恐惧之龙",
         options = {
             { description = "开启", data = true },
             { description = "关闭", data = false },

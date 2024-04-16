@@ -16,13 +16,10 @@ local function onunequip(inst, owner)
     owner.AnimState:Show("ARM_normal")
 end
 
-local function killmyself(inst)
-    inst:DoTaskInTime(0.2,inst.Remove)
-end
 
 local function onattack(inst,owner,target)
     if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-10,false,owner,true,owner,true)
+        target.components.health:DoDelta(-10,owner.prefab,nil,true,owner,true)
         target.components.health:DeltaPenalty(0.05)
     end
 end
@@ -66,14 +63,12 @@ local function fn()
     --inst:AddComponent("inspectable")
 
     inst:AddComponent("inventoryitem")
+    inst.components.inventoryitem:SetOnDroppedFn(inst.Remove)
 
     inst:AddComponent("equippable")
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
 
-
-
-    inst:ListenForEvent("ondropped",killmyself)
     
     return inst
 end

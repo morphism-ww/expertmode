@@ -24,7 +24,7 @@ local shadowfirelevels =
 local CLOSERANGE = 1
 
 local TARGETS_MUST = {"_health"}
-local TARGETS_CANT = { "INLIMBO", "flight", "shadow_aligned", "invisible", "noattack", "notarget","minotaur","wall","chess","shadow" }
+local TARGETS_CANT = { "INLIMBO", "flight", "shadow_aligned", "invisible", "noattack", "notarget","minotaur","wall","shadow" }
 
 local FLAME_MUST = {"shadow_flame"}
 
@@ -46,7 +46,7 @@ local function settarget(inst,target,life,source)
                 inst.shadow_ember_target = nil
 
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local ents = TheSim:FindEntities(x, y, z, 20, TARGETS_MUST, TARGETS_CANT,{_"combat"})
+                local ents = TheSim:FindEntities(x, y, z, 20, TARGETS_MUST, TARGETS_CANT,{"character","monster"})
                 if #ents > 0 then
                     local targets = {}
                     local flameents = TheSim:FindEntities(x, y, z, 20, FLAME_MUST)
@@ -231,30 +231,30 @@ local function settarget2(inst,target,life,source)
                         end
                     end
                 end
-            end
+            
 
-            if #ents > 0 then
+                if #ents > 0 then
 
-                local anglediffs = {}
+               
 
-                local lowestdiff = nil
-                local lowestent = nil
+                    local lowestdiff = nil
+                    local lowestent = nil
 
-                for i, ent in ipairs(ents) do
+                    for i, ent in ipairs(ents) do
 
-                    local ex,ey,ez = ent.Transform:GetWorldPosition()
-                    local diff = math.abs(inst:GetAngleToPoint(ex,ey,ez) - inst.Transform:GetRotation())
-                    if diff > 180 then diff = math.abs(diff - 360) end
+                        local ex,ey,ez = ent.Transform:GetWorldPosition()
+                        local diff = math.abs(inst:GetAngleToPoint(ex,ey,ez) - inst.Transform:GetRotation())
+                        if diff > 180 then diff = math.abs(diff - 360) end
 
-                    if not lowestdiff or lowestdiff > diff then
-                        lowestdiff = diff
-                        lowestent = ent
-                    end                        
+                        if not lowestdiff or lowestdiff > diff then
+                            lowestdiff = diff
+                            lowestent = ent
+                        end                        
+                    end
+
+                    target = lowestent
                 end
-
-                target = lowestent
             end
-
 			if target then
                 local dist = inst:GetDistanceSqToInst(target)
 

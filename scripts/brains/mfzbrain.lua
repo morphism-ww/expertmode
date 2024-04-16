@@ -57,7 +57,6 @@ function MFZBrain:OnStart()
                         self.abilityname=nil
                     end)),
                     ChaseAndAttack(self.inst),
-                    DoAction(self.inst, TempDestroy, "DestroyTemp", true),
                     Wander(self.inst, GetWanderHome, 15),
                 }, .5)
             ),

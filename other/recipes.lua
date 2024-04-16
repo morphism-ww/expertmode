@@ -18,13 +18,13 @@ AddRecipe2("obsidianfirepit", 		 {Ingredient("obsidian",5),Ingredient("log",8)},
 AddRecipe2("obsidian", 		 {Ingredient("dreadstone",1),Ingredient("redgem",2)},
         TECH.OBSIDIAN_ONE,{nounlock=true, numtogive=2,no_deconstruction=true})
 
-AddRecipe2("volcanostaff",      {Ingredient("yellowstaff",1),Ingredient("firestaff",1),Ingredient("dragoonheart",3),Ingredient("obsidian",4),Ingredient("demon_soul",1)},
-        TECH.OBSIDIAN_ONE,{nounlock=true, numtogive=2,no_deconstruction=true})
+AddRecipe2("volcanostaff",      {Ingredient("firestaff",1),Ingredient("dragoonheart",3),Ingredient("obsidian",4),Ingredient("demon_soul",1)},
+        TECH.OBSIDIAN_ONE,{nounlock=true, numtogive=1,no_deconstruction=true})
 
-AddRecipe2("quaker",{Ingredient("gears",4),Ingredient("orangegem",1),Ingredient("hammer",2),Ingredient("bearger_fur",1)},
+AddRecipe2("quaker",{Ingredient("gears",2),Ingredient("orangegem",1),Ingredient("wagpunk_bits", 2),Ingredient("hammer",2),Ingredient("bearger_fur",1)},
         TECH.SCIENCE_TWO,{placer="quaker_placer"},{"TOOLS"})
 
-AddRecipe2("superboat_kit",{Ingredient("gears", 4),Ingredient("boards",6),Ingredient("driftwood_log",3),Ingredient("palmcone_scale",8)},
+AddRecipe2("superboat_kit",{Ingredient("wagpunk_bits", 4),Ingredient("boards",6),Ingredient("driftwood_log",3),Ingredient("palmcone_scale",6)},
         TECH.SEAFARING,	{ image="boat_yotd_item.tex"},{"SEAFARING"})
 
 --[[AddRecipe2("lunar_blast",{Ingredient("opalstaff", 1),Ingredient("alterguardianhatshard",1),Ingredient("purebrilliance",3)},

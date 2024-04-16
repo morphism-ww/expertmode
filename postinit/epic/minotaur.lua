@@ -112,11 +112,6 @@ State{
 
         timeline=
         {
-            TimeEvent(11*FRAMES, function(inst)
-                if inst.sg.statemem.playlandsound then
-                    inst.SoundEmitter:PlaySound("ancientguardian_rework/minotaur2/step")
-                end
-             end),
             TimeEvent(12*FRAMES, function(inst)
             local target=inst.components.combat.target
             if target~=nil and inst.sg.statemem.leapattack then
@@ -170,12 +165,11 @@ AddStategraphState("minotaur",
             inst.hasrammed = true
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("jump_atk_pre")
-            inst.sg.statemem.startpos = Vector3(inst.Transform:GetWorldPosition())
-            inst:DoTaskInTime(0.2,function()
+            inst.sg.statemem.startpos = inst:GetPosition()
+            inst:DoTaskInTime(0.4,function()
                 if inst:IsValid() and not inst.components.health:IsDead() and inst.sg and inst.sg:HasStateTag("leapattack") then
-                    if target then
-                        inst.sg.statemem.targetpos = Vector3(target.Transform:GetWorldPosition())
-                        inst.sg.statemem.target=target
+                    if target~=nil and target:IsValid() then
+                        inst.sg.statemem.targetpos = target:GetPosition()
                         inst:ForceFacePoint(inst.sg.statemem.targetpos)
                     else
                         local range = 6 -- overshoot range
@@ -185,25 +179,24 @@ AddStategraphState("minotaur",
                     end
                 end
             end)
-            inst.sg:SetTimeout(0.5)
+            inst.sg:SetTimeout(0.8)
         end,
         ontimeout = function(inst)
-            inst.sg:GoToState("leap_attackloop", {targetpos= inst.sg.statemem.targetpos, target=inst.sg.statemem.target})
-        end,
+            inst.sg:GoToState("leap_attackloop", inst.sg.statemem.targetpos)
+        end    
     })
 AddStategraphState("minotaur",
         State{
         name = "leap_attackloop",
         tags = {"attack", "busy", "leapattack"},
 
-        onenter = function(inst,data)
+        onenter = function(inst,pos)
 
-            inst.sg.statemem.targetpos =data.targetpos
-            inst.sg.statemem.target=data.target
+            inst.sg.statemem.targetpos =pos
             inst.AnimState:PlayAnimation("jump_atk_loop")
             inst.components.locomotor:Stop()
 
-            inst.sg.statemem.startpos = Vector3(inst.Transform:GetWorldPosition())
+            inst.sg.statemem.startpos = inst:GetPosition()
 
             inst.components.combat:StartAttack()
 
@@ -250,9 +243,9 @@ AddStategraphState("minotaur",
         events=
         {
             EventHandler("animover", function(inst)
-                if inst.sg.mem.leapcount~=0 and inst.sg.mem.leapcount>0 and inst.sg.statemem.target~=nil then
+                if inst.sg.mem.leapcount~=nil and inst.sg.mem.leapcount>0 and inst.components.combat:HasTarget() then
                     inst.sg.mem.leapcount=inst.sg.mem.leapcount-1
-                    inst.sg:GoToState("leap_attackloop_pre",inst.sg.statemem.target)
+                    inst.sg:GoToState("leap_attackloop_pre",inst.components.combat.target)
                 else
                     inst.sg:GoToState("stun2",{doleap=false})
                 end
@@ -286,31 +279,6 @@ AddStategraphPostInit("minotaur",function(sg)
             inst.sg:GoToState("stun",{land_stun=true})
         end
     end
-
-
-    sg.states.leap_attack_pre.onenter=function(inst)
-        local time0=inst.atphase3 and 0 or 1
-        inst.hasrammed = true
-        inst.components.locomotor:Stop()
-        inst.AnimState:PlayAnimation("jump_atk_pre")
-        inst.sg.statemem.startpos = Vector3(inst.Transform:GetWorldPosition())
-        inst:DoTaskInTime(time0,function()
-            if inst:IsValid() and not inst.components.health:IsDead() and inst.sg and inst.sg:HasStateTag("leapattack") then
-                local target = inst.components.combat.target or nil
-                if target then
-                    inst.sg.statemem.targetpos = Vector3(inst.components.combat.target.Transform:GetWorldPosition())
-                    inst:ForceFacePoint(inst.sg.statemem.targetpos)
-                else
-                    local range = 6 -- overshoot range
-                    local theta = inst.Transform:GetRotation()*DEGREES
-                    local offset = Vector3(range * math.cos( theta ), 0, -range * math.sin( theta ))
-                    inst.sg.statemem.targetpos = Vector3(inst.sg.statemem.startpos.x + offset.x, 0, inst.sg.statemem.startpos.z + offset.z)
-                end
-            end
-        end)
-        inst.sg:SetTimeout(time0+0.2)
-    end
-
 end)
 
 
@@ -319,13 +287,13 @@ local chest_loot =
     {item = {"armorruins"}, count = 1},
     {item = {"ruinshat"}, count = 1},
     {item = {"ruins_bat"}, count = 1},
-    {item = {"orangestaff"}, count = 1},
+    {item = {"orangestaff","yellowstaff"}, count = 1},
     {item = {"orangeamulet", "yellowamulet"}, count = 1},
     {item = {"yellowgem"}, count = {6, 8}},
     {item = {"orangegem"}, count = {6, 8}},
     {item = {"greengem"}, count = {6, 8}},
     {item = {"thulecite"}, count = { 16,20 }},
-    {item = {"thulecite_pieces"}, count = {36, 40 }},
+    {item = {"thulecite_pieces"}, count = {30, 38 }},
     {item = {"yellowstaff"}, count = 1},
 }
 

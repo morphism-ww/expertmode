@@ -3,19 +3,50 @@ local assets =
         Asset("ANIM", "anim/fx_book_light.zip")
     }
 
+
+local DAMAGE_CANT_TAGS = { "brightmareboss", "brightmare", "playerghost", "INLIMBO", "DECOR", "FX","god" }
+local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
+
+local function DoEraser(inst,target)
+    if target.components.inventory~=nil then
+        for k, v in pairs(target.components.inventory.equipslots) do
+            if v.components.finiteuses ~= nil then
+                v.components.finiteuses:SetUses(0)
+            end
+            if v.components.armor ~= nil then
+                v.components.armor:SetCondition(0)
+            end
+            if v.components.fueled~=nil then
+                v.components.fueled:MakeEmpty()
+            end
+            if v.components.perishable~=nil then
+                v.components.perishable:Perish()
+            end
+        end
+    end
+    if target.components.burnable~=nil then
+        target.components.burnable:Ignite()
+    end
+    --target.components.health:DoDelta(-100000,false,inst.prefab,true,nil,true)
+    target.components.health:SetVal(0,inst.prefab,inst)
+    target.components.health:DeltaPenalty(0.2)
+end
+
 local function DoDamage(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, 0, z, 3, nil, {"FX","playerghost","brightmareboss","god"},{"structure","character","epic","shadow_aligned","monster"})
+    local ents = TheSim:FindEntities(x, 0, z, 3, nil, DAMAGE_CANT_TAGS,DAMAGE_ONEOF_TAGS)
     for i, v in ipairs(ents) do
-        if v:IsValid() and v.components.health ~= nil then
-            if v:HasTag("shadow_aligned") then
+        if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
+            if inst.killer then
+                DoEraser(inst,v) 
+            elseif v:HasTag("shadow_aligned") then
                 v.components.health:Kill()
             elseif v:HasTag("player") then
-                v.components.health:DoDelta(-20,false,inst,true,nil,true)
+                v.components.health:DoDelta(-15,false,inst.prefab,true,nil,true)
                 inst.components.combat:DoAttack(v)
-                v.components.sanity:DoDelta(30)
+                v.components.sanity:DoDelta(20)
             else
-                v.components.health:DoDelta(-1000,false,inst,true,nil,true)
+                v.components.health:DoDelta(-1000,false,inst.prefab,true,nil,true)
             end
         end
         if v.components.workable ~= nil and
@@ -33,11 +64,10 @@ local function DoDamag2(inst)
 		if (target.components.health ~= nil and not target.components.health:IsDead()) and
         target.components.combat~=nil and inst.CASTER~=nil then
 			if target:HasTag("shadow_aligned") then
-                target.components.health:DoDelta(-500,false,inst.CASTER)
+                target.components.health:DoDelta(-500,false,nil,nil,inst.CASTER)
             else
-                target.components.health:DoDelta(-400,false,inst.CASTER)
+                target.components.health:DoDelta(-400,false,nil,nil,inst.CASTER)
             end
-            target.components.combat:SuggestTarget(inst.CASTER)
 		end
 	end
 end
@@ -57,6 +87,8 @@ local function terrarium_fx()
     inst.AnimState:SetScale(4,4,4)
 
     inst:AddTag("FX")
+    inst:AddTag("")
+
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
@@ -66,8 +98,9 @@ local function terrarium_fx()
     inst.components.combat:SetDefaultDamage(50)
     inst.components.combat:SetRange(2)
 
+    inst:DoTaskInTime(0.5, DoDamage)
     inst:DoTaskInTime(0.7, DoDamage)
-    inst:DoTaskInTime(1.2, DoDamage)
+    inst.killer=false
     inst.persists = false
 
     inst:ListenForEvent("animover", function()

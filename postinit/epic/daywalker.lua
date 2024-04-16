@@ -1,15 +1,14 @@
 require("stategraphs/commonstates")
 
 
-TUNING.DAYWALKER_HEALTH_REGEN = 30
-TUNING.DAYWALKER_COMBAT_STALKING_HEALTH_REGEN = 30
-TUNING.DAYWALKER_COMBAT_TIRED_HEALTH_REGEN = 30
+TUNING.DAYWALKER_HEALTH_REGEN = 25
+TUNING.DAYWALKER_COMBAT_STALKING_HEALTH_REGEN = 20
+TUNING.DAYWALKER_COMBAT_TIRED_HEALTH_REGEN = 25
 TUNING.DAYWALKER_FATIGUE_TIRED = 5
 TUNING.DAYWALKER_AGGRO_DIST = 30
 TUNING.DAYWALKER_KEEP_AGGRO_DIST = 25
 --TUNING.DAYWALKER_POUNCE_DAMAGE = 75
-TUNING.DAYWALKER_XCLAW_DAMAGE = 2*100
-TUNING.DAYWALKER_SLAM_DAMAGE = 3*100
+
 
 
 
@@ -394,10 +393,9 @@ State{
 			end),
 			FrameEvent(25, function(inst) inst.SoundEmitter:PlaySound("daywalker/action/attack_slam_down") end),
 
-			FrameEvent(3, function(inst)
-				inst.Physics:SetMotorVelOverride(3, 0, 0)
+			FrameEvent(5, function(inst)
 				local x,y,z=inst.sg.statemem.target.Transform:GetWorldPosition()
-				inst.Transform:SetPosition(x,y,z)
+				inst.Physics:Teleport(x,y,z)
 				inst:Show()
 			end),
 			FrameEvent(20, function(inst)

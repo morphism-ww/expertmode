@@ -13,7 +13,6 @@ assert(TheWorld.ismastersim, "Ancient_Defender should not exist on client")
 local NON_INSANITY_MODE_DESPAWN_INTERVAL = 0.1
 local NON_INSANITY_MODE_DESPAWN_VARIANCE = 0.1
 
-local OCEAN_SPAWN_ATTEMPTS = 4
 
 --------------------------------------------------------------------------
 --[[ Member variables ]]
@@ -21,7 +20,7 @@ local OCEAN_SPAWN_ATTEMPTS = 4
 
 --Public
 self.inst = inst
-
+self.defender_count =0
 --Private
 
 local _players = {}
@@ -159,7 +158,7 @@ local function UpdatePopulation(player, params)
         if targetpop >= maxpop then
             dec_chance = 0.2
         else
-            inc_chance = 0.2
+            inc_chance = 0.8
         end
     elseif sanity > 0.0 and canspawn then
         maxpop = 2
@@ -203,11 +202,11 @@ local function UpdatePopulation(player, params)
     end
 
     --Reschedule population update
-    params.poptask = player:DoTaskInTime(10+5*math.random(), UpdatePopulation, params)
+    params.poptask = player:DoTaskInTime(20+10*math.random(), UpdatePopulation, params)
 end
 
 local function Start(player, params)
-    if params.poptask == nil then
+    if params.poptask == nil and TUNING.NEW_CONSTANT_SHADOWDRAGON then
         params.poptask = player:DoTaskInTime(0, UpdatePopulation, params)
     end
 end
@@ -253,6 +252,14 @@ local function OnPlayerLeft(inst, player)
     _players[player] = nil
 end
 
+
+function self:AllowSpawn()
+    if self.defender_count<=1 then
+        self.defender_count=self.defender_count+1
+        return true
+    end
+    return false
+end
 --------------------------------------------------------------------------
 --[[ Initialization ]]
 --------------------------------------------------------------------------
@@ -280,6 +287,16 @@ function self:GetDebugString()
     end
 end
 
+function self:OnSave()
+    return
+    {
+        defender_count = self.defender_count,
+    }
+end
+
+function self:OnLoad(data)
+    self.defender_count = data.defender_count or 0
+end
 --------------------------------------------------------------------------
 --[[ End ]]
 --------------------------------------------------------------------------

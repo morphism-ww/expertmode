@@ -75,6 +75,9 @@ local function RemoveMare(ent)
     ent:DoTaskInTime(0, ent.Remove)
 end
 
+local function OnlyOneAttack(inst)
+	inst.sg:GoToState("mutate_pre")		
+end
 
 local function TrySpawnGestaltForPlayer(player, level, data)
 	local pt = FindGestaltSpawnPtForPlayer(player, false)
@@ -84,6 +87,7 @@ local function TrySpawnGestaltForPlayer(player, level, data)
 			ent.persists = false
 			ent:ListenForEvent("entitysleep", RemoveMare)
 			ent.Transform:SetPosition(pt.x, 0, pt.z)
+			ent:ListenForEvent("droppedtarget",OnlyOneAttack)
 		else
 			local ent = SpawnPrefab("gestalt")
 			_gestalts[ent] = {}

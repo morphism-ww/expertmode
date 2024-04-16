@@ -19,3 +19,5 @@ AddPrefabPostInit("player_classified", function(inst)
 	inst.poisonover = GLOBAL.net_bool(inst.GUID, "poison.poisonover", "poisonoverdirty")
 	inst:ListenForEvent("poisonoverdirty", OnPoisonOverDirty)
 end)
+
+

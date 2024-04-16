@@ -30,6 +30,7 @@ end
 
 local function OnLunarRiftReachedMaxSize(source, rift)
     --print("MAX SIZE REACHED")
+    if not TUNING.ALLOW_LUNAR_QUEEN then return end
 
     local self = TheWorld.components.lunarthrall_queen_spawner
     if not self.currentrift then

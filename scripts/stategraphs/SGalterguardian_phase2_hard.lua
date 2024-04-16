@@ -144,16 +144,16 @@ end
 local function TryWave(inst,angle)
     local position=inst:GetPosition()
     --totalangle=360
-    local anglePerWave=24  --360/15
+    local anglePerWave = 36  --360/15
     local rot = angle
-    for i = 1, 15 do
+    for i = 1, 10 do
         local offset_direction = Vector3(math.cos(rot*DEGREES), 0, -math.sin(rot*DEGREES)):Normalize()
         local wavepos = position + (offset_direction * 2)
         local wave = SpawnPrefab("lunarwave")
         wave.Transform:SetPosition(wavepos:Get())
         wave.Transform:SetRotation(rot)
         rot = rot + anglePerWave
-        wave.Physics:SetMotorVel(16, 0, 0)
+        wave.Physics:SetMotorVel(12, 0, 0)
     end
 end
 
@@ -364,20 +364,20 @@ local states =
                 inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian2/atk_spike")
 
                 ShakeAllCameras(CAMERASHAKE.FULL, .75, 0.1, 0.1, inst, 50)
-                TryWave(inst,12)
+                TryWave(inst,18)
                 inst.components.combat:DoAttack()
             end),
             TimeEvent(50*FRAMES, function(inst)
                 TryWave(inst,0)
             end),
             TimeEvent(70*FRAMES, function(inst)
-                TryWave(inst,12)
+                TryWave(inst,18)
             end),
             TimeEvent(90*FRAMES, function(inst)
                 TryWave(inst,0)
             end),
             TimeEvent(110*FRAMES, function(inst)
-                TryWave(inst,12)
+                TryWave(inst,18)
             end),
         },
 
@@ -698,13 +698,17 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                local loop_data =
-                {
-                    spin_time_remaining = (inst.sg.timeinstate - 18*FRAMES) % SPIN_FX_RATE,
-                    target = inst.sg.statemem.target,
-                    attack_time = inst.sg.statemem.attack_time,
-                }
-                inst.sg:GoToState("deadspin_loop", loop_data)
+                if inst.sg.statemem.target~=nil and not inst.sg.statemem.target.components.health:IsDead() then
+                    local loop_data =
+                    {
+                        spin_time_remaining = (inst.sg.timeinstate - 18*FRAMES) % SPIN_FX_RATE,
+                        target = inst.sg.statemem.target,
+                        attack_time = inst.sg.statemem.attack_time,
+                    }
+                    inst.sg:GoToState("deadspin_loop", loop_data)
+                else
+                    go_to_idle(inst)
+                end        
             end ),
         },
 

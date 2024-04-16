@@ -1,11 +1,9 @@
-local function onequip(inst,owner)
-	inst._oldonequipfn(inst,owner)
-	owner:AddTag("stun_immune")
+local function onequip_2(inst,data)
+	data.owner:AddTag("stun_immune")
 end
 
-local function onunequip(inst,owner)
-	inst._oldunequipfn(inst,owner)
-	owner:RemoveTag("stun_immune")
+local function onunequip_2(inst,data)
+	data.owner:RemoveTag("stun_immune")
 end
 
 AddPrefabPostInit("armordreadstone",function(inst)
@@ -13,8 +11,7 @@ AddPrefabPostInit("armordreadstone",function(inst)
 	if not TheWorld.ismastersim then
 		return inst
 	end
-	inst._oldonequipfn=inst.components.equippable.onequipfn
-	inst._oldunequipfn=inst.components.equippable.onunequipfn
-	inst.components.equippable:SetOnEquip(onequip)
-	inst.components.equippable:SetOnUnequip(onunequip)
+	inst:ListenForEvent("equipped",onequip_2)
+    inst:ListenForEvent("unequipped",onunequip_2)
+	
 end)

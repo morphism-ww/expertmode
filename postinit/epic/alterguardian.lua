@@ -1,4 +1,4 @@
-local ALTERGUARDIAN_PHASE1_HEALTH = 10000*GetModConfigData("health_alter")
+TUNING.ALTERGUARDIAN_PHASE1_HEALTH = 10000*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE1_MINROLLCOUNT = 12
 TUNING.ALTERGUARDIAN_PHASE1_SHIELDTRIGGER = 2500+500*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE1_WALK_SPEED = 6
@@ -6,7 +6,7 @@ TUNING.ALTERGUARDIAN_PHASE1_TARGET_DIST=28
 TUNING.ALTERGUARDIAN_PHASE1_ATTACK_PERIOD = 6
 
 
-local ALTERGUARDIAN_PHASE2_STARTHEALTH = 13000*GetModConfigData("health_alter")
+TUNING.ALTERGUARDIAN_PHASE2_STARTHEALTH = 13000*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE2_MAXEALTH = 20000*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE2_SPIN_SPEED = 9
 TUNING.ALTERGUARDIAN_PHASE2_TARGET_DIST = 30
@@ -14,7 +14,7 @@ TUNING.ALTERGUARDIAN_PHASE2_SPIKE_RANGE=25
 TUNING.ALTERGUARDIAN_PHASE2_ATTACK_PERIOD=5
 TUNING.ALTERGUARDIAN_PHASE2_SPIKE_LIFETIME = 60
 
-local ALTERGUARDIAN_PHASE3_STARTHEALTH = 14000*GetModConfigData("health_alter")
+TUNING.ALTERGUARDIAN_PHASE3_STARTHEALTH = 14000*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE3_MAXHEALTH = 22500*GetModConfigData("health_alter")
 TUNING.ALTERGUARDIAN_PHASE3_TARGET_DIST = 30
 TUNING.ALTERGUARDIAN_PHASE3_SUMMONRSQ = 625
@@ -47,28 +47,6 @@ local function spawn_landfx(inst)
     SpawnPrefab("mining_moonglass_fx").Transform:SetPosition(ix, iy, iz)
     SpawnSpell(inst,ix,iz,"deer_fire_circle")
 end
-
-
-
-local SEPLL_MUSTHAVE_TAGS = { "_combat","_health" }
-local SPELL_CANT_TAGS = { "INLIMBO", "flight", "invisible", "notarget", "noattack","wall" }
-
-local function CastSpell(inst,targets)
-	local x, y, z = inst.Transform:GetWorldPosition()
-
-	for i, v in ipairs(TheSim:FindEntities(x, y, z, 30, SEPLL_MUSTHAVE_TAGS, SPELL_CANT_TAGS)) do
-		if v ~= inst and
-				not (targets ~= nil and targets[v]) and
-				v:IsValid() and not v:IsInLimbo()
-				and not (v.components.health ~= nil and v.components.health:IsDead())
-		then
-			local px,py,pz=v.Transform:GetWorldPosition()
-			SpawnSpell(inst,px,pz,"deer_ice_circle")
-		end
-	end
-end
-
-
 
 
 
@@ -150,23 +128,10 @@ AddStategraphPostInit("alterguardian_phase1", function(sg)
 	local oldOnEntershield_pre = sg.states.shield_pre.onenter
     sg.states.shield_pre.onenter = function(inst, ...)
         oldOnEntershield_pre(inst, ...)
-        local x,y,z=inst.Transform:GetWorldPosition()
-        for i=1,5 do
-            local tornado = SpawnPrefab("fire_tornado")
-            tornado.CASTER = inst
-            tornado.Transform:SetPosition(x,y,z)
-        end
-
-        inst.components.meteorshower:StopShower()
-        inst.components.meteorshower:StartShower()
+        inst.components.meteorshower:StartCrazyShower()
     end
 
-	local oldOnEntershield_end = sg.states.shield_end.onenter
-    sg.states.shield_end.onenter = function(inst, ...)
-        oldOnEntershield_end(inst, ...)
-		local targets=inst.sg.statemem.targets
-        CastSpell(inst,targets)
-    end
+	
     local oldOnEntertantrum=sg.states.tantrum.onenter
     sg.states.tantrum.onenter = function(inst, ...)
         oldOnEntertantrum(inst, ...)
@@ -175,8 +140,95 @@ AddStategraphPostInit("alterguardian_phase1", function(sg)
 
 
 end)
+
+local function find_gestalt_target(gestalt)
+    local gx, gy, gz = gestalt.Transform:GetWorldPosition()
+    local target = nil
+    local rangesq = 36
+    for _, v in ipairs(AllPlayers) do
+        if not IsEntityDeadOrGhost(v) and
+                not (v.sg:HasStateTag("knockout") or
+                    v.sg:HasStateTag("sleeping") or
+                    v.sg:HasStateTag("bedroll") or
+                    v.sg:HasStateTag("tent") or
+                    v.sg:HasStateTag("waking")) and
+                v.entity:IsVisible() then
+
+            local distsq = v:GetDistanceSqToPoint(gx, 0, gz)
+            if distsq < rangesq then
+                rangesq = distsq
+                target = v
+            end
+        end
+    end
+
+    return target
+end
+
+local MIN_GESTALTS, MAX_GESTALTS = 10, 14
+local EXTRA_GESTALTS_BYHEALTH = 12
+local MIN_SUMMON_RANGE, MAX_SUMMON_RANGE = 5, 7
+local function DoGestaltSummon(inst)
+    local ix, iy, iz = inst.Transform:GetWorldPosition()
+
+    local spawn_warning = SpawnPrefab("alterguardian_summon_fx")
+    spawn_warning.Transform:SetScale(1.2, 1.2, 1.2)
+    spawn_warning.Transform:SetPosition(ix, iy, iz)
+
+    -- A random amount of spawns plus a base amount based on missing health.
+    local num_gestalts = GetRandomMinMax(MIN_GESTALTS, MAX_GESTALTS) + math.ceil((1 - inst.components.health:GetPercent()) * EXTRA_GESTALTS_BYHEALTH)
+
+    local angle_increment = 3.75*PI / num_gestalts -- almost 2pi twice; loop 2 times, but slightly offset
+    local initial_angle = 2*PI*math.random()
+
+    for i = 1, num_gestalts do
+        -- Spawn a collection of gestalts in a haphazard ring around the boss.
+        -- The gestalts are undirected, but will target somebody if they're nearby.
+
+        inst:DoTaskInTime(2.0 + (i*4*FRAMES), function(inst2)
+            local gestalt = SpawnPrefab("gestalt_alterguardian_projectile")
+            if gestalt ~= nil then
+                -- NOTE: Deliberately not square rooting this radius;
+                -- clustering closer to the boss is fine behaviour.
+                local r = GetRandomMinMax(MIN_SUMMON_RANGE, MAX_SUMMON_RANGE)
+                local angle = initial_angle + GetRandomWithVariance((i - 1) * angle_increment, PI/8)
+                local x, z = r * math.cos(angle), r * math.sin(angle)
+
+                gestalt.Transform:SetPosition(ix + x, iy + 0, iz + z)
+
+                local target = find_gestalt_target(gestalt)
+                if target ~= nil then
+                    local meteor=SpawnPrefab("shadowmeteor")
+                    meteor:SetSize("large",1)
+                    meteor.Transform:SetPosition(target.Transform:GetWorldPosition())
+                    gestalt:ForceFacePoint(target:GetPosition())
+                    gestalt:SetTargetPosition(target:GetPosition())
+                end
+            end
+        end)
+    end
+
+    inst:DoTaskInTime(2.0 + (num_gestalts*4*FRAMES) + 1.0, function(inst2)
+        spawn_warning:PushEvent("endloop")
+    end)
+
+    inst.components.timer:StartTimer("summon_cooldown", TUNING.ALTERGUARDIAN_PHASE1_SUMMONCOOLDOWN)
+end
+
+local function EnterShield(inst)
+    inst._is_shielding = true
+
+    inst.components.health:SetAbsorptionAmount(TUNING.ALTERGUARDIAN_PHASE1_SHIELDABSORB)
+
+    if not inst.components.timer:TimerExists("summon_cooldown") then
+        DoGestaltSummon(inst)
+    end
+end
+
+
 AddPrefabPostInit("alterguardian_phase1",function(inst)
-    --inst:AddTag("disablesw2hm")
+    inst:AddTag("meteor_protection")
+    
     inst:AddTag("notraptrigger")
     inst:AddTag("toughworker")
     inst:AddTag("electricdamageimmune")
@@ -194,10 +246,10 @@ AddPrefabPostInit("alterguardian_phase1",function(inst)
     inst.components.damagetyperesist:AddResist("epic", inst, 0.4)
     inst.components.damagetyperesist:AddResist("aoeweapon_leap", inst, 0.4)
 
-    inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE1_HEALTH)
+    --inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE1_HEALTH)
     --inst.components.health:SetMaxDamageTakenPerHit(100)
 
-
+    inst.EnterShield = EnterShield
     --inst:AddComponent("planardamage")
 	--inst.components.planardamage:SetBaseDamage(bossplanardamage)
 
@@ -332,24 +384,17 @@ local function Shockness(inst,x,y,z)
 	spark.Transform:SetPosition(x, 0, z)
     spark.Transform:SetScale(1.4,1.4,1.4)
 
-	local targets = TheSim:FindEntities(x,y,z,5,{"_health","_combat"},{"playerghost","chess","wall","brightmareboss"})
+	local targets = TheSim:FindEntities(x,y,z,5,{"_health","_combat"},{"playerghost","wall","brightmareboss","electricdamageimmune","INLIMBO"})
 
 	for k,v in pairs(targets) do
 		if v.components.health ~= nil and not v.components.health:IsDead() then
 			if not (v.components.inventory ~= nil and v.components.inventory:IsInsulated()) then
-				if not v:HasTag("electricdamageimmune") then
 
-					local mult = TUNING.ELECTRIC_DAMAGE_MULT + TUNING.ELECTRIC_WET_DAMAGE_MULT * (v.components.moisture ~= nil and v.components.moisture:GetMoisturePercent() or (v:GetIsWet() and 1 or 0))
-						or 1
+                if v.sg ~= nil and not v.sg:HasStateTag("nointerrupt")  then
+                    v.sg:GoToState("electrocute")
+                end
 
-					local damage = -10 * mult
-
-					if v.sg ~= nil and not v.sg:HasStateTag("nointerrupt")  then
-						v.sg:GoToState("electrocute")
-					end
-
-					v.components.health:DoDelta(damage, nil, inst.prefab, nil, inst) --From the onhit stuff...
-				end
+                v.components.health:DoDelta(-10, nil, inst.prefab, nil, inst) --From the onhit stuff...
 			end
 		end
 	end
@@ -372,7 +417,7 @@ AddPrefabPostInit("alterguardian_phase2",function(inst)
     if not TheWorld.ismastersim then return end
 
     --inst:AddComponent("planarentity")
-    inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE2_STARTHEALTH)
+    --inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE2_STARTHEALTH)
     --inst:AddComponent("planardamage")
 	--inst.components.planardamage:SetBaseDamage(bossplanardamage)
     inst.Physics:SetCollisionCallback(OnCollide)
@@ -399,7 +444,7 @@ end)
 
 --三阶段激光
 
-local function DoEraser(inst,target,caster)
+--[[local function DoEraser(inst,target,caster)
     if target.components.inventory~=nil then
         for k, v in pairs(target.components.inventory.equipslots) do
             if v.components.finiteuses ~= nil then
@@ -419,8 +464,7 @@ local function DoEraser(inst,target,caster)
     if target.components.burnable~=nil then
         target.components.burnable:Ignite()
     end
-    target.components.health:DoDelta(-100000,false,caster,true,nil,true)
-    --target.components.health:SetVal(0,caster,caster)
+    target.components.health:DoDelta(-100000,false,caster.prefab,true,caster,true)
     target.components.health:DeltaPenalty(0.2)
 end
 
@@ -598,7 +642,7 @@ end
 AddPrefabPostInit("alterguardian_laser",function(inst)
     inst.type=nil
     inst.Trigger=Trigger
-end)
+end)]]
 
 
 local PHASES =
@@ -616,7 +660,6 @@ local PHASES =
 		hp = 0.8,
 		fn = function(inst)
             inst.candoflame=true
-			inst.cancloud = true
             inst.caneraser=false
             inst.canholylight=false
 		end,
@@ -625,7 +668,6 @@ local PHASES =
 		hp = 0.5,
 		fn = function(inst)
 			inst.candoflame=true
-            inst.cancloud = true
             inst.caneraser=true
             inst.canholylight=true
 		end,
@@ -649,7 +691,7 @@ local function SetCloudProtection(inst, ent, duration)
 end
 local function DoCloudTask(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
-	for i, v in ipairs(TheSim:FindEntities(x, 0, z, 8, nil, SLEEPER_NO_TAGS, SLEEPER_TAGS)) do
+	for i, v in ipairs(TheSim:FindEntities(x, 0, z, 6, nil, SLEEPER_NO_TAGS, SLEEPER_TAGS)) do
 		if v._lunargrazercloudprot == nil and
 			v:IsValid() and v.entity:IsVisible() and
 			not (v.components.health ~= nil and v.components.health:IsDead()) and
@@ -674,7 +716,7 @@ local function DoCloudTask(inst)
 end
 
 local function StartCloudTask(inst)
-	if inst.cloudtask == nil and inst.cancloud then
+	if inst.cloudtask == nil then
 		inst.cloudtask = inst:DoPeriodicTask(1, DoCloudTask, math.random())
 	end
 end
@@ -709,13 +751,13 @@ end
 
 
 AddPrefabPostInit("alterguardian_phase3",function(inst)
-    inst:AddTag("disablesw2hm")
+    --inst:AddTag("disablesw2hm")
     inst:AddTag("notraptrigger")
     inst:AddTag("toughworker")
     inst:AddTag("electricdamageimmune")
 	if not TheWorld.ismastersim then return end
 
-    inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE3_STARTHEALTH)
+    --inst.components.health:SetMaxHealth(ALTERGUARDIAN_PHASE3_STARTHEALTH)
 	if inst.components.freezable then inst:RemoveComponent("freezable") end
 
     inst.components.combat:SetAreaDamage(4, 0.8)
@@ -734,7 +776,7 @@ AddPrefabPostInit("alterguardian_phase3",function(inst)
     --abilities
     inst.candoflame=false
     inst.canflame=false
-    inst.cancloud = false
+    --inst.cancloud = false
     inst.caneraser=false
 
 
@@ -745,6 +787,7 @@ AddPrefabPostInit("alterguardian_phase3",function(inst)
     inst.StopCloudTask=StopCloudTask
     inst.SetCloudProtection=SetCloudProtection
 
+    inst:StartCloudTask()
 
 
     inst:AddComponent("healthtrigger")

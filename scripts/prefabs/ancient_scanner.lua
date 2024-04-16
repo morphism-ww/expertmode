@@ -355,12 +355,10 @@ local function DoWarning(inst,target)
     if target~=nil and target.components.sanity~=nil then
         target.components.sanity:DoDelta(-25)
     end
-    inst.components.combat:ShareTarget(target, 24, ShareTargetFn, 10)
+    inst.components.combat:ShareTarget(target, 30, ShareTargetFn, 10)
 end
 local function explode(inst)
     inst:StopScanFX()
-    local ring = SpawnPrefab("laser_ring")
-    ring.Transform:SetPosition(inst.Transform:GetWorldPosition())
     inst.components.explosive:OnBurnt()
     inst:Remove()
 end
@@ -525,7 +523,7 @@ local function scannerfn()
     -------------------------------------------------------------------
     inst:AddComponent("explosive")
     inst.components.explosive:SetOnExplodeFn(OnExplodeFn)
-    inst.components.explosive.explosiverange = 6
+    inst.components.explosive.explosiverange = 4
     inst.components.explosive.explosivedamage = 50
 
     -----------

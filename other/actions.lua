@@ -42,7 +42,7 @@ local function EnoughShadow(weapon)
     return weapon~=nil and weapon.components.shadowlevel and weapon.components.shadowlevel.level>1
 end
 
-local function TryToSoulhop(act, act_pos)
+local function TryToShadowhop(act, act_pos)
     return act.doer ~= nil
     and act_pos ~= nil
     and AllowShadowHip(act.doer)
@@ -54,7 +54,7 @@ shadowhip.id="SHADOWHIP"
 shadowhip.str="暗影跳跃"
 shadowhip.fn= function(act)
 	local act_pos = act:GetActionPoint()
-    if TryToSoulhop(act,act_pos) then
+    if TryToShadowhop(act,act_pos) then
         act.doer.sg:GoToState("portal_jumpin", {dest = act_pos})
         return true
     end
@@ -65,7 +65,7 @@ AddAction(shadowhip)
 
 
 
-AddComponentAction("POINT","shadowlevel", function (inst, doer, pos, actions, right, target)
+AddComponentAction("POINT","shadowlevel", function (inst, doer, pos, actions, right)
             local x,y,z = pos:Get()
             local armor = doer.replica.inventory:GetEquippedItem(EQUIPSLOTS.BODY)
             if right and (TheWorld.Map:IsAboveGroundAtPoint(x,y,z) or TheWorld.Map:GetPlatformAtPoint(x,z) ~= nil) and not TheWorld.Map:IsGroundTargetBlocked(pos)
@@ -76,110 +76,105 @@ AddComponentAction("POINT","shadowlevel", function (inst, doer, pos, actions, ri
             end
         end)
 
---[[local function ArriveAnywhere()
+-----------------------------------------------------------------
+----传送塔
+-----------------------------------------------------------------
+local townportal= Action({ priority=12, rmb=true, distance=2, mount_valid=true })
+townportal.id="TOWNPORTAL"
+townportal.str="使用传送塔"
+townportal.fn= function(act)
     return true
 end
 
 
-local townportal_map=Action({ priority=10, customarrivecheck=ArriveAnywhere, rmb=true, mount_valid=true, map_action=true, })
-townportal_map.id="TOWNPORTAL_MAP"
-townportal_map.stroverridefn=function(act) return "使用传送塔" end
-
-local function ActionCanMapTeleport(act)
-    return act.doer~=nil
-    --and act.dore.components.
-end
+AddAction(townportal)     
 
 
 
-townportal_map.fn=function(act)
-    local act_pos = act:GetActionPoint()
-    if ActionCanMapTeleport(act) and TryToSoulhop(act,act_pos) then
-        act.doer.sg:GoToState("portal_jumpin", {dest = act_pos, from_map = true,})
-        TheNet:Announce("success")
-        return true
+AddComponentAction("POINT","teleporter", function (inst, doer, pos, actions, right)  
+    if right and inst:HasTag("donotautopick") then
+        table.insert(actions, ACTIONS.TOWNPORTAL)
     end
-    TheNet:Announce("fail")
-    return false
-end
+end)
 
-AddAction(townportal_map)
 
---global("ACTIONS_MAP_REMAP")
-
-local BLINK_MAP_MUST = { "CLASSIFIED", "globalmapicon", "fogrevealer" }
+local BLINK_MAP_MUST = { "townportal"}
 ACTIONS_MAP_REMAP[ACTIONS.TOWNPORTAL.code] = function(act, targetpos)
     local doer = act.doer
     if doer == nil then
         return nil
     end
-    if doer.item_portal then
-        return nil
-    end
-    if not TheWorld.Map:IsVisualGroundAtPoint(targetpos.x, targetpos.y, targetpos.z) then
-        local ents = TheSim:FindEntities(targetpos.x, targetpos.y, targetpos.z, PLAYER_REVEAL_RADIUS * 0.4, BLINK_MAP_MUST)
+    if TheWorld.Map:IsVisualGroundAtPoint(targetpos.x, targetpos.y, targetpos.z,BLINK_MAP_MUST) then
+        local ents = TheSim:FindEntities(targetpos.x, targetpos.y, targetpos.z, 16)
         local revealer
-        local MAX_WALKABLE_PLATFORM_DIAMETERSQ = TUNING.MAX_WALKABLE_PLATFORM_RADIUS * TUNING.MAX_WALKABLE_PLATFORM_RADIUS * 4 -- Diameter.
         for _, v in ipairs(ents) do
-            if doer:GetDistanceSqToInst(v) > MAX_WALKABLE_PLATFORM_DIAMETERSQ then
-                -- Ignore close boats because the range for aim assist is huge.
+            if v.prefab=="townportal" then
                 revealer = v
                 break
-            end
+            end    
         end
         if revealer == nil then
             return nil
         end
+        
         targetpos.x, targetpos.y, targetpos.z = revealer.Transform:GetWorldPosition()
-        if revealer._target ~= nil then
-            -- Server only code.
-            local boat = revealer._target:GetCurrentPlatform()
-            if boat == nil then
-                return nil
-            end
-            targetpos.x, targetpos.y, targetpos.z = boat.Transform:GetWorldPosition()
-        end
+        local act_remap = BufferedAction(doer, revealer, ACTIONS.TOSS_MAP, act.invobject, targetpos)
+        return act_remap
     end
-    local act_remap = BufferedAction(doer, nil, ACTIONS.TOWNPORTAL_MAP, act.invobject, targetpos)
-    return act_remap
-end]]
+end
 
---[[AddClassPostConstruct("screens/mapscreen", function(self)
-    local old_ProcessRMBDecorations = self.ProcessRMBDecorations
-    function self:ProcessRMBDecorations(...)
-        if old_ProcessRMBDecorations then
-            old_ProcessRMBDecorations(self, ...)
-        end
-        if not self.owner:HasTag("soulstealer") and self.decorationdata and self.decorationdata.rmbents then
-            if self.decorationdata.rmbents[1] then
-                self.decorationdata.rmbents[1]:Hide()
-            end
-            if self.decorationdata.rmbents[2] then
-                self.decorationdata.rmbents[2]:Hide()
-            end
-            if self.decorationdata.rmbents[3] then
-                self.decorationdata.rmbents[3]:Hide()
-            end
-        end
+
+ACTIONS.TOSS_MAP.stroverridefn = function(act)
+    return act.doer ~= nil and act.invobject ~= nil and (act.invobject.CanTossOnMap ~= nil and act.invobject:CanTossOnMap(act.doer) and STRINGS.ACTIONS.TOSS) 
+    or (act.invobject:HasTag("townportaltalisman") and "使用传送塔") or nil
+end
+
+local function ActionCanMapToss(act)
+    if act.doer ~= nil and act.invobject ~= nil and act.invobject.CanTossOnMap ~= nil then
+        return act.invobject:CanTossOnMap(act.doer)
     end
-end)
-AddClassPostConstruct("components/playeractionpicker", function(self)
-    local old_DoGetMouseActions = self.DoGetMouseActions
-    function self:DoGetMouseActions(...)
-        local useitem = self.inst.replica.inventory and self.inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS) or nil
-        local lmb, rmb = nil, nil
-        if old_DoGetMouseActions then
-            lmb, rmb = old_DoGetMouseActions(self, ...)
-        end
-        if rmb ~= nil and
-            rmb.action and
-            rmb.action == ACTIONS.TOWNPORTAL_MAP and
-            rmb.doer and
-            not rmb.doer:HasTag("soulstealer") and
-            (useitem == nil or (useitem ~= nil and useitem.replica.equippable and not useitem.replica.equippable._mj_blinkstaff:value()))
-            then
-            rmb = nil
-        end
-        return lmb, rmb
+    return false
+end
+
+ACTIONS.TOSS_MAP.fn = function(act)
+    if ActionCanMapToss(act) then
+        act.from_map = true
+        return ACTIONS.TOSS.fn(act)
+    end
+    if act.doer ~= nil and act.invobject ~= nil and act.invobject:HasTag("townportaltalisman") then
+        act.doer:CloseMinimap()
+        act.invobject.components.teleporter:Target(act.target)
+        act.doer.sg:GoToState("entertownportal", { teleporter = act.invobject })
+        return true
+    end
+end
+
+
+
+--[[AddClassPostConstruct("screens/mapscreen",function (self)
+
+end)]]
+
+--[[AddComponentPostInit("playercontroller", function(self)
+    function self:GetMapActions(position)
+        -- NOTES(JBK): In order to not interface with the playercontroller too harshly and keep that isolated from this system here
+        --             it is better to get what the player could do at their location as a quick check to make sure the actions done
+        --             here will not interfere with actions done without the map up.
+        local LMBaction, RMBaction = nil, nil
+    
+        local pos = self.inst:GetPosition()
+    
+        self.inst.checkingmapactions = true -- NOTES(JBK): Workaround flag to not add function argument changes for this task and lets things opt-in to special handling.
+    
+        local lmbact = self.inst.components.playeractionpicker:GetLeftClickActions(pos)[1]
+        
+        LMBaction = self:RemapMapAction(lmbact, position)
+    
+        local rmbact = self.inst.components.playeractionpicker:GetRightClickActions(pos)[1]
+        RMBaction = self:RemapMapAction(rmbact, position)
+        print(RMBaction~=nil)
+        self.inst.checkingmapactions = nil
+    
+        return LMBaction, RMBaction
     end
 end)]]

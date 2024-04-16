@@ -19,13 +19,11 @@ local function DoWarning(inst)
             p.components.grogginess:AddGrogginess(0.5, 5)
         end
     end
-    local x, y, z = inst.Transform:GetWorldPosition()
-    SpawnPrefab("moonpulse_spawner").Transform:SetPosition(x, y, z)
+    SpawnPrefab("moonpulse_spawner").Transform:SetPosition(ix, 0, iz)
 end
 
 local events =
 {
-    CommonHandlers.OnFreeze(),
     CommonHandlers.OnDeath(),
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnAttacked(nil, TUNING.ALTERGUARDIAN_PHASE3_MAX_STUN_LOCKS),
@@ -194,7 +192,6 @@ local function SpawnEraserBeam(inst, target_pos)
     gz = gz + (2 * math.sin(angle))
 
     local targets, skiptoss = {}, {}
-    local sbtargets, sbskiptoss = {}, {}
     local x, z = nil, nil
     local trigger_time = nil
 
@@ -212,17 +209,19 @@ local function SpawnEraserBeam(inst, target_pos)
         inst:DoTaskInTime(trigger_time, function(inst2)
             local fx = SpawnPrefab(prefab)
             fx.caster = inst2
-            fx.type="eraser"
             fx.Transform:SetPosition(x1, 0, z1)
             fx:Trigger(0, targets, skiptoss)
             if first then
                 ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, .2, target_pos or fx, 30)
             end
         end)
-        if i%4==0 and i>0 then
-            local spell = SpawnPrefab("deer_fire_circle")
+        if i%5==0 and i>0 then
+            local light = SpawnPrefab("alter_light")
+            light.killer=true
+            light.Transform:SetPosition(x1, 0, z1)
+            --[[local spell = SpawnPrefab("deer_fire_circle")
             spell.Transform:SetPosition(x1, 0, z1)
-            spell:DoTaskInTime(trigger_time+20, spell.KillFX)
+            spell:DoTaskInTime(trigger_time+20, spell.KillFX)]]
         end
     end
 end
@@ -367,13 +366,12 @@ local function do_summon_spawn(inst)
         inst.sg.statemem.ready_to_finish = true
     end
 end
-local FLAME_MUST_TAGS = { "_health" }
-local FLAME_EXCLUDE_TAGS = { "INLIMBO", "noattack", "invisible", "playerghost", "brightmareboss","smallcreature" }
-local FLAME_MUSTONEOF_TAGS={"_combat","shadow_creature"}
+local FLAME_MUST_TAGS = { "_combat" }
+local FLAME_EXCLUDE_TAGS = { "INLIMBO", "noattack", "invisible", "playerghost", "brightmareboss","smallcreature","brightmare","wall","FX" }
 local function do_flame_spawn(inst)
     local target_in_range = false
     local ix, _, iz = inst.Transform:GetWorldPosition()
-	local ents = TheSim:FindEntities(ix, 0, iz, 30, FLAME_MUST_TAGS, FLAME_EXCLUDE_TAGS,FLAME_MUSTONEOF_TAGS)
+	local ents = TheSim:FindEntities(ix, 0, iz, 30, FLAME_MUST_TAGS, FLAME_EXCLUDE_TAGS)
     for i, p in ipairs(ents) do
         local dsq_to_player = p:GetDistanceSqToPoint(ix, 0, iz)
         if dsq_to_player < TUNING.ALTERGUARDIAN_PHASE3_SUMMONRSQ then
@@ -549,7 +547,7 @@ local states =
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("idle")
-            inst:StartCloudTask()
+            --inst:StartCloudTask()
             set_lightvalues(inst, 0.9)
         end,
 
@@ -658,9 +656,9 @@ local states =
 
         timeline =
         {
-            TimeEvent(1*FRAMES, do_stab_attack),
+            TimeEvent(FRAMES, do_stab_attack),
             TimeEvent(8*FRAMES, do_summon_spawn),
-            TimeEvent(16*FRAMES, do_summon_spawn),
+            TimeEvent(10*FRAMES, do_summon_spawn),
         },
 
         events =
@@ -740,17 +738,17 @@ local states =
                 SummonHolyLight(inst,inst,6,4)
             end),
             TimeEvent(30*FRAMES, function(inst)
-                SummonHolyLight(inst,inst.sg.statemem.target,6,5.5)
+                SummonHolyLight(inst,inst.sg.statemem.target,6,6)
                 SummonHolyLight(inst,inst,8,10)
 
             end),
             TimeEvent(90*FRAMES, function(inst)
-                SummonHolyLight(inst,inst.sg.statemem.target,6,5.5)
+                SummonHolyLight(inst,inst.sg.statemem.target,6,6)
                 SummonHolyLight(inst,inst,16,12)
                 SummonHolyLight(inst,inst,12,12)
             end),
             TimeEvent(120*FRAMES, function(inst)
-                SummonHolyLight(inst,inst.sg.statemem.target,6,5.5)
+                SummonHolyLight(inst,inst.sg.statemem.target,6,6)
                 SummonHolyLight(inst,inst,8,10)
                 SummonHolyLight(inst,inst,18,12)
             end),
@@ -789,7 +787,7 @@ local states =
                 if inst.sg.statemem.skybeamanim_playing then
                     inst.sg.statemem.skybeamanim_playing = false
                     inst.AnimState:PushAnimation("idle2", true)
-                    inst.sg:RemoveStateTag("busy")
+
                 end
             end),
         },
@@ -799,7 +797,6 @@ local states =
         onexit = function(inst)
             inst.components.timer:StartTimer("holylight_cd", 30)
             inst.SoundEmitter:KillSound("channel")
-            inst.sg:RemoveStateTag("nofreeze")
         end,
     },
     State{
@@ -816,7 +813,7 @@ local states =
 
             inst.sg:AddStateTag("nofreeze")
 
-            inst.sg:SetTimeout(10)
+            inst.sg:SetTimeout(9)
         end,
 
         timeline =
@@ -1139,7 +1136,7 @@ local states =
 
             inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian3/atk_beam")
 
-            inst.sg:AddStateTag("nofreeze")
+           
         end,
 
         onupdate = function(inst)

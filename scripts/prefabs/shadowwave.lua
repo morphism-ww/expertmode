@@ -6,13 +6,10 @@ local rogueassets =
 local SPLASH_WETNESS = 30
 
 local function DoSplash(inst)
-    local wave_splash = SpawnPrefab("wave_splash")
     local pos = inst:GetPosition()
-    wave_splash.Transform:SetPosition(pos.x, pos.y, pos.z)
-    wave_splash.Transform:SetRotation(inst.Transform:GetRotation())
     local players = FindPlayersInRange(pos.x, pos.y, pos.z, 4, true)
     for i, v in ipairs(players) do
-        if not v:HasTag("playerghost") then
+        if v:IsValid() then
             local moisture = v.components.moisture
             if moisture ~= nil then
                 local waterproofness = moisture:GetWaterproofness()
@@ -21,14 +18,11 @@ local function DoSplash(inst)
                 local entity_splash = SpawnPrefab("splash")
                 entity_splash.Transform:SetPosition(v:GetPosition():Get())
             end
-            if v.components.health~=nil then
-                v.components.health:DoDelta(-10)
-            end
             v:PushEvent("knockback", { knocker = inst, radius =1,strengthmult=1.5,propsmashed=true})
         end
     end
     inst.Physics:ClearCollisionMask()
-    inst:DoTaskInTime(0.1,inst.Remove)
+    inst:DoTaskInTime(0.5,inst.Remove)
 end
 
 local function DoSplash2(inst)
@@ -38,7 +32,7 @@ local function DoSplash2(inst)
     wave_splash.Transform:SetRotation(inst.Transform:GetRotation())
     local players = FindPlayersInRange(pos.x, pos.y, pos.z, 4, true)
     for i, v in ipairs(players) do
-        if not v:HasTag("playerghost") then
+        if v:IsValid() then
             local moisture = v.components.moisture
             if moisture ~= nil then
                 local waterproofness = moisture:GetWaterproofness()
@@ -59,13 +53,13 @@ end
 
 
 local function oncollidewave_shadow(inst, other)
-    if other and other:HasTag("character") then
+    if other and other:HasTag("player") then
         DoSplash(inst)
     end
 end
 
 local function oncollidewave_lunar(inst, other)
-    if other and other:HasTag("character") then
+    if other and other:HasTag("player") then
         DoSplash2(inst)
     end
 end
@@ -85,14 +79,11 @@ local function commonfn()
 
 
     local phys = inst.entity:AddPhysics()
-    phys:SetSphere(1)
+    phys:SetSphere(1.2)
     phys:SetCollisionGroup(COLLISION.OBSTACLES)
     phys:ClearCollisionMask()
     phys:CollidesWith(COLLISION.CHARACTERS)
     phys:SetCollides(false)
-
-    inst:AddTag("wave")
-    inst:AddTag("FX")
 
 
     inst.entity:SetPristine()
@@ -125,14 +116,15 @@ end
 local function lunarfn()
     local inst=commonfn()
     inst.AnimState:SetMultColour(0,1,1,1)
+    inst.Transform:SetScale(1.4,1.4,1.4)
+    
     if not TheWorld.ismastersim then
         return inst
     end
 
     inst:AddComponent("combat")
     inst.components.combat:SetDefaultDamage(100)
-    inst.components.combat.playerdamagepercent = .5
-    inst.components.combat:SetRange(5,5)
+    inst.components.combat:SetRange(5)
 
     inst:AddComponent("thief")
     inst.Physics:SetCollisionCallback(oncollidewave_lunar)

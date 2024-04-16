@@ -28,14 +28,7 @@ local function onspawnfn(inst, spawn)
 end
 
 
-AddPrefabPostInit("toadstool",function(inst)
-    if not TheWorld.ismastersim then return end
-    inst:AddComponent("periodicspawner")
-    inst.components.periodicspawner:SetPrefab("spore_poison")
-    inst.components.periodicspawner:SetOnSpawnFn(onspawnfn)
-    inst.components.periodicspawner:SetRandomTimes(8, 10)
-    inst.components.periodicspawner:Start()
-end)
+
 
 AddStategraphPostInit("SGtoadstool",function(sg)
     sg.states.roar.timeline[5]=
@@ -60,21 +53,16 @@ local function PoisonOther2(inst, data)
     end
 end
 
-local function LeaveSpore(inst)
-    SpawnPrefab("spore_poison").Transform:SetPosition(inst.Transform:GetWorldPosition())
-end
 
 
 AddPrefabPostInit("mushroombomb",function(inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("onhitother", PoisonOther2)
-    inst:ListenForEvent("mushroombomb._explode", LeaveSpore)
 end)
 
 AddPrefabPostInit("mushroombomb_dark",function(inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("onhitother", PoisonOther2)
-    inst:ListenForEvent("mushroombomb._explode", LeaveSpore)
 end)
 
 local function WeakenTarget(inst,data)
@@ -89,30 +77,4 @@ AddPrefabPostInit("sporecloud",function(inst)
     inst:ListenForEvent("onareaattackother", WeakenTarget)
 end)
 
-local function AlignToTarget(inst, target)
-    inst.Transform:SetRotation(target.Transform:GetRotation())
-end
 
-local function OnChangeFollowSymbol(inst, target, followsymbol, followoffset)
-    inst.Follower:FollowSymbol(target.GUID, followsymbol, followoffset.x, followoffset.y, followoffset.z)
-end
-
-local function OnAttached(inst, target, followsymbol, followoffset)
-    inst.entity:SetParent(target.entity)
-    inst._light.entity:SetParent(target.entity)
-    OnChangeFollowSymbol(inst, target, followsymbol, followoffset)
-    if inst._followtask ~= nil then
-        inst._followtask:Cancel()
-    end
-    inst._followtask = inst:DoPeriodicTask(0, AlignToTarget, nil, target)
-    AlignToTarget(inst, target)
-    target:AddDebuff("toad_corrupt","corrupt",{duration=60})
-    target:AddDebuff("toad_weak","weak",{duration=10,speed=0.7})
-end
-
-
-
-AddPrefabPostInit("sporebomb",function(inst)
-    if not TheWorld.ismastersim then return end
-    inst.components.debuff:SetAttachedFn(OnAttached)
-end)

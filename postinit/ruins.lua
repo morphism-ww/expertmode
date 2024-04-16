@@ -1,4 +1,4 @@
-AddPrefabPostInit("armor_ruins", function(inst)
+AddPrefabPostInit("armorruins", function(inst)
 	inst:AddTag("poison_immune")
 	if not TheWorld.ismastersim then
 		return inst
@@ -6,9 +6,8 @@ AddPrefabPostInit("armor_ruins", function(inst)
 	inst.components.equippable.dapperness = TUNING.DAPPERNESS_LARGE
 end)
 
-
-
 -------------------------------------------------------------
+
 local function ReticuleTargetFn()
     return Vector3(ThePlayer.entity:LocalToWorldSpace(6.5, 0, 0))
 end
@@ -41,7 +40,7 @@ end
 
 local function SpellFn(inst, doer, pos)
     inst.components.parryweapon:EnterParryState(doer, doer:GetAngleToPoint(pos), 5.5)
-    inst.components.rechargeable:Discharge(10)
+    inst.components.rechargeable:Discharge(8)
 end
 
 local function OnParry(inst, doer, attacker, damage)
@@ -72,7 +71,7 @@ end
 AddPrefabPostInit("ruins_bat", function(inst)
 	--parryweapon (from parryweapon component) added to pristine state for optimization
     inst:AddTag("parryweapon")
-
+    inst:AddTag("battleshield")
     --rechargeable (from rechargeable component) added to pristine state for optimization
     inst:AddTag("rechargeable")
 

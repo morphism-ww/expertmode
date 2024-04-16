@@ -89,7 +89,7 @@ local function retargetfn(inst)
     for i, v in ipairs(AllPlayers) do
         if not v:HasTag("playerghost") then
             local distsq = v:GetDistanceSqToInst(inst)
-                if distsq < 16 and inst.components.combat:CanTarget(v) then
+                if distsq < 36 and inst.components.combat:CanTarget(v) then
                     return v
             end
         end
@@ -105,15 +105,14 @@ local function shouldKeepTarget(inst, target)
 end
 
 local function ShareTargetFn(dude)
-    return dude:HasTag("shadoweyeturret") or dude:HasTag("chess")
+    return dude:HasTag("chess")
 end
 
 
 local function OnAttacked(inst, data)
     local attacker = data ~= nil and data.attacker or nil
     if attacker ~= nil then
-        inst.components.combat:SetTarget(attacker)
-        inst.components.combat:ShareTarget(attacker, 20, ShareTargetFn, 10)
+        inst.components.combat:ShareTarget(attacker, 20, ShareTargetFn, 8)
         if inst.gem=="blue" and attacker.components.freezable~=nil then
             attacker.components.freezable:AddColdness(2)
         end
@@ -241,6 +240,7 @@ local function fn()
     inst:AddTag("hostile")
     inst:AddTag("shadoweyeturret")
     inst:AddTag("chess")
+    inst:AddTag("laser_immune")
     inst:AddTag("cavedweller")
 
     inst.AnimState:SetBank("eyeball_turret")
@@ -290,7 +290,7 @@ local function fn()
     inst.components.combat:SetAttackPeriod(2)
     inst.components.combat:SetRetargetFunction(1, retargetfn)
     inst.components.combat:SetKeepTargetFunction(shouldKeepTarget)
-    inst.components.combat.onhitotherfn=gemmagic
+    --inst.components.combat.onhitotherfn=gemmagic
 
 
     inst:AddComponent("entitytracker")
@@ -314,7 +314,7 @@ local function fn()
     inst:SetStateGraph("SGeyeturret")
     inst:SetBrain(brain)
     inst:DoTaskInTime(0.1,spawngembase)
-    inst:DoPeriodicTask(10,function() choosegem(inst) end)
+    inst:DoPeriodicTask(10+5*math.random(),function() choosegem(inst) end)
 
     inst:ListenForEvent("death", OnDeath)
 
