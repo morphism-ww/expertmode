@@ -264,7 +264,7 @@ local function summonfn()
 	--inst.components.groundpounder.DestroyPoints = DestroyPoints
 
 	inst:AddComponent("combat")
-	inst.components.combat:SetDefaultDamage(80)
+	inst.components.combat:SetDefaultDamage(100)
 
 	inst.StartStep = StartStep2
 

@@ -22,9 +22,6 @@ end)
 
 AddPrefabPostInit("townportal",function(inst)
     inst.entity:SetCanSleep(false)
-    if not TheWorld.ismastersim then
-        return inst
-    end
 end)
 
 

@@ -95,7 +95,7 @@ end
 local function createeruption(staff, target, pos)
     local owner = staff.components.inventoryitem:GetGrandOwner() or nil
     if owner then
-        staff.components.finiteuses:Use(5)
+        staff.components.finiteuses:Use(4)
         local delay = 0.0
         for i = 1, 3 do
             local x, y, z = 2* UnitRand() + pos.x, pos.y,2* UnitRand() + pos.z
@@ -154,8 +154,8 @@ end
 
 
 local function volcano()
-    local inst = commonfn("meteor", {"nosteal", "nopunch", "allow_action_on_impassable"}, nil, nil, nil, true)
-
+    local inst = commonfn("meteor", {"nosteal", "nopunch", "allow_action_on_impassable","quickcast"}, nil, nil, nil)
+    
     if not TheWorld.ismastersim then
         return inst
     end
@@ -173,12 +173,13 @@ local function volcano()
     inst.components.spellcaster:SetSpellFn(createeruption)
     inst.components.spellcaster.canuseonpoint = true
     inst.components.spellcaster.canuseonpoint_water = true
+    inst.components.spellcaster.quickcast = true
     inst.components.spellcaster:SetCanCastFn(cancast)
 
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetOnFinished(onfinished)
-    inst.components.finiteuses:SetMaxUses(80)
-    inst.components.finiteuses:SetUses(80)
+    inst.components.finiteuses:SetMaxUses(100)
+    inst.components.finiteuses:SetUses(100)
 
 
     inst:AddComponent("repairable")

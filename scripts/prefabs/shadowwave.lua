@@ -21,8 +21,9 @@ local function DoSplash(inst)
             v:PushEvent("knockback", { knocker = inst, radius =1,strengthmult=1.5,propsmashed=true})
         end
     end
-    inst.Physics:ClearCollisionMask()
-    inst:DoTaskInTime(0.5,inst.Remove)
+    inst.Physics:Stop()
+    inst.Physics:SetActive(false)
+    inst:DoTaskInTime(0.3,inst.Remove)
 end
 
 local function DoSplash2(inst)

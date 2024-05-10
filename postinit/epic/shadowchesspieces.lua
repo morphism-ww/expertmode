@@ -34,15 +34,12 @@ local function retargetfn(inst)
 end
 
 
-local function keeptarget(inst)
-  local heart = inst.components.follower.leader
-  return heart == nil or inst:IsNear(heart, 20)
-end
 
 local function rememberheart(inst,data)
     if data.leader~=nil then
         --inst.components.knownlocations:RememberLocation("heart", heart:GetPosition())
         inst.components.follower:StartLeashing()
+        inst.components.health:SetAbsorptionAmount(1)
         --inst.components.health:SetInvincible(true)
     end
 end
@@ -77,6 +74,21 @@ local function SummonHeart(inst)
       heart:PushEvent("summon")
     end
 end
+local function OnDespawn(inst)
+  inst._despawntask = nil
+  if inst:IsAsleep() and not inst.components.health:IsDead() then
+      inst:Remove()
+  end
+end
+local function OnEntitySleep(inst)
+  if inst._despawntask ~= nil then
+      inst._despawntask:Cancel()
+  end
+  if inst.components.follower.leader==nil then
+    inst._despawntask = inst:DoTaskInTime(TUNING.SHADOW_CHESSPIECE_DESPAWN_TIME, OnDespawn)
+  end
+  
+end
 
 
 AddPrefabPostInit("shadow_rook",function(inst)
@@ -84,13 +96,13 @@ AddPrefabPostInit("shadow_rook",function(inst)
 
     inst:AddComponent("follower")
     inst.components.combat.targetfn =retargetfn
-    inst.components.combat:SetKeepTargetFunction(keeptarget)
     inst.components.lootdropper:SetLootSetupFn(lootsetfn)
 
-
+    inst.OnEntitySleep = OnEntitySleep
 
     inst:ListenForEvent("startfollowing", rememberheart)
     inst:ListenForEvent("death",SummonHeart)
+    inst:WatchWorldState("isalterawake", inst.Remove)
 end)
 
 AddPrefabPostInit("shadow_bishop",function(inst)
@@ -98,12 +110,12 @@ AddPrefabPostInit("shadow_bishop",function(inst)
 
   inst:AddComponent("follower")
   inst.components.combat.targetfn =retargetfn
-  inst.components.combat:SetKeepTargetFunction(keeptarget)
   inst.components.lootdropper:SetLootSetupFn(lootsetfn)
 
-
+  inst.OnEntitySleep = OnEntitySleep
   inst:ListenForEvent("startfollowing", rememberheart)
   inst:ListenForEvent("death",SummonHeart)
+  inst:WatchWorldState("isalterawake", inst.Remove)
 end)
 
 AddPrefabPostInit("shadow_knight",function(inst)
@@ -111,21 +123,22 @@ AddPrefabPostInit("shadow_knight",function(inst)
 
   inst:AddComponent("follower")
   inst.components.combat.targetfn =retargetfn
-  inst.components.combat:SetKeepTargetFunction(keeptarget)
+  --inst.components.combat:SetKeepTargetFunction(keeptarget)
   inst.components.lootdropper:SetLootSetupFn(lootsetfn)
-
+  inst.OnEntitySleep = OnEntitySleep
 
   inst:ListenForEvent("startfollowing", rememberheart)
   inst:ListenForEvent("death",SummonHeart)
+  inst:WatchWorldState("isalterawake", inst.Remove)
 end)
 
 
 require "behaviours/leash"
-local LEASH_MAX_DIST = 8
-local LEASH_RETURN_DIST = 6
+local LEASH_MAX_DIST = 5
+local LEASH_RETURN_DIST = 5
 
 local function GetHeartPos(inst)
-  local heart=inst.components.follower.leader
+  local heart=inst.hea
     return heart~=nil and heart:GetPosition()
 end
 
@@ -139,10 +152,4 @@ end)
 
 AddBrainPostInit("shadow_knightbrain", function(self)
   self.bt.root.children[5]=Leash(self.inst, GetHeartPos, LEASH_MAX_DIST, LEASH_RETURN_DIST)   
-end)
-
-AddPrefabPostInit("eye_charge",function(inst)
-  if not TheWorld.ismastersim then return end
-  inst:AddComponent("weapon")
-  inst.components.weapon:SetDamage(100)
 end)

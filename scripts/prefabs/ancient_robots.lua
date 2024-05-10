@@ -15,7 +15,7 @@ local function Retarget(inst)
     local homePos = inst.components.knownlocations:GetLocation("home")
     return not (homePos ~= nil and
     inst:GetDistanceSqToPoint(homePos:Get()) >= 900)
-    and FindEntity(inst, 20, function(guy)
+    and FindEntity(inst, 22, function(guy)
             return inst.components.combat:CanTarget(guy) and not guy.components.health:IsDead()
         end, RETARGET_MUST_TAGS,
             RETARGET_CANT_TAGS,
@@ -59,7 +59,9 @@ end
 
 
 local function SetHomePosition(inst)
-    inst.components.knownlocations:RememberLocation("home", inst:GetPosition())
+    if inst.components.knownlocations:GetLocation("home")==nil then
+        inst.components.knownlocations:RememberLocation("home", inst:GetPosition())
+    end
 end
 
 local function fn()
@@ -110,7 +112,7 @@ local function fn()
     inst:AddComponent("combat")
     inst.components.combat.hiteffectsymbol = "body01"
     inst.components.combat:SetDefaultDamage(180)
-    inst.components.combat.playerdamagepercent=0.5
+    inst.components.combat.playerdamagepercent = 0.5
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0.5, "ancient_armor")
     --inst.components.combat:SetAttackPeriod(5)
     inst.components.combat:SetRetargetFunction(2, Retarget)
@@ -118,8 +120,8 @@ local function fn()
     inst.components.combat:SetKeepTargetFunction(KeepTarget)
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
-    inst.components.locomotor.walkspeed = 2.5
-    inst.components.locomotor.runspeed = 2.5
+    inst.components.locomotor.walkspeed = 3
+    inst.components.locomotor.runspeed = 3
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetLoot({"gears","thulecite"})

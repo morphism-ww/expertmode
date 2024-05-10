@@ -59,11 +59,11 @@ local debuff_defs={
 			target.components.health:DoDelta(-inst.damage, nil,"poison")
 			if target.components.hunger ~= nil then
 				if target.components.hunger.current > 0 then
-					target.components.hunger:DoDelta(-4)
+					target.components.hunger:DoDelta(-1)
 				end
 			end
 			if target.components.sanity~=nil then
-				target.components.sanity:DoDelta(-4)
+				target.components.sanity:DoDelta(-1)
 			end
 			if target:HasTag("player") and not target:HasTag("playerghost") then
 				target.player_classified.poisonover:set_local(true)
@@ -150,7 +150,7 @@ local debuff_defs={
 		postinit=function (inst)
 			inst.duration=30
 		end
-	}
+	},
 }
 
 return debuff_defs

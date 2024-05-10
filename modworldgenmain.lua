@@ -23,6 +23,11 @@ Layouts["Barracks3"] = StaticLayout.Get("map/static_layouts/barracks_three",{
 			start_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
 			fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
 			layout_position = LAYOUT_POSITION.CENTER})
+            
+Layouts["Void_Land"] = StaticLayout.Get("map/static_layouts/void_land",{
+                start_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
+                fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
+                layout_position = LAYOUT_POSITION.CENTER})            
 
 if GetModConfigData("ancient") then
 
@@ -171,8 +176,9 @@ if GetModConfigData("ancient") then
         } },
         ["skeleton_notplayer"] = { count = 1, tasks={
             "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
-        } },
-    }
+        } }
+
+		}
     end)
     
     AddTaskPreInit("Sacred",function (task)

@@ -149,32 +149,52 @@ ACTIONS.TOSS_MAP.fn = function(act)
     end
 end
 
+--------------wardrobe------------------
 
 
---[[AddClassPostConstruct("screens/mapscreen",function (self)
+ACTIONS.CHANGEIN.mount_valid = true
+ACTIONS.CHANGEIN.priority = 3
 
-end)]]
+--------------------------------------
 
---[[AddComponentPostInit("playercontroller", function(self)
-    function self:GetMapActions(position)
-        -- NOTES(JBK): In order to not interface with the playercontroller too harshly and keep that isolated from this system here
-        --             it is better to get what the player could do at their location as a quick check to make sure the actions done
-        --             here will not interfere with actions done without the map up.
-        local LMBaction, RMBaction = nil, nil
-    
-        local pos = self.inst:GetPosition()
-    
-        self.inst.checkingmapactions = true -- NOTES(JBK): Workaround flag to not add function argument changes for this task and lets things opt-in to special handling.
-    
-        local lmbact = self.inst.components.playeractionpicker:GetLeftClickActions(pos)[1]
-        
-        LMBaction = self:RemapMapAction(lmbact, position)
-    
-        local rmbact = self.inst.components.playeractionpicker:GetRightClickActions(pos)[1]
-        RMBaction = self:RemapMapAction(rmbact, position)
-        print(RMBaction~=nil)
-        self.inst.checkingmapactions = nil
-    
-        return LMBaction, RMBaction
+local swing = Action({priority=10, mount_valid=true, rmb = true,distance=24 })
+swing.id="ANCIENT_CHOP"
+swing.str="斩击"
+swing.fn= function (act)
+    if act.invobject~=nil and act.invobject:HasTag("allow_chop") then
+        act.invobject:RemoveTag("allow_chop")
+        act.invobject:DoChop(act.doer,act:GetActionPoint())  
+        return true
     end
-end)]]
+end
+
+AddAction(swing)
+
+AddComponentAction("POINT","move_attack", function (inst, doer, pos, actions, right)
+    if right and inst:HasTag("allow_chop") then
+        table.insert(actions, ACTIONS.ANCIENT_CHOP)
+    end
+end)
+
+
+--------------------------------------------
+local open_portal = Action({ priority=2 })
+open_portal.id = "OPEN_PORTAL"
+open_portal.str = "开启传送门"
+open_portal.fn = function (act)
+    if not act.target._powered then
+        act.target:OpenPortal()
+        return true
+    end
+    return false
+end
+
+AddAction(open_portal)
+
+AddComponentAction("USEITEM","portal_key", function (inst, doer,target, actions, right)
+    if target:HasTag("planar_portal") and inst:HasTag("portal_key") then
+        table.insert(actions, ACTIONS.OPEN_PORTAL)
+    end
+end)
+
+ACTIONS.JUMPIN.priority = 2

@@ -17,12 +17,6 @@ local function onunequip(inst, owner)
 end
 
 
-local function onattack(inst,owner,target)
-    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-10,owner.prefab,nil,true,owner,true)
-        target.components.health:DeltaPenalty(0.05)
-    end
-end
 
 local function fn()
     local inst = CreateEntity()
@@ -50,8 +44,6 @@ local function fn()
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(100)
     inst.components.weapon:SetRange(20, 20)
-	inst.components.weapon:SetOnAttack(onattack)
-
     inst:AddComponent("aoeweapon_leap")
     inst.components.aoeweapon_leap:SetDamage(100)
     inst.components.aoeweapon_leap:SetWorkActions()

@@ -315,15 +315,17 @@ local function SoulHunter(inst,data)
 end
 
 local function spawnsoul(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
-    for i=1,10 do
-        local radius=4*math.random()
-        local angle=2*PI*math.random()
-        SpawnPrefab("demon_soul").Transform:SetPosition(x+radius*math.cos(angle),2,z-radius*math.sin(angle))
-    end
-    if inst.enraged then
-        SpawnPrefab("krampus_sack").Transform:SetPosition(x,0,z)
-    end
+    if not TheWorld:HasTag("cave") then
+        local x,y,z=inst.Transform:GetWorldPosition()
+        for i=1,10 do
+            local radius=4*math.random()
+            local angle=2*PI*math.random()
+            SpawnPrefab("demon_soul").Transform:SetPosition(x+radius*math.cos(angle),2,z-radius*math.sin(angle))
+        end
+        if inst.enraged then
+            SpawnPrefab("krampus_sack").Transform:SetPosition(x,0,z)
+        end
+    end    
 end
 
 

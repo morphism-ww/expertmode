@@ -23,7 +23,7 @@ local _worldsettingstimer = TheWorld.components.worldsettingstimer
 
 local _spawntime = 5
 local _fireduration = 90
-local _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME/2 
+local _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME 
 local _warning= false
 local _warnduration = 60
 local _timetonextwarningsound=0
@@ -33,7 +33,7 @@ local _scheduleddrops=nil
 --[[ Private member functions ]]
 --------------------------------------------------------------------------
 local function CanFire()
-    return self.firerain_enabled and (_worldstate.season == "summer") and #_activeplayers>0
+    return TUNING.FIRERAIN_ENABLE and self.firerain_enabled and (_worldstate.season == "summer") and #_activeplayers>0
 end
 local function PauseAttacks()
     _warning = false
@@ -91,7 +91,7 @@ local function hasprotecter(pos)
 end
 
 
-local function SpawnFireForPlayer(player)
+local function SpawnFireForPlayer(inst,player)
     local pos = player:GetPosition()
     if hasprotecter(pos) then return end
     local firerain
@@ -108,7 +108,7 @@ end
 
 local function SpawnFireForPlayers()
     for i, v in ipairs(_activeplayers) do
-        v:DoTaskInTime(5*math.random(),SpawnFireForPlayer,v)
+        self.inst:DoTaskInTime(i,SpawnFireForPlayer,v)
     end
 end
 

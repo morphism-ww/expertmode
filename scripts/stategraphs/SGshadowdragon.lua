@@ -155,8 +155,8 @@ local states =
 
         timeline =
         {
-            TimeEvent(10*FRAMES, function(inst) PlayExtendedSound(inst, "attack") end),
-			TimeEvent(14*FRAMES, function(inst)
+            FrameEvent(10, function(inst) PlayExtendedSound(inst, "attack") end),
+			FrameEvent(20, function(inst)
 				--The stategraph event handler is delayed, so it won't be
 				--accurate for detecting attacks due to damage reflection
 				inst:ListenForEvent("attacked", onattackreflected)

@@ -21,3 +21,25 @@ AddPrefabPostInit("player_classified", function(inst)
 end)
 
 
+AddClassPostConstruct("widgets/itemtile",function (self)
+	function self:UpdateTooltip()
+		local str = self:GetDescriptionString()
+		self:SetTooltip(str)
+		if self.item:HasTag("pure") then
+			self:SetTooltipColour(64/255,224/255,208/255,1)
+		elseif self.item:HasTag("ancient") then
+			self:SetTooltipColour(218/255,165/255,32/255,1)	
+		elseif self.item:GetIsWet() then
+			self:SetTooltipColour(unpack(WET_TEXT_COLOUR))
+		else
+			self:SetTooltipColour(unpack(NORMAL_TEXT_COLOUR))
+		end
+	end
+end)
+
+
+--[[AddClassPostConstruct("widgets/craftingmenu_details",function (self)
+	
+end)]]
+
+

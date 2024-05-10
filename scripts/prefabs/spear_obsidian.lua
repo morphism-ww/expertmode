@@ -70,14 +70,15 @@ local function fn()
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetMaxUses(375)
     inst.components.finiteuses:SetUses(375)
-
     inst.components.finiteuses:SetOnFinished(inst.Remove)
+
+    inst:AddComponent("repairable")
+    inst.components.repairable.repairmaterial="obsidian"
+    inst.components.repairable:SetFiniteUsesRepairable(true)
 
     inst:AddComponent("inspectable")
 
     inst:AddComponent("inventoryitem")
-	--inst.components.inventoryitem.atlasname = "images/inventoryimages/volcanoinventory.xml"
-	--inst.caminho = "images/inventoryimages/volcanoinventory.xml"
 
     inst:AddComponent("waterproofer")
     inst.components.waterproofer:SetEffectiveness(0)

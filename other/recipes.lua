@@ -38,3 +38,25 @@ AddRecipe2("lunarlight",{Ingredient("opalpreciousgem", 1),Ingredient("moonrocknu
 
 AddRecipe2("armorvortexcloak",  { Ingredient("armorskeleton",1),Ingredient("horrorfuel", 20),Ingredient("voidcloth",20)},
          TECH.SHADOWFORGING_ONE,{nounlock=true,no_deconstruction=true},{"CRAFTING_STATION"})
+
+AddRecipe2("true_sword_lunarplant",   {Ingredient("sword_lunarplant",1),Ingredient("alterguardianhatshard",1),Ingredient("purebrilliance",8)},
+          TECH.OBSIDIAN_THREE,  {nounlock=true,image="sword_lunarplant.tex"})
+
+AddRecipe2("true_staff_lunarplant",   {Ingredient("staff_lunarplant",1),Ingredient("insight_soul",1),Ingredient("purebrilliance",8),Ingredient(	"moonglass_charged",4)},
+          TECH.OBSIDIAN_THREE,  {nounlock=true,image="staff_lunarplant.tex"})
+
+AddRecipe2("northpole",   {Ingredient("trident",1),Ingredient("insight_soul",1),Ingredient("bluegem",20)},
+          TECH.OBSIDIAN_THREE,  {nounlock=true})
+
+AddRecipe2("true_voidcloth_scythe",   {Ingredient("voidcloth_scythe",1),Ingredient("dreadstone",8),Ingredient("horrorfuel",10)},
+          TECH.OBSIDIAN_THREE,  {nounlock=true,no_deconstruction=true,image="voidcloth_scythe.tex"})
+
+--[[AddRecipe2("sword_ancient",     {Ingredient("voidcloth_scythe",1),Ingredient("true_sword_lunarplant",1,nil,true,"sword_lunarplant.tex"),
+        Ingredient("thulecite",20),Ingredient("opalpreciousgem",4),Ingredient("alterguardianhatshard",1)},
+         TECH.OBSIDIAN_THREE,  {nounlock=true, no_deconstruction=true})         
+AddRecipe2("armor_ancient",     {Ingredient("thulecite",20),Ingredient(	"armor_voidcloth",1),
+         Ingredient("armordreadstone",1),Ingredient("armorskeleton",1),Ingredient("alterguardianhatshard",1)},
+          TECH.OBSIDIAN_THREE,  {nounlock=true, no_deconstruction=true,image="lavaarena_armor_hpextraheavy.tex"})
+AddRecipe2("hat_ancient",     {Ingredient("thulecite",20),Ingredient("voidclothhat",1),
+          Ingredient("dreadstonehat",1),Ingredient("skeletonhat",1),Ingredient("security_pulse_cage_full",1)},
+           TECH.OBSIDIAN_THREE,  {nounlock=true, no_deconstruction=true,image="lavaarena_crowndamagerhat.tex"})]]                             

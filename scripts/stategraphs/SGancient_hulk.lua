@@ -783,8 +783,8 @@ local states=
             inst.AnimState:PlayAnimation("atk_lob")
             if target~=nil and target:IsValid() then
                 inst.sg.statemem.target = target
+                inst.components.combat:StartAttack()
             end
-
             inst.components.locomotor:Stop()
         end,
 
@@ -847,9 +847,10 @@ local states=
         onenter = function(inst)
             --print("======= START ===============")
             inst.Transform:SetNoFaced()
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+            inst.components.locomotor:StopMoving()
+
+            inst.components.combat:StartAttack()
+
             inst.AnimState:PlayAnimation("atk_circle")
         end,
 

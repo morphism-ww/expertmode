@@ -357,6 +357,7 @@ local function dragonboat_server(inst, boat_data)
     local hullhealth = inst:AddComponent("hullhealth")
     hullhealth.leak_radius = 0.6 * TUNING.DRAGON_BOAT_RADIUS
     hullhealth.leak_radius_variance = 0.3 * TUNING.DRAGON_BOAT_RADIUS
+    
 
     --
     inst:AddComponent("boatphysics")

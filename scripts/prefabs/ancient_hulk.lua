@@ -491,7 +491,7 @@ end]]
 local function EnterShield(inst)
     inst._is_shielding = true
 
-    inst.components.health:SetAbsorptionAmount(1)
+    inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0, "ruins_shield")
 
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
@@ -508,7 +508,7 @@ local function ExitShield(inst)
         inst._shieldfx:kill_fx()
         inst._shieldfx = nil
     end
-    inst.components.health:SetAbsorptionAmount(0)
+    inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 1, "ruins_shield")
 end
 
 
@@ -649,11 +649,6 @@ local function fn()
     inst.components.combat:SetRetargetFunction(2, RetargetFn)
     inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
     --inst.components.combat:SetHurtSound("dontstarve_DLC001/creatures/bearger/hurt")
-    inst:ListenForEvent("killed", function(inst2, data)
-        if inst.components.combat and data and data.victim == inst.components.combat.target then
-            inst.components.combat.target = nil
-        end 
-    end)
 
     inst:AddComponent("planardamage")
 	inst.components.planardamage:SetBaseDamage(10)
@@ -798,9 +793,9 @@ end
 
 local function minefn()
     local inst = CreateEntity()
-    local trans = inst.entity:AddTransform()
+    inst.entity:AddTransform()
     local anim = inst.entity:AddAnimState()
-    local sound = inst.entity:AddSoundEmitter()
+    inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
     MakeInventoryPhysics(inst, 75, 0.5)
 
@@ -830,8 +825,6 @@ local function minefn()
     end
 
 
-
-    inst:AddComponent("locomotor")
     inst:AddComponent("complexprojectile")
     inst.components.complexprojectile:SetOnHit(OnHit)
     --inst.components.complexprojectile.yOffset = 2.5
@@ -937,9 +930,8 @@ local function orbfn()
 end
 
 local function OnCollidesmall(inst,owner,target)
-    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-20,owner.prefab,nil,true,owner,true)
-        target.components.health:DeltaPenalty(0.05)
+    if target~=nil and target.components.combat~=nil then
+        target.components.combat:GetAttacked(owner,200)
     end
     -- DANY SOUND          inst.SoundEmitter:PlaySound( smallexplosion )  
     inst:Remove()

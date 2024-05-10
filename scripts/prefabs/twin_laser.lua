@@ -64,4 +64,73 @@ local function fn()
 
     return inst
 end
-return Prefab("twin_laser", fn,assets)
+local assets2 =
+{
+    Asset("ANIM", "anim/eyeball_turret_attack.zip"),
+    --Asset("SOUND", "sound/eyeballturret.fsb"),
+}
+local AOE_RANGE = 1
+local AOE_RANGE_PADDING = 2
+local AOE_TARGET_MUSTHAVE_TAGS = { "_combat" }
+local AOE_TARGET_CANT_TAGS = { "INLIMBO", "flight", "invisible", "notarget", "noattack", "shadow_aligned" }
+
+local function OnHit(inst)--, attacker, target)
+	inst:RemoveComponent("linearprojectile")
+	
+	inst.SoundEmitter:PlaySound("rifts2/thrall_wings/projectile")
+
+	local x, y, z = inst.Transform:GetWorldPosition()
+	for i, v in ipairs(TheSim:FindEntities(x, y, z, AOE_RANGE + AOE_RANGE_PADDING, AOE_TARGET_MUSTHAVE_TAGS, AOE_TARGET_CANT_TAGS)) do
+		if not (inst.targets ~= nil and inst.targets[v]) and
+			v:IsValid() and not v:IsInLimbo() and
+			not (v.components.health ~= nil and v.components.health:IsDead())
+			then
+			local range = AOE_RANGE + v:GetPhysicsRadius(0)
+			if v:GetDistanceSqToPoint(x, y, z) < range * range then
+				local attacker = inst.owner ~= nil and inst.owner:IsValid() and inst.owner or inst
+				v.components.combat:GetAttacked(attacker, 20)
+				if inst.targets ~= nil then
+					inst.targets[v] = true
+				end
+			end
+		end
+	end
+    inst:DoTaskInTime(0.1,inst.Remove)
+end
+local function fn2()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
+    inst.entity:AddNetwork()
+
+    MakeInventoryPhysics(inst)
+
+    --inst.Transform:SetFourFaced()
+
+    inst.AnimState:SetBank("eyeball_turret_attack")
+    inst.AnimState:SetBuild("eyeball_turret_attack")
+    inst.AnimState:PlayAnimation("idle",true)
+
+    --projectile (from projectile component) added to pristine state for optimization
+    inst:AddTag("projectile")
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst.persists = false
+
+    inst:AddComponent("linearprojectile")
+    inst.components.linearprojectile:SetHorizontalSpeed(20)
+    inst.components.linearprojectile:SetOnHit(OnHit)
+    inst.components.linearprojectile:SetLaunchOffset(Vector3(0,3,0))
+
+    inst:DoTaskInTime(8,inst.Remove)
+    return inst
+end
+return Prefab("twin_laser", fn,assets),
+    Prefab("shadow_ball",fn2,assets2)

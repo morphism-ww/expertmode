@@ -18,7 +18,7 @@ local function retargetfn(inst)
     local rangesq, rangesq1, rangesq2 = maxrangesq, math.huge, math.huge
     local target1, target2 = nil, nil
     for i, v in ipairs(AllPlayers) do
-        if --[[v.components.sanity:IsCrazy() and]] not v:HasTag("playerghost") then
+        if  not v:HasTag("playerghost") then
             local distsq = v:GetDistanceSqToInst(inst)
             if distsq < rangesq then
                 if inst.components.shadowsubmissive:TargetHasDominance(v) then
@@ -78,7 +78,7 @@ end
 local function steallife(inst,data)
     local victim = (data~=nil and data.target) or nil
     if victim~=nil and victim.components.sanity~=nil then
-        inst.components.health:DoDelta(138)
+        inst.components.health:DoDelta(100)
         victim.components.sanity:DoDelta(-15)
     end
 end
@@ -200,7 +200,7 @@ local data = {
         bank = "shadowseacreature",
         num = 2,
         speed = 7,
-        health=1200,
+        health=1000,
         damage= 50 ,
         attackperiod = 4,
         sanityreward = TUNING.SANITY_LARGE

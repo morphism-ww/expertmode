@@ -12,14 +12,10 @@ local function DoTest(inst)
             range = component.near
         end
 
-        local oneofhave = { "animal","character","epic","monster" }
-
-        if component.inventorytrigger then
-            oneofhave = {"isinventoryitem", "monster", "animal", "character", "meat"}
-        end
-
-        local nothave = {"INTERIOR_LIMBO", "playerghost", "scorpion", "shadowcreature","chess"}
-        local ents=TheSim:FindEntities(x,y,z, range, nil, nothave,  oneofhave )
+        --local oneofhave = { "animal","character","epic","monster" }
+        local must_have = {"locomotor"}
+        local nothave = {"INLIMBO", "playerghost","shadow","chess","spore"}
+        local ents=TheSim:FindEntities(x,y,z, range, must_have, nothave)
         local close
 
         for i=#ents,1,-1 do

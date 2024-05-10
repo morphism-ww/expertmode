@@ -1,6 +1,6 @@
 name = "永恒新界"
 author = "莫非则"
-version = "3.5.0"
+version = "3.7.6"
 forumthread = ""
 
 description = [[一个困难模式的mod。主要内容有生物增强，物品增强，原版内容优化，单机版内容引入
@@ -8,7 +8,8 @@ description = [[一个困难模式的mod。主要内容有生物增强，物品�
 
 
 目前更新内容：
-天体英雄，噩梦猪人，双子魔眼，犀牛，克劳斯，龙蝇增强
+天体英雄，噩梦猪人，双子魔眼，犀牛，克劳斯，龙蝇，
+毒菌蟾蜍，蜂后，暗影棋子增强
 大量装备改动
 
 引入了单机版猪镇的漩涡斗篷，在暗影术基座处制造
@@ -18,6 +19,8 @@ description = [[一个困难模式的mod。主要内容有生物增强，物品�
 杀死龙蝇后开启新的火雨事件，小心你的家！
 生物进化出了剧毒来保护自己！
 月岛变得更加危险，注意你的启蒙值！
+
+生活质量优化！衣柜储物，地震器，耕作帽...
 
 懒人传送塔大加强，单人即可使用
 
@@ -180,6 +183,26 @@ configuration_options = {
     {
         name = "shadowdragon",
         label = "恐惧之龙",
+        options = {
+            { description = "开启", data = true },
+            { description = "关闭", data = false },
+        },
+        default = true,
+
+    },
+    {
+        name = "chess",
+        label = "暗影棋子改动",
+        options = {
+            { description = "开启", data = true },
+            { description = "关闭", data = false },
+        },
+        default = true,
+
+    },
+    {
+        name = "wardrobe",
+        label = "衣柜储物",
         options = {
             { description = "开启", data = true },
             { description = "关闭", data = false },

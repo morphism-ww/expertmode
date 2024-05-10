@@ -477,7 +477,7 @@ local states =
                 local spin_speed = TUNING.ALTERGUARDIAN_PHASE2_SPIN_SPEED
                 local target = inst.sg.statemem.target
                 if target ~= nil and target:IsValid() and target.components.locomotor ~= nil then
-                    spin_speed = math.max(spin_speed, target.components.locomotor:GetRunSpeed() * inst.components.locomotor:GetSpeedMultiplier()+2)
+                    spin_speed = math.max(spin_speed, target.components.locomotor:GetRunSpeed() * inst.components.locomotor:GetSpeedMultiplier()+5)
                     spin_speed = math.min(spin_speed, 35)
                 end
                 inst.sg.statemem.spin_speed = spin_speed
@@ -740,7 +740,7 @@ local states =
 
             inst.SoundEmitter:PlaySound("moonstorm/creatures/boss/alterguardian2/atk_spin_LP","spin_loop")
 
-            inst.Physics:SetMotorVelOverride(16, 0, 0)
+            inst.Physics:SetMotorVelOverride(20, 0, 0)
         end,
 
         onupdate = function(inst, dt)
@@ -1182,7 +1182,7 @@ local states =
 				local lance = SpawnPrefab("deerclops_impact_circle_fx")
 				lance.Transform:SetPosition(inst.sg.statemem.targetpos:Get())
 				inst.sg.statemem.targets = {}
-				inst.components.combat:SetDefaultDamage(100)
+				--inst.components.combat:SetDefaultDamage(100)
 				DoIceLanceAOE(inst, inst.sg.statemem.targetpos, inst.sg.statemem.targets)
             end),
             TimeEvent(32*FRAMES, function(inst)

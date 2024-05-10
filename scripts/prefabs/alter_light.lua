@@ -7,14 +7,11 @@ local assets =
 local DAMAGE_CANT_TAGS = { "brightmareboss", "brightmare", "playerghost", "INLIMBO", "DECOR", "FX","god" }
 local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
 
-local function DoEraser(inst,target)
+local function DoEraser(inst, target)
     if target.components.inventory~=nil then
         for k, v in pairs(target.components.inventory.equipslots) do
             if v.components.finiteuses ~= nil then
                 v.components.finiteuses:SetUses(0)
-            end
-            if v.components.armor ~= nil then
-                v.components.armor:SetCondition(0)
             end
             if v.components.fueled~=nil then
                 v.components.fueled:MakeEmpty()
@@ -27,9 +24,11 @@ local function DoEraser(inst,target)
     if target.components.burnable~=nil then
         target.components.burnable:Ignite()
     end
+    inst.components.true_damage:SetBaseDamage(100000)
+    inst.components.combat:DoAttack(target)
     --target.components.health:DoDelta(-100000,false,inst.prefab,true,nil,true)
-    target.components.health:SetVal(0,inst.prefab,inst)
-    target.components.health:DeltaPenalty(0.2)
+    --target.components.health:SetVal(0,inst.prefab,inst)
+    --target.components.health:DeltaPenalty(0.2)
 end
 
 local function DoDamage(inst)
@@ -38,11 +37,10 @@ local function DoDamage(inst)
     for i, v in ipairs(ents) do
         if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
             if inst.killer then
-                DoEraser(inst,v) 
+                inst:DoEraser(v) 
             elseif v:HasTag("shadow_aligned") then
                 v.components.health:Kill()
             elseif v:HasTag("player") then
-                v.components.health:DoDelta(-15,false,inst.prefab,true,nil,true)
                 inst.components.combat:DoAttack(v)
                 v.components.sanity:DoDelta(20)
             else
@@ -98,9 +96,14 @@ local function terrarium_fx()
     inst.components.combat:SetDefaultDamage(50)
     inst.components.combat:SetRange(2)
 
+    inst:AddComponent("true_damage")
+    inst.components.true_damage:SetBaseDamage(15)
+
     inst:DoTaskInTime(0.5, DoDamage)
     inst:DoTaskInTime(0.7, DoDamage)
     inst.killer=false
+
+    inst.DoEraser=DoEraser
     inst.persists = false
 
     inst:ListenForEvent("animover", function()

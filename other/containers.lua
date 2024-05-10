@@ -18,6 +18,8 @@ for y = 0, 5 do
 end
 params['armorvortexcloak']=packdata
 
+------------------------------------------------------
+
 params.armor_voidcloth =
 {
     widget =
@@ -38,12 +40,26 @@ function params.armor_voidcloth.itemtestfn(container, item, slot)
 end
 
 
+--[[params["wardrobe"] =
+{
+    widget =
+    {
+        slotpos = {},
+        animbank = "ui_fish_box_5x4",
+        animbuild = "ui_fish_box_5x4",
+        pos = Vector3(0, 220, 0),
+        side_align_tip = 160,
+    },
+    type = "chest",
+}
 
+for y = 2.5, -0.5, -1 do
+    for x = -1, 3 do
+        table.insert(params.wardrobe.widget.slotpos, Vector3(75 * x - 75 * 2 + 75, 75 * y - 75 * 2 + 75, 0))
+    end
+end
 
-
---[[AddPrefabPostInit("armorvortexcloak",function(inst)
-    if not TheWorld.ismastersim then return end
-    inst.components.fueled.CanAcceptFuelItem=canacceptfuelitem
-end)
-
---item.prefab=="horrorfuel"]]
+function params.wardrobe.itemtestfn(container, item, slot)
+    return item.replica.equippable~=nil and 
+    (item.replica.equippable:EquipSlot()=="body" or item.replica.equippable:EquipSlot()=="head")
+end]]

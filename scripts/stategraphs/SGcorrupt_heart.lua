@@ -9,6 +9,7 @@ local events=
                 if not inst.components.timer:TimerExists("echo_cd") then
                     inst.sg:GoToState("echo")
                 else
+                    inst.sg.mem.attackcout = inst.atphase2 and math.random(1,3) or 0
                     inst.sg:GoToState("attack",data.target)
                 end		
             end
@@ -46,9 +47,8 @@ local states=
 
         onenter = function(inst)
             local pos=inst:GetPosition()
-            inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))
             local x,y,z=inst.Transform:GetWorldPosition()
-            local ents = TheSim:FindEntities(x, y, z, 40, {"shadowchesspiece"}) -- or we could include a flag to the search?
+            local ents = TheSim:FindEntities(x, y, z, 50, {"shadowchesspiece"}) -- or we could include a flag to the search?
             for i, v in ipairs(ents) do
                 v.components.lootdropper:DropLoot(v:GetPosition())
                 v:Remove()
@@ -70,7 +70,7 @@ local states=
             inst.AnimState:PlayAnimation("idle")
             inst.components.combat:StartAttack()
             inst.components.timer:StartTimer("echo_cd",30)
-            inst.sg:SetTimeout(3.2)
+            inst.sg:SetTimeout(3)
         end,
         timeline=
         {   
@@ -79,7 +79,7 @@ local states=
             end),
             FrameEvent(40,DoEcho),
             FrameEvent(60,DoEcho),
-            FrameEvent(90,DoEcho),
+            FrameEvent(80,DoEcho),
         },
         ontimeout= function(inst) inst.sg:GoToState("idle") end
     },
@@ -97,46 +97,48 @@ local states=
         {   
             FrameEvent(1,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x-4,2.2,z)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x-4,3,z)
                 inst.sg.statemem.projs[1]=proj
             end),
             FrameEvent(5,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x-2,2.2,y-3.464)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x-2,3,y-3.464)
                 inst.sg.statemem.projs[2]=proj
             end),
             FrameEvent(10,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x+2,2.2,y-3.464)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x+2,3,y-3.464)
                 inst.sg.statemem.projs[3]=proj
             end),
             FrameEvent(15,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x+4,2.2,z)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x+4,3,z)
                 inst.sg.statemem.projs[4]=proj
             end),
             FrameEvent(20,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x+2,2.2,z+3.464)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x+2,3,z+3.464)
                 inst.sg.statemem.projs[5]=proj
             end),
             FrameEvent(25,function (inst)
                 local x, y, z = inst.Transform:GetWorldPosition()
-                local proj=SpawnPrefab("eye_charge")
-                proj.Transform:SetPosition(x-2,2.2,z+3.464)
+                local proj=SpawnPrefab("shadow_ball")
+                proj.Physics:Teleport(x-2,3,z+3.464)
                 inst.sg.statemem.projs[6]=proj
             end),
-            FrameEvent(60, function(inst)
+            FrameEvent(50, function(inst)
 
                 
                 if inst.sg.statemem.target ~= nil and inst.sg.statemem.target:IsValid() then
+                    local targetpos=inst.sg.statemem.target:GetPosition()
 					for k,v in ipairs(inst.sg.statemem.projs) do
-                        v.components.projectile:Throw(inst, inst.sg.statemem.target, inst)
+                        v.owner=inst
+                        v.components.linearprojectile:Launch(targetpos, inst, inst)
                     end
 				else
                     for k,v in ipairs(inst.sg.statemem.projs) do
@@ -146,7 +148,14 @@ local states=
                 
             end),
         },
-        ontimeout= function(inst) inst.sg:GoToState("idle") end
+        ontimeout= function(inst) 
+            if inst.sg.mem.attackcout~=nil and inst.sg.mem.attackcout>0 then
+                inst.sg.mem.attackcout=inst.sg.mem.attackcout-1
+                inst.sg:GoToState("attack",inst.components.combat.target)
+            else
+                inst.sg:GoToState("idle") 
+            end    
+        end
     },
 }
 

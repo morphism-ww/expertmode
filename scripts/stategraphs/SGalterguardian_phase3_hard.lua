@@ -1425,9 +1425,10 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                local orb = SpawnPrefab("alterguardian_phase3deadorb")
-                orb.Transform:SetPosition(inst.Transform:GetWorldPosition())
-
+                if not TheWorld:HasTag("cave") then
+                    local orb = SpawnPrefab("alterguardian_phase3deadorb")
+                    orb.Transform:SetPosition(inst.Transform:GetWorldPosition())
+                end
                 inst:Remove()
             end),
         },

@@ -69,8 +69,7 @@ function LinearProjectile:CalculateTrajectory(startPos, endPos, speed)
     local range = math.sqrt(dx * dx + dz * dz)
     local angle = math.atan(dy/range)
 
-    local cosangleXspeed = math.cos(angle) * speed
-    self.velocity.x = cosangleXspeed
+    self.velocity.x = math.cos(angle) * speed
     self.velocity.z = 0.0
     self.velocity.y = math.sin(angle) * speed
 end
@@ -79,7 +78,6 @@ function LinearProjectile:Launch(targetPos, attacker, owningweapon)
     local pos = self.inst:GetPosition()
     self.owningweapon = owningweapon or self.inst
     self.attacker = attacker
-
 	self.inst:ForceFacePoint(targetPos:Get())
 
     local offset = self.launchoffset

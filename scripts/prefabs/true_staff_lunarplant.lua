@@ -88,7 +88,7 @@ local function SetupComponents(inst)
 	inst:AddComponent("equippable")
 	inst.components.equippable:SetOnEquip(onequip)
 	inst.components.equippable:SetOnUnequip(onunequip)
-	inst.components.equippable.walkspeedmult = 1.25
+	inst.components.equippable.walkspeedmult = 1.2
 
 	inst:AddComponent("weapon")
 	inst.components.weapon:SetDamage(0)
@@ -181,7 +181,8 @@ local function fn()
 	inst:AddTag("rangedweapon")
 	inst:AddTag("magicweapon")
 	inst:AddTag("show_broken_ui")
-
+	inst:AddTag("pure")
+	inst:AddTag("nosteal")
 	--weapon (from weapon component) added to pristine state for optimization
 	inst:AddTag("weapon")
 
@@ -208,11 +209,8 @@ local function fn()
 
 	-------
 	inst:AddComponent("finiteuses")
-	inst.components.finiteuses:SetMaxUses(TUNING.STAFF_LUNARPLANT_USES)
-	inst.components.finiteuses:SetUses(TUNING.STAFF_LUNARPLANT_USES)
-
-	inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(TUNING.STAFF_LUNARPLANT_PLANAR_DAMAGE)
+	inst.components.finiteuses:SetMaxUses(100)
+	inst.components.finiteuses:SetUses(100)
 
 	inst:AddComponent("damagetypebonus")
 	inst.components.damagetypebonus:AddBonus("shadow_aligned", inst, TUNING.STAFF_LUNARPLANT_VS_SHADOW_BONUS)

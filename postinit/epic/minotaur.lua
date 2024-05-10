@@ -266,10 +266,6 @@ AddStategraphPostInit("minotaur",function(sg)
         end
     end
 
-
-
-
-
     sg.states.leap_attack.events["animover"].fn=function(inst)
         if inst.atphase3 then
             inst.sg:GoToState("stun2",{doleap=true})
@@ -278,6 +274,27 @@ AddStategraphPostInit("minotaur",function(sg)
         else
             inst.sg:GoToState("stun",{land_stun=true})
         end
+    end
+
+    sg.states.death.onenter = function(inst)
+        inst.components.locomotor:StopMoving()
+        inst.AnimState:PlayAnimation("death")
+        inst.persists = false
+
+        if not (TheWorld.components.voidland_manager~=nil and TheWorld.components.voidland_manager.bossrush_on) then
+            inst.components.lootdropper:DropLoot()
+            local chest = SpawnPrefab("minotaurchestspawner")
+            chest.Transform:SetPosition(inst.Transform:GetWorldPosition())
+            for i = 1, 8 do
+                if chest:PutBackOnGround(TILE_SCALE * i) then
+                    break
+                end
+            end
+            chest.minotaur = inst
+        end
+        
+
+        inst:AddTag("NOCLICK")
     end
 end)
 

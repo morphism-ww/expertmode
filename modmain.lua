@@ -11,6 +11,8 @@ Asset("SOUNDPACKAGE", "sound/dontstarve_DLC003.fev"),
 Asset("SOUND", "sound/DLC003_sfx.fsb"),
 Asset("SOUND","sound/wagstaff.fsb"),
 Asset("SOUNDPACKAGE","sound/wagstaff.fev"),
+Asset("SOUND","sound/bossrush.fsb"),
+Asset("SOUNDPACKAGE","sound/bossrush.fev"),
 Asset("ATLAS", "images/inventoryimages/volcanoinventory.xml"),
 Asset("IMAGE", "images/inventoryimages/volcanoinventory.tex" ),
 Asset("ATLAS", "images/tabs.xml"),
@@ -25,10 +27,18 @@ Asset("IMAGE","images/inventoryimages/quaker.tex"),
 Asset("ATLAS","images/inventoryimages/quaker.xml"),
 Asset("IMAGE","images/inventoryimages/demon_soul.tex"),
 Asset("ATLAS","images/inventoryimages/demon_soul.xml"),
+Asset("IMAGE","images/inventoryimages/iron_soul.tex"),
+Asset("ATLAS","images/inventoryimages/iron_soul.xml"),
+Asset("IMAGE","images/inventoryimages/insight_soul.tex"),
+Asset("ATLAS","images/inventoryimages/insight_soul.xml"),
 Asset("IMAGE","images/inventoryimages/lunarlight.tex"),
 Asset("ATLAS","images/inventoryimages/lunarlight.xml"),
+Asset("IMAGE","images/inventoryimages/northpole.tex"),
+Asset("ATLAS","images/inventoryimages/northpole.xml"),
+Asset("IMAGE","images/inventoryimages/sword_ancient.tex"),
+Asset("ATLAS","images/inventoryimages/sword_ancient.xml"),
 Asset("ATLAS", "images/fx4te.xml"),
-Asset("IMAGE", "images/fx4te.tex")}
+Asset("IMAGE", "images/fx4te.tex"),}
 
 local atlas = "images/inventoryimages/volcanoinventory.xml"
 local function ProcessAtlas(atlas, ...)
@@ -60,9 +70,17 @@ RegisterInventoryItemAtlas("images/inventoryimages/armorvortexcloak.xml", "armor
 
 RegisterInventoryItemAtlas("images/inventoryimages/demon_soul.xml", "demon_soul.tex")
 
+RegisterInventoryItemAtlas("images/inventoryimages/insight_soul.xml", "insight_soul.tex")
+
+RegisterInventoryItemAtlas("images/inventoryimages/iron_soul.xml", "iron_soul.tex")
+
 RegisterInventoryItemAtlas("images/inventoryimages/lunarlight.xml", "lunarlight.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/obsidian_hat.xml", "obsidian_hat.tex")
+
+RegisterInventoryItemAtlas("images/inventoryimages/northpole.xml", "northpole.tex")
+
+RegisterInventoryItemAtlas("images/inventoryimages/sword_ancient.xml", "sword_ancient.tex")
 
 AddMinimapAtlas("images/inventoryimages/armorvortexcloak.xml")
 
@@ -71,9 +89,10 @@ modimport('other/containers')
 modimport ("other/standardcomponents")
 modimport('other/actions')
 modimport('other/player')
-modimport('other/stun_protect')
+modimport('other/player_sg')
 modimport('other/ui')
-
+modimport("other/init_constants")
+--modimport("other/move_attack")
 
 
 
@@ -87,11 +106,11 @@ PrefabFiles={"twin_flame","twin_laser","armorvortexcloak","leechterror","shadowf
             "super_boat","quaker","fire_tornado","alter_light","lunar_blast","lunar_shield",
             "fast_buff","make_buffs","cursefire_fx","brightshade_queen","anti_poison","obsidianstaff",
             "lunar_light","lunarlight_flame","magic_fx","shadow_mfz","god_judge",
-            "ancient_robots","corrupt_heart"}
+            "ancient_robots","corrupt_heart","northpole","armor_ancient","hat_ancient","sword_ancient","constant_star",
+            "void_light","bossrush_manager","void_key","true_voidcloth_scythe"}
 
 if GetModConfigData("pig") then
     modimport("postinit/epic/daywalker")
-    modimport("postinit/armor_dreadstone")
 end
 
 if GetModConfigData("twin") then
@@ -115,8 +134,9 @@ if GetModConfigData("alterhat") then
 end
 
 if GetModConfigData("dragon_fire") then
+    TUNING.FIRERAIN_ENABLE = true
     modimport("postinit/epic/dragonfly")
-    modimport("postinit/dragonflyfurnace")
+    
 
 end
 
@@ -127,7 +147,7 @@ end
 
 if GetModConfigData("poison") then
     modimport("postinit/epic/beequeen")
-
+    modimport("postinit/epic/toadstool")
     modimport("postinit/mushroom_hat")
     modimport("postinit/poison_creature")
 end
@@ -145,12 +165,22 @@ if GetModConfigData("ruins") then
     modimport("postinit/ruins")
 end
 
+if GetModConfigData("chess") then
+    modimport("postinit/epic/shadowchesspieces")
+end
+
+if GetModConfigData("wardrobe") then
+    modimport("postinit/wardrobe")
+end
+
+modimport("postinit/dragonflyfurnace")
+modimport("postinit/shadow_armor")
 modimport("postinit/components/explosive")
 modimport("postinit/dont_skip")
---modimport("other/playercharge.lua")
+modimport("other/playercharge.lua")
+modimport("postinit/components/true_defence")
 
-
-modimport("postinit/area_weapon")
+modimport("postinit/upgrade_weapon")
 modimport("postinit/epic/stalker")
 ---------------------------------------
 
@@ -159,30 +189,40 @@ modimport("postinit/amulet")
 modimport("postinit/town_portal")
 modimport("postinit/lunarplant_staff")
 modimport("postinit/planar_armor")
-modimport("postinit/repair_material")
+modimport("postinit/repairable")
 ------------------------------------------
 modimport("postinit/invade")
 ---------------------------------------------
---modimport("postinit/ocean/cannon")
+modimport("postinit/ocean/cannon")
+
 
 TUNING.NEW_CONSTANT_SHADOWDRAGON=GetModConfigData("shadowdragon")
 
 modimport("postinit/components/cn_boatphysics")
 --modimport("postinit/components/growable")
-modimport("postinit/components/ambientlighting")
+--modimport("postinit/components/ambientlighting")
 
-modimport("postinit/epic/shadowchesspieces")
+
 modimport("postinit/food")
 
 
 modimport("postinit/epic/lunarthrall_plant")
-
+modimport("postinit/epic/shadowthrall")
 modimport("postinit/anti_poison")
 
-modimport("postinit/epic/toadstool")
+
 modimport("postinit/epic/warg")
 modimport("postinit/punchingbag")
 modimport("postinit/farming")
+--modimport("postinit/ranged_weapon")
+
+
+------------bossrush
+modimport("postinit/bossrush/entrance")
+modimport("postinit/bossrush/bossrush_protect")
+
+
+
 
 
 modimport("other/new_loot")
@@ -213,6 +253,7 @@ end
 GLOBAL.TECH.NONE.OBSIDIAN = 0
 GLOBAL.TECH.OBSIDIAN_ONE = { OBSIDIAN = 1 }
 GLOBAL.TECH.OBSIDIAN_TWO = { OBSIDIAN = 2 }
+GLOBAL.TECH.OBSIDIAN_THREE = { OBSIDIAN = 3 }
 
 for k,v in pairs(TUNING.PROTOTYPER_TREES) do
     v.OBSIDIAN = 0
@@ -225,6 +266,9 @@ TUNING.PROTOTYPER_TREES.OBSIDIAN_TWO = TechTree.Create({
      OBSIDIAN = 2,
  })
 
+ TUNING.PROTOTYPER_TREES.OBSIDIAN_THREE = TechTree.Create({
+    OBSIDIAN = 3,
+})
 for i, v in pairs(GLOBAL.AllRecipes) do
     if v.level.OBSIDIAN == nil then
         v.level.OBSIDIAN = 0

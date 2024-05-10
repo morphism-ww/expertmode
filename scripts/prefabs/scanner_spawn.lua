@@ -5,7 +5,7 @@ local prefabs =
 }
 
 local function OnPreLoad(inst, data)
-    WorldSettings_ChildSpawner_PreLoad(inst, data, 10, TUNING.TOTAL_DAY_TIME)
+    WorldSettings_ChildSpawner_PreLoad(inst, data, 10, 2*TUNING.TOTAL_DAY_TIME)
 end
 local function fn()
     local inst = CreateEntity()
@@ -26,11 +26,11 @@ local function fn()
     -------------------
     inst:AddComponent("childspawner")
     inst.components.childspawner.childname = "ancient_scanner"
-    inst.components.childspawner:SetRegenPeriod(TUNING.TOTAL_DAY_TIME)
+    inst.components.childspawner:SetRegenPeriod(2*TUNING.TOTAL_DAY_TIME)
     inst.components.childspawner:SetSpawnPeriod(10)
     inst.components.childspawner:SetMaxChildren(2)
     WorldSettings_ChildSpawner_SpawnPeriod(inst, 10, true)
-    WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.TOTAL_DAY_TIME, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, 2*TUNING.TOTAL_DAY_TIME, true)
     --inst.components.childspawner:SetSpawnedFn( onspawnchild )
 
     inst.components.childspawner:StartSpawning()

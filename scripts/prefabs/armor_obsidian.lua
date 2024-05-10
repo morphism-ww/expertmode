@@ -6,9 +6,7 @@ local assets =
 
 
 local function OnBlocked(owner, data)
-    if owner.SoundEmitter ~= nil then
-            owner.SoundEmitter:PlaySound("dontstarve_DLC002/common/armour/obsidian")
-        end
+    owner.SoundEmitter:PlaySound("dontstarve_DLC002/common/armour/obsidian")
     if data.attacker ~= nil and
         not (data.attacker.components.health ~= nil and data.attacker.components.health:IsDead()) and
         (data.weapon == nil or ((data.weapon.components.weapon == nil or data.weapon.components.weapon.projectile == nil) and data.weapon.components.projectile == nil)) and
@@ -148,7 +146,7 @@ local function fn()
     inst:AddComponent("heater")
     inst.components.heater.heatfn = HeatFn
     inst.components.heater.carriedheatfn = HeatFn
-    inst.components.heater:SetThermics(true, true)
+    inst.components.heater:SetThermics(true, false)
     inst.components.temperature:IgnoreTags("obsidian")
 
     inst:AddComponent("armor")

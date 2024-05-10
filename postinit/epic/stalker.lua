@@ -36,6 +36,9 @@ local function ItemTradeTest(inst, item, giver)
     return true
 end
 AddPrefabPostInit("fossil_stalker",function (inst)
+    inst:AddTag("notraptrigger")
+    inst:AddTag("toughworker")
+    inst:AddTag("electricdamageimmune")
     if not TheWorld.ismastersim then return end
     inst.components.trader:SetAbleToAcceptTest(ItemTradeTest)
 end)

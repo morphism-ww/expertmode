@@ -118,10 +118,14 @@ local function OnHit(inst, attacker, target)
 	else
 		x, y, z = inst.Transform:GetWorldPosition()
 	end
-
+	blast.Transform:SetPosition(x, y, z)
+	local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO" ,"FX" ,"player"})
+    for i, ent in ipairs(ents) do
+        if ent ~= attacker then
+			ent.components.combat:GetAttacked(attacker, 0, nil, nil,{["planar"] = 50})
+        end
+    end
 	
-	inst.components.new_explosive:OnBurnt()
-	--blast.Transform:SetPosition(x, y, z)
 	SpawnPrefab("bomb_lunarplant_explode_fx").Transform:SetPosition(x, y, z)
 
 	if inst.bounces ~= nil and inst.bounces > 1 and attacker ~= nil and attacker.components.combat ~= nil and attacker:IsValid() then
@@ -153,7 +157,6 @@ local function fn()
 
 	inst:AddTag("FX")
 	inst:AddTag("NOCLICK")
-	inst:AddTag("explosive")
 
 	inst.AnimState:SetBank("brilliance_projectile_fx")
 	inst.AnimState:SetBuild("brilliance_projectile_fx")
@@ -173,10 +176,6 @@ local function fn()
 	if not TheWorld.ismastersim then
 		return inst
 	end	
-	inst:AddComponent("new_explosive")
-	inst.components.new_explosive.explosiverange = 3
-	inst.components.new_explosive.explosivedamage = 0
-	inst.components.new_explosive.lightonexplode = false
 
 	
 	inst:AddComponent("projectile")
@@ -186,8 +185,6 @@ local function fn()
 	inst.components.projectile:SetOnHitFn(OnHit)
 	inst.components.projectile:SetOnMissFn(OnMiss)
 
-	inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(30)
 
 	inst.persists = false
 

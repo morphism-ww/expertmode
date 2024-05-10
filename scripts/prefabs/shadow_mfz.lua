@@ -57,9 +57,7 @@ local function warning(shadowchild)
     shadowchild:PushEvent("upgrade")
 end
 
-local function changename(inst)
-    inst.components.named:PickNewName()
-end
+
 
 
 --------------------------------------------------------------------------
@@ -94,7 +92,7 @@ local function EnterShield(inst)
     inst._shieldfx.Transform:SetScale(1.1,1.1,1.1)
     inst._shieldfx.entity:SetParent(inst.entity)
     inst._shieldfx.Transform:SetPosition(0, 0.5, 0)
-    inst.components.health.externalabsorbmodifiers:SetModifier(inst._shieldfx, 1)
+    inst.components.health.externalabsorbmodifiers:SetModifier(inst._shieldfx, 0.9)
 end
 
 local function ExitShield(inst)
@@ -102,6 +100,12 @@ local function ExitShield(inst)
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
         inst._shieldfx = nil
+    end
+end
+
+local function remove_buff(inst,data)
+    if data.attacker and data.attacker.components.debuffable then
+        data.attacker.components.debuffable:Enable(false)
     end
 end
 ------------------------------------------------------------------------------
@@ -188,7 +192,7 @@ local function fn()
     inst.Physics:SetCollisionCallback(OnCollide)
 	
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(6666)
+    inst.components.health:SetMaxHealth(66666)
     inst.components.health.redirect=onlyplayer
     inst.components.health:SetMaxDamageTakenPerHit(88)
     inst.components.health.destroytime = 2
@@ -224,9 +228,8 @@ local function fn()
     inst:AddComponent("colouradder")
     inst:AddComponent("bloomer")
 
-    inst:AddComponent("named")
-    inst.components.named.possiblenames = {"邪恶海棠","莫则非"}
-    inst.components.named:PickNewName()
+    inst:AddComponent("true_damage")
+    inst.components.true_damage:SetBaseDamage(20)
 
     local groundpounder = inst:AddComponent("groundpounder")
     groundpounder:UseRingMode()
@@ -266,9 +269,8 @@ local function fn()
     inst.OnPreLoad = onpreload
     
     --inst:DoTaskInTime(0, EquipGod_Judge)
-    inst:DoPeriodicTask(10,changename)
     inst:ListenForEvent("upgrade",become_boss)
-
+    inst:ListenForEvent("attacked",remove_buff)
 
     return inst
 end

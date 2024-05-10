@@ -156,19 +156,19 @@ local function UpdatePopulation(player, params)
         --Have at most one monster, sometimes
         maxpop = 1
         if targetpop >= maxpop then
-            dec_chance = 0.2
+            dec_chance = 0.6
         else
-            inc_chance = 0.8
+            inc_chance = 0.2
         end
     elseif sanity > 0.0 and canspawn then
         maxpop = 2
         if targetpop >= maxpop then
             dec_chance = 0
         elseif targetpop <= 0 then
-            inc_chance = 1
+            inc_chance = 0.6
         else
-            inc_chance = 1
-            dec_chance = 0
+            inc_chance = 0.6
+            dec_chance = 0.4
         end
     elseif canspawn then
         maxpop = 3
@@ -202,7 +202,7 @@ local function UpdatePopulation(player, params)
     end
 
     --Reschedule population update
-    params.poptask = player:DoTaskInTime(20+10*math.random(), UpdatePopulation, params)
+    params.poptask = player:DoTaskInTime(30+10*math.random(), UpdatePopulation, params)
 end
 
 local function Start(player, params)

@@ -215,7 +215,7 @@ local function SetupComponents(inst)
 	inst:AddComponent("weapon")
 	inst.components.weapon:SetDamage(inst._bonusenabled and inst.base_damage * TUNING.WEAPONS_LUNARPLANT_SETBONUS_DAMAGE_MULT or inst.base_damage)
 	inst.components.weapon:SetOnAttack(OnAttack)
-	inst.components.weapon:SetRange(8, 10)
+	inst.components.weapon:SetRange(10)
 end
 
 local function DisableComponents(inst)
@@ -301,6 +301,8 @@ local function fn()
 	inst:AddTag("sharp")
 	inst:AddTag("show_broken_ui")
 	inst:AddTag("sword_shoot")
+	inst:AddTag("pure")
+	inst:AddTag("nosteal")
 
 	--weapon (from weapon component) added to pristine state for optimization
 	inst:AddTag("weapon")
@@ -329,14 +331,14 @@ local function fn()
 
 	-------
 	local finiteuses = inst:AddComponent("finiteuses")
-	finiteuses:SetMaxUses(TUNING.SWORD_LUNARPLANT_USES)
-	finiteuses:SetUses(TUNING.SWORD_LUNARPLANT_USES)
+	finiteuses:SetMaxUses(300)
+	finiteuses:SetUses(300)
 
 	-------
-	inst.base_damage = TUNING.SWORD_LUNARPLANT_DAMAGE
+	inst.base_damage = 50 --TUNING.SWORD_LUNARPLANT_DAMAGE
 
 	local planardamage = inst:AddComponent("planardamage")
-	planardamage:SetBaseDamage(TUNING.SWORD_LUNARPLANT_PLANAR_DAMAGE)
+	planardamage:SetBaseDamage(35)
 
 	local damagetypebonus = inst:AddComponent("damagetypebonus")
 	damagetypebonus:AddBonus("shadow_aligned", inst, TUNING.WEAPONS_LUNARPLANT_VS_SHADOW_BONUS)

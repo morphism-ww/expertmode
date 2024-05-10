@@ -1,0 +1,22 @@
+---------升级--------------
+UPGRADETYPES.IRON_SOUL="IRON_SOUL"
+UPGRADETYPES.INSIGHT_SOUL="INSIGHT_SOUL"
+
+
+---------修补---------------
+
+local MATERIALS=MATERIALS
+
+MATERIALS.OBSIDIAN = "obsidian"
+MATERIALS.EPIC = "epic"
+MATERIALS.PURE = "pure"
+
+EQUIPMENTSETNAMES.ANCIENT = "ancient"
+
+FUELTYPE.PURE = "moon_pure"
+
+--TOOLACTIONS.ACTIVATE = true
+LOCKTYPE.LUNAR = "lunar"
+
+
+
