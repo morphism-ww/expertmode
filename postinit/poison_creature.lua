@@ -1,68 +1,47 @@
---spider,spider_warrieor,spider_dropper,spider_water,spiderqueen
+--spider,spider_warrior,spider_dropper,spider_water,spiderqueen
 
-local total_day_time=TUNING.TOTAL_DAY_TIME
 
-local function dospiderpoison1(inst,data)
-    if data then
-        local target=data.target
-        if target~=nil and target:HasTag("character") and not target:HasTag("ghost") and
-             not(target.components.inventory~=nil and target.components.inventory:EquipHasTag("poison_immune")) then
-            target:AddDebuff("spider_poison","poison",{duration=total_day_time})
-        end
-    end
-end
 
-AddPrefabPostInit("spider_warrieor",function(inst)
+AddPrefabPostInit("spider_warrior",function(inst)
     if not TheWorld.ismastersim then return end
-    inst:ListenForEvent("onhitother",dospiderpoison1)
+    inst.components.combat.onhitotherfn = function (inst,target, damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+        if target:IsPoisonable() and not target.entity:HasAnyTag("spiderwhisperer","spider") and damageredirecttarget==nil then
+            target:AddDebuff("spider_poison","poison")
+        end
+    end    
+    
 end)
 
 
-local dead_poison_spider={"spiderqueen","spider_dropper","spider_hider","spider_moon"}
-
-
-local function dospiderpoison2(inst,data)
-    if data then
-        local target=data.target
-        if target~=nil and target:HasTag("character") and not target:HasTag("ghost") and
-             not(target.components.inventory~=nil and target.components.inventory:EquipHasTag("poison_immune")) then
-                target:AddDebuff("spider_poison","poison",{duration=total_day_time})
-                target:AddDebuff("spider_dead_poison","poison_2",{duration=20})
-        end
-    end
-end
+local dead_poison_spider = {"spiderqueen","spider_dropper","spider_hider","spider_moon"}
 
 for i,v in ipairs(dead_poison_spider) do
     AddPrefabPostInit(v,function(inst)
         if not TheWorld.ismastersim then return end
-        inst:ListenForEvent("onhitother",dospiderpoison2)
+        inst.components.combat.onhitotherfn = function (inst,target, damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+            if target:IsPoisonable() and not target.entity:HasAnyTag("spiderwhisperer","spider")  and damageredirecttarget==nil then
+                target:AddDebuff("spider_poison","poison")
+                target:AddDebuff("spider_dead_poison","poison_2")
+            end
+        end
     end)
 end
 
-local function dospiderweak(inst,data)
-    if data then
-        local target=data.target
-        if target~=nil and target:HasTag("character") and not target:HasTag("ghost") and
-             not(target.components.inventory~=nil and target.components.inventory:EquipHasTag("poison_immune")) then
-                target:AddDebuff("spider_weak","weak",{duration=40,speed=0.6})
-        end
-    end
-end
 
 AddPrefabPostInit("spider_spitter",function (inst)
     if not TheWorld.ismastersim then return end
-    inst:ListenForEvent("onhitother",dospiderweak)
+    inst.components.combat.onhitotherfn = function (inst,target, damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+        if target:IsPoisonable()  and damageredirecttarget==nil then
+            target:AddDebuff("weak","weak")
+        end
+    end    
 end)
 
 
 -----------------------------------------------------------
 local function dobeepoison(inst,data)
-    if data then
-        local target=data.target
-        if target~=nil and target:HasTag("character") and not target:HasTag("ghost") and
-             not(target.components.inventory~=nil and target.components.inventory:EquipHasTag("poison_immune")) then
-                target:AddDebuff("bee_poison","poison",{duration=total_day_time})
-        end
+    if data.target:IsPoisonable() and not data.redirected then
+        data.target:AddDebuff("bee_poison","poison")
     end
 end
 

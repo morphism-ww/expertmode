@@ -1,14 +1,13 @@
 local assets =
 {
     Asset("ANIM", "anim/swap_northpole.zip"),
-    Asset("ANIM", "anim/northpole.zip"),
-    Asset("INV_IMAGE", "trident"),
-    
+    Asset("ANIM", "anim/northpole.zip"),    
 }
 
 local prefabs =
 {
-    "crab_king_waterspout",
+    "northpole_proj",
+    "frozen"
 }
 
 local function Projectile_CreateTailFx()
@@ -51,6 +50,7 @@ local function on_unequipped(inst, equipper)
 end
 
 local function onfinished(inst)
+    inst.SoundEmitter:PlaySound("dontstarve/common/gem_shatter")
     inst:Remove()
 end
 
@@ -69,12 +69,25 @@ local function OnEquipped(inst)
     end    
 end
 
+local function OnAttack(inst)
+    inst.SoundEmitter:PlaySound("hookline_2/creatures/boss/crabking/ice_attack")
+end
+
+local function mustblue(inst,gem)
+    if gem.prefab=="bluegem" then
+        return true
+    else
+        return false, "WRONG_GEM_COLOUR"
+    end    
+end
+
 local FLOATER_SWAP_DATA = {sym_build = "swap_trident"}
 local function fn()
     local inst = CreateEntity()
 
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
     MakeInventoryPhysics(inst)
@@ -104,17 +117,16 @@ local function fn()
     end
 
     inst:AddComponent("weapon")
-    inst.components.weapon:SetDamage(68)
-    inst.components.weapon:SetRange(14)
+    inst.components.weapon:SetDamage(35)
+    inst.components.weapon:SetRange(10)
+    inst.components.weapon:SetOnProjectileLaunched(OnAttack)
     inst.components.weapon:SetProjectile("northpole_proj")
 
     local planardamage = inst:AddComponent("planardamage")
-	planardamage:SetBaseDamage(20)
+	planardamage:SetBaseDamage(33)
 
 
     inst:AddComponent("inspectable")
-    inst.components.inspectable:SetDescription("凛冬将至")
-
     -------
     inst:AddComponent("inventoryitem")
     -------
@@ -126,13 +138,14 @@ local function fn()
 
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetOnFinished(onfinished)
-    inst.components.finiteuses:SetMaxUses(400)
-    inst.components.finiteuses:SetUses(400)
-
+    inst.components.finiteuses:SetMaxUses(300)
+    inst.components.finiteuses:SetUses(300)
+    
    
     inst:AddComponent("repairable")
-    inst.components.repairable.repairmaterial = MATERIALS.ICE
-
+    inst.components.repairable.repairmaterial = MATERIALS.GEM
+    inst.components.repairable:SetFiniteUsesRepairable(true)
+    inst.components.repairable.checkmaterialfn = mustblue
 
     inst:AddComponent("equippable")
     inst.components.equippable:SetOnEquip(on_equipped)
@@ -142,32 +155,13 @@ local function fn()
     return inst
 end
 
-local function frozen_debuff(inst,target)
-    if target.components.health~=nil and not target.components.health:IsDead() and target.replica.health~=nil then
-        target.components.health:DoDelta(-50,true,"frozen")
-    end
-end
+
 
 local function onhit(inst, attacker, target)
-	inst.AnimState:SetOrientation(0)
-	inst.AnimState:PlayAnimation("idle")
-	inst:RemoveComponent("projectile")
-	
-	if attacker~=nil and target.components.combat~=nil and
+	if target:IsValid() and target.components.combat~=nil and
          target.components.health~=nil and not target.components.health:IsDead() then
-        
-        
-        inst.entity:AddFollower()
-        inst.Follower:FollowSymbol(target.GUID, target.components.combat.hiteffectsymbol, 0, 0, 0 )
-        inst:FacePoint(attacker.Transform:GetWorldPosition())
-        SpawnPrefab("sparks"):AlignToTarget(target, inst, true)
-        if target:DebuffsEnabled() then
-            target:AddDebuff("northpole_frozen","frozen")
-        end 
-        inst.frozentask=inst:DoPeriodicTask(1,frozen_debuff,0,target)
-        --inst.debufftask=inst:DoPeriodicTask(1,frozen_debuff,0,target)
-        if target.components.freezable ~= nil and target:IsValid() then
-            target.components.freezable:AddColdness(1)
+
+        if target.components.freezable ~= nil then
             target.components.freezable:SpawnShatterFX()
         end
         if target.components.burnable ~= nil then
@@ -177,26 +171,11 @@ local function onhit(inst, attacker, target)
                 target.components.burnable:SmotherSmolder()
             end
         end
-        --[[if target.components.locomotor then
-            target.components.locomotor:SetExternalSpeedMultiplier(target, "frozen", 0.6)
-        end]]
-        inst:DoTaskInTime(15,inst.KillFX)
-
-        inst:ListenForEvent("minhealth",function ()
-            inst:KillFX()
-        end,target)
-    else
-        inst:Remove()    
+        target:AddDebuff("northpole_frozen","frozen")
 	end
+    inst:Remove()    
 end
 
-local function KillFX(inst)
-    if inst.frozentask~=nil then
-        inst.frozentask:Cancel()
-        inst.frozentask=nil
-    end
-    inst:DoTaskInTime(0.1,inst.Remove)
-end
 
 local function projfn()
     local inst = CreateEntity()
@@ -204,14 +183,10 @@ local function projfn()
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddNetwork()
-    inst.entity:AddSoundEmitter()
 
     MakeProjectilePhysics(inst)
 
-    inst:AddTag("FX")
-    inst:AddTag("projectile")
-
-
+    
     inst.AnimState:SetBank("northpole")
 	inst.AnimState:SetBuild("northpole")
 	inst.AnimState:PlayAnimation("thrown")
@@ -220,6 +195,9 @@ local function projfn()
 
     inst.AnimState:SetMultColour(135/255,260/255,250/255,0.4)
     inst.AnimState:SetAddColour(173/255,216/255,230/255,0.6)
+
+    inst:AddTag("FX")
+    inst:AddTag("projectile")
 
     inst.entity:SetPristine()
 
@@ -230,48 +208,59 @@ local function projfn()
     inst.persists = false
 
     inst:AddComponent("projectile")
-	inst.components.projectile:SetSpeed(25)
+	inst.components.projectile:SetSpeed(22)
 	inst.components.projectile:SetOnHitFn(onhit)
     inst.components.projectile:SetHoming(false)
     inst.components.projectile:SetLaunchOffset(Vector3(0.5, 0.5, 2.5))
     inst.components.projectile:SetHitDist(1.5)
     inst.components.projectile:SetOnMissFn(inst.Remove)
-    inst.components.projectile:SetRange(32)
-
-    inst.SoundEmitter:PlaySound("hookline_2/creatures/boss/crabking/ice_attack")
-    inst.KillFX =KillFX
+    inst.components.projectile:SetRange(30)  
 
     return inst
 end
 
+local function frozen_debuff(inst,target)
+    if target.components.health~=nil and not target.components.health:IsDead() then
+        target.components.health:DoDelta(-inst.damage,nil,"frozen")
+        SpawnPrefab("crab_king_icefx").Transform:SetPosition(inst.Transform:GetWorldPosition())
+    else
+        inst.components.debuff:Stop()
+    end    
+end
+
 local function OnAttached(inst, target, followsymbol, followoffset)
     inst.entity:SetParent(target.entity)
+    inst.Transform:SetPosition(0,0,0)
     inst:ListenForEvent("death", function()
         inst.components.debuff:Stop()
     end, target)
+
+    inst.Follower:FollowSymbol(target.GUID, target.components.combat.hiteffectsymbol, 0, 0, 0 )
+        
+    inst.frozentask = inst:DoPeriodicTask(1,frozen_debuff,nil,target)
     --inst.Follower:FollowSymbol(target.GUID, "headbase", 0,0,0)
     --OnChangeFollowSymbol(inst, target, followsymbol, followoffset)
     if target.components.locomotor~=nil then
-        target.components.locomotor:SetExternalSpeedMultiplier(inst, "frozen", 0.5)
+        target.components.locomotor:SetExternalSpeedMultiplier(inst, "frozen", 0.8)
     end
 end
 
 local function OnExtended(inst, target,followsymbol, followoffset, data)
-
-    inst.components.timer:StopTimer("buffover")
-    inst.components.timer:StartTimer("buffover", 15)
-    if target.components.locomotor~=nil then
-        target.components.locomotor:SetExternalSpeedMultiplier(inst, "frozen", 0.5)
-    end
+    
+    inst.frozen_level = math.min(inst.frozen_level + 1, 15)
+    inst.damage = 10*inst.frozen_level + 2*inst.frozen_level*(inst.frozen_level-1)
+    inst.components.timer:SetTimeLeft("buffover",6)
 end
 
 local function OnTimerDone(inst, data)
-    if data.name == "buffover" then
-        inst.components.debuff:Stop()
-    end
+    inst.components.debuff:Stop()
 end
 
 local function OnDetached(inst, target)
+    if inst.frozentask~=nil then
+        inst.frozentask:Cancel()
+        inst.frozentask = nil
+    end
 	inst:Remove()
 end
 
@@ -283,15 +272,15 @@ local function bufffn()
     inst.entity:AddAnimState()
     inst.entity:AddNetwork()
 
+    inst.AnimState:SetBank("northpole")
+	inst.AnimState:SetBuild("northpole")
+	inst.AnimState:PlayAnimation("idle")
+
+    inst.AnimState:SetMultColour(135/255,260/255,250/255,0.4)
+    inst.AnimState:SetAddColour(173/255,216/255,230/255,0.6)
+
     inst:AddTag("FX")
     inst:AddTag("NOCLICK")
-
-    inst.AnimState:SetBank("deer_ice_flakes")
-    inst.AnimState:SetBuild("deer_ice_flakes")
-    inst.AnimState:PlayAnimation("idle",true)
-    inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-    inst.AnimState:SetFinalOffset(1)
-
 
     inst.entity:SetPristine()
 
@@ -299,12 +288,18 @@ local function bufffn()
         return inst
     end
 
+    inst.frozen_level = 1
+    inst.damage = 40
+
     inst:AddComponent("debuff")
     inst.components.debuff:SetAttachedFn(OnAttached)
     inst.components.debuff:SetExtendedFn(OnExtended)
     inst.components.debuff:SetDetachedFn(OnDetached)
+
+    
+
     inst:AddComponent("timer")
-    inst.components.timer:StartTimer("buffover",15)
+    inst.components.timer:StartTimer("buffover",6)
     inst:ListenForEvent("timerdone", OnTimerDone)
 
 
@@ -313,5 +308,5 @@ end
 
 
 return Prefab("northpole", fn, assets, prefabs),
-    Prefab("northpole_proj", projfn, assets, prefabs),
-    Prefab("frozen",bufffn)
+    Prefab("northpole_proj", projfn, assets),
+    Prefab("frozen",bufffn,assets)

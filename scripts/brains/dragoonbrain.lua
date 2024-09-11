@@ -8,7 +8,7 @@ local DragoonBrain = Class(Brain, function(self, inst)
 end)
 
 local SEE_DIST = 30
-local HOUSE_MAX_DIST = 20
+local HOUSE_MAX_DIST = 30
 
 
 
@@ -16,25 +16,19 @@ local DRAGONFLY_VOMIT_TARGETS_FOR_SATISFIED = 40
 local DRAGOON_CHASE_TIME = 8
 
 
-local function GetLeader(inst)
-	return inst.components.follower and inst.components.follower.leader
-end
-
-
-
 local function ShouldSpitFn(inst)
-	if inst:HasTag("lavaspitter") then
-		if inst.sg:HasStateTag("sleeping") or inst.num_targets_vomited >= DRAGONFLY_VOMIT_TARGETS_FOR_SATISFIED or inst.hassleepdestination then return false end
-		if not inst.recently_frozen and not inst.flame_on then
-			if not inst.last_spit_time then 
-				if inst:GetTimeAlive() > 5 then
-					return true
-				end
-			else
-				return (GetTime() - inst.last_spit_time) >= inst.spit_interval
+	
+	if inst.sg:HasStateTag("sleeping") or inst.num_targets_vomited >= DRAGONFLY_VOMIT_TARGETS_FOR_SATISFIED or inst.hassleepdestination then return false end
+	if not inst.recently_frozen and not inst.flame_on then
+		if not inst.last_spit_time then 
+			if inst:GetTimeAlive() > 5 then
+				return true
 			end
+		else
+			return (GetTime() - inst.last_spit_time) >= inst.spit_interval
 		end
 	end
+	
 	return false
 end
 
@@ -51,18 +45,26 @@ local function LavaSpitAction(inst)
 	end
 end
 
-
+local function EatFoodAction(inst)
+	if inst.sg:HasStateTag("busy") and not inst.sg:HasStateTag("wantstoeat") then
+		return
+	end
+    local target = FindEntity(inst, SEE_DIST, function(item) return inst.components.eater:CanEat(item) and item:IsOnPassablePoint(true) end)
+    return target ~= nil and BufferedAction(inst, target, ACTIONS.EAT) or nil
+end
 
 
 function DragoonBrain:OnStart()
 	
 	local root = PriorityNode(
 	{
-		WhileNode(function() return self.inst.components.combat.target end, "Chase Behaviours", ChaseAndAttack(self.inst, DRAGOON_CHASE_TIME)),
+
+		ChaseAndAttack(self.inst, DRAGOON_CHASE_TIME),
 
 		WhileNode(function() return ShouldSpitFn(self.inst) end, "Spit",
 			DoAction(self.inst, LavaSpitAction)),
-
+		AttackWall(self.inst),
+		DoAction(self.inst, EatFoodAction, "eat food", true),		
 		Wander(self.inst, nil, HOUSE_MAX_DIST),
 	}, .25)
 	

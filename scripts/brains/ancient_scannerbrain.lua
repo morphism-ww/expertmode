@@ -12,7 +12,7 @@ end)
 -----------------------------------------------------------------------------------------
 
 local function GetLeaderPosition(inst)
-    return (inst.components.follower and inst.components.follower.leader and inst.components.follower.leader:GetPosition())
+    return inst.components.homeseeker:GetHomePos()
         or inst:GetPosition()
 end
 
@@ -23,22 +23,16 @@ local function ReturnToBaseAfterFinishedScan(inst)
         return nil
     end
 
-    local leader = (inst.components.follower ~= nil and inst.components.follower.leader)
-    if not leader then
+    local home = inst.components.homeseeker:GetHome()
+    if home==nil then
         inst:OnReturnedAfterSuccessfulScan()
         return
     end
 
-    local flyto_position = nil
-    local offset = nil
-    if inst.components.follower ~= nil and inst.components.follower.leader ~= nil then
-        flyto_position = inst.components.follower.leader:GetPosition()
-        local angle_to_leader = inst:GetAngleToPoint(flyto_position:Get())
-        offset = FindWalkableOffset(flyto_position, angle_to_leader, 4.0)
-    else
-        flyto_position = inst:GetPosition()
-        offset = FindWalkableOffset(flyto_position, 2*PI*math.random(), math.random(0.5, 1.5))
-    end
+    local flyto_position = home:GetPosition()
+    local angle_to_leader = inst:GetAngleToPoint(flyto_position:Get())
+    local offset = FindWalkableOffset(flyto_position, angle_to_leader, 4.0)
+
 
     if offset then
         flyto_position = flyto_position + offset
@@ -107,7 +101,7 @@ function AncientScannerBrain:OnStart()
                         FaceEntity(self.inst, GetScanTarget, KeepFacingScanTarget),
                     }, 1)
                 ),
-                Wander(self.inst, GetLeaderPosition,16),
+                Wander(self.inst, GetLeaderPosition, 16),
                 --StandStill(self.inst),
             }, 1)
         )

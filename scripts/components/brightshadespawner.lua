@@ -27,13 +27,6 @@ local DEFAULT_VALID_TILE_TYPES =
     [WORLD_TILES.WOODFLOOR] = true,
     [WORLD_TILES.CARPET] = true,
     [WORLD_TILES.CHECKER] = true,
-
-    -- CAVES
-    [WORLD_TILES.CAVE] = true,
-    [WORLD_TILES.FUNGUS] = true,
-    [WORLD_TILES.SINKHOLE] = true,
-    [WORLD_TILES.UNDERROCK] = true,
-    [WORLD_TILES.MUD] = true,
 }
 
 local MinionSpawner = Class(function(self, inst)

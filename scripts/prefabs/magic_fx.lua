@@ -87,11 +87,13 @@ local function GetRandomAngle(inst)
 end
 local function TriggerFX(inst)
     local x,y,z=inst.Transform:GetWorldPosition()
-    for i=1,3 do
-        local soul = SpawnPrefab("klaus_soul_spawn")
-        local theta = GetRandomAngle(inst)
-        local rad = GetRandomMinMax(1, 4)
-        soul.Transform:SetPosition(x + rad * math.cos(theta), 0, z + rad * math.sin(theta))
+    for k, v in pairs(inst.casttarget) do
+        for i = 1, math.min(v,3) do
+            local soul = SpawnPrefab("klaus_soul_spawn")
+            local theta = GetRandomAngle(inst)
+            local rad = GetRandomMinMax(1, 4)
+            soul.Transform:SetPosition(x + rad * math.cos(theta), 0, z + rad * math.sin(theta))
+        end     
     end
 end
 
@@ -99,32 +101,36 @@ end
 -------------------------------------------------------------------------
 
 local ICE_CIRCLE_RADIUS = 3
-local NOTAGS = { "playerghost", "INLIMBO", "flight", "invisible","deergemresistance","deer" }
+local NOTAGS = { "playerghost", "INLIMBO", "flight", "invisible","deergemresistance","deer"}
 
 
 local FREEZETARGET_ONEOF_TAGS = { "locomotor", "character","monster"}
 local function OnUpdateIceCircle(inst, x, z)
-    local tick=false
+    
     inst._rad:set(inst._rad:value() * .98 + ICE_CIRCLE_RADIUS * .02)
     
     inst._track1 = inst._track2 or {}
     inst._track2 = {}
     inst.burstdelay = (inst.burstdelay or 6) - 1
-    if inst.burstdelay < 0 then
-        inst.burstdelay = math.random(5, 6)
-        tick=true
-    end
+    
     for i, v in ipairs(TheSim:FindEntities(x, 0, z, inst._rad:value(), nil, NOTAGS, FREEZETARGET_ONEOF_TAGS)) do
         if v:IsValid() and not (v.components.health ~= nil and v.components.health:IsDead()) then
+            
             if v.components.locomotor ~= nil then
                 v.components.locomotor:PushTempGroundSpeedMultiplier(0.3)
             end
-            if tick and v.components.sanity ~= nil then
-                v.components.sanity:DoDelta(-5)
+            if inst.burstdelay<0 then
+                if not v:HasTag("soulless") then
+                    inst.casttarget[v] = (inst.casttarget[v] or 0) + 1
+                end
+                if v.components.sanity ~= nil then
+                    v.components.sanity:DoDelta(-3)
+                end
+                if v.components.mightiness~=nil then
+                    v.components.mightiness:DoDelta(-2)
+                end
             end
-            if tick and v.components.mightiness~=nil then
-                v.components.mightiness:DoDelta(-3)
-            end
+            
             if v.components.grogginess ~= nil and not v.components.grogginess:IsKnockedOut() then
                 local curgrog = v.components.grogginess.grog_amount
                 if curgrog < TUNING.DEER_ICE_FATIGUE then
@@ -132,6 +138,10 @@ local function OnUpdateIceCircle(inst, x, z)
                 end
             end
         end
+    end
+    if inst.burstdelay < 0 then
+        inst.burstdelay = math.random(5, 6)
+        
     end
 end
 
@@ -150,6 +160,7 @@ end
 
 local function OnInitIceCircleClient(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
+    
     inst:DoPeriodicTask(0, OnUpdateIceCircleClient, nil, x, z)
     OnUpdateIceCircleClient(inst, x, z)
 end
@@ -157,6 +168,7 @@ end
 local function OnInitIceCircle(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
     inst._rad:set(.25)
+    inst.casttarget = {}
     inst.task = inst:DoPeriodicTask(0, OnUpdateIceCircle, nil, x, z)
     OnUpdateIceCircle(inst, x, z)
 end

@@ -1,47 +1,76 @@
+local NIGHTMARE_LOOT = { "nightmarefuel","nightmarefuel"}
+local function IsWorldNightmare(inst, phase)
+	return phase == "wild" or phase == "dawn"
+end
+local function DoFx(inst)
+    inst.SoundEmitter:PlaySound("dontstarve/common/ghost_spawn")
+
+    local x, y, z = inst.Transform:GetWorldPosition()
+    local fx = SpawnPrefab("statue_transition_2")
+    if fx ~= nil then
+        fx.Transform:SetPosition(x, y, z)
+        fx.Transform:SetScale(.8, .8, .8)
+    end
+    fx = SpawnPrefab("statue_transition")
+    if fx ~= nil then
+        fx.Transform:SetPosition(x, y, z)
+        fx.Transform:SetScale(.8, .8, .8)
+    end
+end
+local function SetNightmare(inst)
+    inst:AddTag("shadowchesspiece")
+    if inst.shadow==nil then
+        inst.shadow = SpawnPrefab("small_leechterror")
+        inst.shadow:SetHost(inst,inst:HasTag("rook") and "innerds" or "hips")
+    end
+    
+    inst.components.lootdropper:SetLoot(NIGHTMARE_LOOT)
+end
+local function SetNormal(inst)
+    inst:RemoveTag("shadowchesspiece")
+    if inst.shadow~=nil then
+        inst.shadow:Remove()
+        inst.shadow = nil
+    end
+    inst.components.lootdropper:SetLoot(nil)
+end
+local function TestNightmarePhase(inst, phase)
+	
+    if IsWorldNightmare(inst, phase) then
+        if not inst:HasTag("shadowchesspiece") then
+            DoFx(inst)
+            SetNightmare(inst)
+        end
+    elseif inst:HasTag("shadowchesspiece") then
+        DoFx(inst)
+        SetNormal(inst)
+    end
+end
+
+local function OnSave(inst, data)
+    data.nightmare = inst:HasTag("shadowchesspiece") or nil
+end
+
+local function OnLoad(inst, data)
+	if data ~= nil and data.nightmare then
+        SetNightmare(inst)
+    end
+end
+
 AddPrefabPostInit("bishop_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
-    inst.shadow=SpawnPrefab("small_leechterror")
-    inst.shadow.entity:SetParent(inst.entity)
-    inst.shadow.entity:AddFollower():FollowSymbol(inst.GUID, "hips", 0, 0, 0)
+    
+
+    inst:WatchWorldState("nightmarephase", TestNightmarePhase)
+    inst.OnSave = OnSave
+    inst.OnLoad = OnLoad
 end)
------------------------------------------------------------------------------------
-local function LaunchItem(inst, target, item)
-    if item.Physics ~= nil and item.Physics:IsActive() then
-        local x, y, z = item.Transform:GetWorldPosition()
-        item.Physics:Teleport(x, .1, z)
-
-        x, y, z = inst.Transform:GetWorldPosition()
-        local x1, y1, z1 = target.Transform:GetWorldPosition()
-        local angle = math.atan2(z1 - z, x1 - x) + (math.random() * 20 - 10) * DEGREES
-        local speed = 5 + math.random() * 2
-        item.Physics:SetVel(math.cos(angle) * speed, 10, math.sin(angle) * speed)
-    end
-end
-local function OnHitOther(inst, data)
-    if data.redirected then
-        return
-    end
-    local target=data.target
-	if target ~= nil then
-        if target.components.inventory ~= nil then
-            local item = target.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-            if item ~= nil then
-                target.components.inventory:DropItem(item)
-                LaunchItem(inst, target, item)
-            end
-        end
-        if target.components.sanity~=nil then
-            target.components.sanity:DoDelta(-5)
-        end
-    end
-end
-
 
 AddPrefabPostInit("knight_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
-    inst:AddComponent("damagetyperesist")
-    inst.components.damagetyperesist:AddResist("animal", inst, 0.5)
-    inst:ListenForEvent("onhitother", OnHitOther)
+    inst:WatchWorldState("nightmarephase", TestNightmarePhase)
+    inst.OnSave = OnSave
+    inst.OnLoad = OnLoad
 end)
 ----------------------------------------------------------
 
@@ -57,34 +86,18 @@ end
 
 AddPrefabPostInit("rook_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
-    inst:AddComponent("damagetyperesist")
-    inst.components.damagetyperesist:AddResist("animal", inst, 0.5)
     inst:ListenForEvent("onhitother", OnHitOther2)
+    inst:WatchWorldState("nightmarephase", TestNightmarePhase)
+    inst.OnSave = OnSave
+    inst.OnLoad = OnLoad
 end)
 
 local function spawnshadow(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
-    local dragon=SpawnPrefab("shadowdragon")
-    dragon.Transform:SetPosition(x,y,z)
-end
-
-
-local function spawn_defender(inst)
-    local pos=inst:GetPosition()
-    if TheWorld.components.ancient_defender ~= nil and TheWorld.components.ancient_defender:AllowSpawn() then
-        local node,node_index = TheWorld.Map:FindNodeAtPoint(pos:Get())
-        if string.find(TheWorld.topology.ids[node_index],"Military") then
-            local offset=FindWalkableOffset(pos,0,6,9)
-            if offset~=nil then
-                SpawnPrefab("spider_robot").Transform:SetPosition(pos.x+offset.x,0,pos.z+offset.z)
-            end
-        end    
-    end   
+    SpawnPrefab("shadowdragon").Transform:SetPosition(inst.Transform:GetWorldPosition())
 end
 
 
 AddPrefabPostInit("ancient_altar_broken",function(inst)
     if not TheWorld.ismastersim then return end
-    inst:DoTaskInTime(0,spawn_defender)
     inst:ListenForEvent("onprefabswaped",spawnshadow)
 end)

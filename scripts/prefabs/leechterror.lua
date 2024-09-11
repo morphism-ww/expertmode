@@ -3,27 +3,19 @@ local assets =
     Asset("ANIM", "anim/shadow_oceanhorror.zip"),
 }
 
-
-
-local RETARGET_MUST_TAGS = { "_combat", "_health" }
+local RETARGET_MUST_TAGS = { "_combat"}
 local RETARGET_CANT_TAGS = { "minotaur","chess" }
+local RETARGET_ONEOF_TAGS = {"character","monster","animal"}
 local function retargetfn(inst)
     return FindEntity(
         inst,
-        10,
+        20,
         function(guy)
-            return guy.prefab ~= inst.prefab
-                and guy.entity:IsVisible()
+            return  guy.entity:IsVisible()
+                and guy.components.health~=nil
                 and not guy.components.health:IsDead()
-                and (guy.components.combat.target == inst or
-                    guy:HasTag("character") or
-                    guy:HasTag("monster") or
-                    guy:HasTag("animal"))
-				and (guy:HasTag("player") or
-					not (guy.sg and guy.sg:HasStateTag("hiding")))
         end,
-        RETARGET_MUST_TAGS,
-        RETARGET_CANT_TAGS)
+        RETARGET_MUST_TAGS,RETARGET_CANT_TAGS,RETARGET_ONEOF_TAGS)
 end
 
 local function shouldKeepTarget(inst, target)
@@ -31,105 +23,71 @@ local function shouldKeepTarget(inst, target)
         and target:IsValid()
         and target.components.health ~= nil
         and not target.components.health:IsDead()
+        and target:IsNear(inst, 10)
 end
 
-local function OnHitOther(inst, data)
-    if data.redirected then
-        return
+local function OnHitOther(inst,target,damage, stimuli, weapon, damageresolved)
+    if damageresolved>0 and target.components.sanity~=nil then
+        target.components.sanity:DoDelta(-8)
     end
-    local target=data.target
-	if target ~= nil then
-        if target.components.sanity~=nil then
-            target.components.sanity:DoDelta(-8)
+end
+
+
+local function sethost(inst,host,followsymbal)
+    inst.entity:SetParent(host.entity)
+    inst.entity:AddFollower():FollowSymbol(host.GUID, followsymbal, 0, 0, 0)
+    inst:ListenForEvent("death",function ()
+        inst.sg:GoToState("death")
+    end,host)
+end
+
+
+local function MakeLeech(name,scale)
+    local function fn()
+        local inst = CreateEntity()
+    
+        inst.entity:AddTransform()
+        inst.entity:AddAnimState()
+        inst.entity:AddSoundEmitter()
+        inst.entity:AddNetwork()
+    
+        
+        inst.AnimState:SetBank("oceanhorror")
+        inst.AnimState:SetBuild("shadow_oceanhorror")
+        inst.AnimState:PlayAnimation("idle_loop", true)
+        inst.AnimState:SetMultColour(1, 1, 1, 0.5)
+        inst.AnimState:SetScale(scale,scale,scale)
+        inst.AnimState:HideSymbol("Symbol 1")
+    
+        inst:AddTag("shadow")
+        inst:AddTag("NOCLICK")
+        inst:AddTag("notarget")
+        inst:AddTag("shadow_aligned")
+    
+        inst.entity:SetPristine()
+    
+        if not TheWorld.ismastersim then
+            return inst
         end
-    end
-end
-
-
-
-
-local function fn()
-    local inst = CreateEntity()
-
-    inst.entity:AddTransform()
-    inst.entity:AddPhysics()
-    inst.entity:AddAnimState()
-    inst.entity:AddSoundEmitter()
-    inst.entity:AddNetwork()
-
-    --inst.Physics:SetCylinder(0.25, 2)
-
-    inst.Transform:SetScale(1.5,1.5,1.5)
-
-    inst.AnimState:SetMultColour(1, 1, 1, 0.5)
-
-    inst.AnimState:SetBank("oceanhorror")
-    inst.AnimState:SetBuild("shadow_oceanhorror")
-    inst.AnimState:PlayAnimation("idle_loop", true)
-
-    inst:AddTag("shadow")
-    inst:AddTag("notarget")
-    inst:AddTag("NOCLICK")
-    inst:AddTag("shadow_aligned")
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
+        
+        inst.persists = false
+    
+        inst:AddComponent("combat")
+        inst.components.combat:SetRange(3*scale)
+        inst.components.combat:SetDefaultDamage(50*scale)
+        inst.components.combat:SetAttackPeriod(4)
+        inst.components.combat:SetRetargetFunction(0.5, retargetfn)
+        inst.components.combat:SetKeepTargetFunction(shouldKeepTarget)
+        inst.components.combat.onhitotherfn = OnHitOther
+    
+        inst:SetStateGraph("SGleechterror")
+        inst.SetHost = sethost
+    
+        
         return inst
     end
-
-
-    inst:AddComponent("combat")
-    inst.components.combat:SetRange(5)
-    inst.components.combat:SetDefaultDamage(75)
-    inst.components.combat:SetAttackPeriod(3)
-    inst.components.combat:SetRetargetFunction(1, retargetfn)
-    inst.components.combat:SetKeepTargetFunction(shouldKeepTarget)
-
-    inst:SetStateGraph("SGleechterror")
-    inst:ListenForEvent("onhitother", OnHitOther)
-
-    return inst
-end
-local function smallfn()
-    local inst = CreateEntity()
-
-    inst.entity:AddTransform()
-    inst.entity:AddPhysics()
-    inst.entity:AddAnimState()
-    inst.entity:AddSoundEmitter()
-    inst.entity:AddNetwork()
-
-    --inst.Physics:SetCylinder(0.25, 2)
-    inst.AnimState:SetMultColour(1, 1, 1, 0.5)
-    inst.AnimState:SetBank("oceanhorror")
-    inst.AnimState:SetBuild("shadow_oceanhorror")
-    inst.AnimState:PlayAnimation("idle_loop", true)
-
-    inst:AddTag("shadow")
-    inst:AddTag("notarget")
-    inst:AddTag("NOCLICK")
-    inst:AddTag("shadow_aligned")
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
-
-    inst:AddComponent("combat")
-    inst.components.combat:SetRange(3)
-    inst.components.combat:SetDefaultDamage(40)
-    inst.components.combat:SetAttackPeriod(3)
-    inst.components.combat:SetRetargetFunction(1, retargetfn)
-    inst.components.combat:SetKeepTargetFunction(shouldKeepTarget)
-
-    inst:SetStateGraph("SGleechterror")
-
-    inst:ListenForEvent("onhitother", OnHitOther)
-    return inst
+    return Prefab(name, fn, assets)
 end
 
-return Prefab("leechterror", fn, assets),
-    Prefab("small_leechterror",smallfn,assets)
+return MakeLeech("leechterror",1.5),
+    MakeLeech("small_leechterror",1)

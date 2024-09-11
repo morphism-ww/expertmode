@@ -3,7 +3,7 @@ local assets =
     Asset("ANIM", "anim/wx_scanner.zip"),
     Asset("ANIM", "anim/winona_catapult_placement.zip"),
 }
-local prefabs={"wx78_scanner_fx"}
+
 
 local brain = require "brains/ancient_scannerbrain"
 
@@ -12,8 +12,7 @@ local MIN_FLASH_TIME = 0.15
 local TOP_LIGHT_FLASH_TIMERNAME = "toplightflash_tick"
 
 local function proximityscan(inst, dt)
-    local owner = inst.components.follower.leader
-    if owner then
+    if inst.components.homeseeker:HasHome() then
         local x,y,z = inst.Transform:GetWorldPosition()
 
         -- We add a buffer to the search distance to account for physics radii
@@ -103,8 +102,7 @@ local function OnUpdateScanCheck(inst, dt)
 
     local target = inst.components.entitytracker:GetEntity("scantarget")
     if target ~= nil then
-        local owner = inst.components.follower.leader
-        if owner == nil or target:HasTag("playerghost") or
+        if not inst.components.homeseeker:HasHome() or target:HasTag("playerghost") or
                 (target.components.health ~= nil and target.components.health:IsDead()) then
             inst:StopScanFX()
             inst:OnScanFailed()
@@ -151,8 +149,8 @@ local function TryFindTarget(inst)
         return nil
     end
 
-    local owner = inst.components.follower.leader
-    if not owner then
+    
+    if not inst.components.homeseeker:HasHome() then
         return nil
     end
 
@@ -289,8 +287,8 @@ end
 local function IsInRangeOfBase(inst)
     local DISTANCE = 20
 
-    if inst.components.follower == nil or inst.components.follower.leader == nil or
-            inst:GetDistanceSqToInst(inst.components.follower.leader) < DISTANCE*DISTANCE then
+    if not inst.components.homeseeker:HasHome() or 
+            inst:GetDistanceSqToPoint(inst.components.homeseeker:GetHomePos()) < DISTANCE*DISTANCE then
         return true
     else
         if inst.components.entitytracker:GetEntity("scantarget") then
@@ -337,30 +335,26 @@ end
 local function stop_looping_sound(inst)
     inst.SoundEmitter:KillSound("movement_lp")
 end
-local function ShareTargetFn(dude)
-    return dude:HasTag("chess") or dude:HasTag("shadow_aligned")
-end
+
 local function DoWarning(inst,target)
-    --[[local x,y,z=inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x,y,z, 32, {"_health"}, {"DECOR", "FX", "INLIMBO", "NOCLICK"}, {"chess","shadoweyeturret"})
-    local targets={}
+    local x,y,z=inst.Transform:GetWorldPosition()
+    local ents = TheSim:FindEntities(x,y,z, 32, {"_combat"}, nil, {"chess","shadow"})
     for i, v in ipairs(ents) do
-        if v~=nil and v.components.combat~=nil then
-            if v.components.sleeper~=nil then
-                v.components.sleeper:WakeUp()
-            end
+        if v ~= inst
+            and not (v.components.health ~= nil and
+                    v.components.health:IsDead()) then 
+                    
             v.components.combat:SuggestTarget(target)
         end
-    end]]
-    if target~=nil and target.components.sanity~=nil then
+    end
+    if target.components.sanity~=nil then
         target.components.sanity:DoDelta(-25)
     end
-    inst.components.combat:ShareTarget(target, 30, ShareTargetFn, 10)
+    --inst.components.combat:ShareTarget(target, 30, ShareTargetFn, 10)
 end
 local function explode(inst)
     inst:StopScanFX()
     inst.components.explosive:OnBurnt()
-    inst:Remove()
 end
 local function OnSuccessfulScan(inst)
     inst._donescanning = true
@@ -423,18 +417,7 @@ local function DoTurnOff(inst)
         inst:SetBrain(nil)
     end
 end
-local function findleader(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
-    if inst.components.follower.leader==nil then
-        local ents = TheSim:FindEntities(x,y,z, 12)
-        for i, v in ipairs(ents) do
-            if v.prefab=="scanner_spawn" then
-                inst.components.follower.leader=v
-                break
-            end
-        end
-    end
-end
+
 local function OnReturnedAfterSuccessfulScan(inst)
     inst.sg:GoToState("scan_success")
 end
@@ -443,13 +426,7 @@ local function OnExplodeFn(inst)
     explosive.Transform:SetPosition(inst.Transform:GetWorldPosition())
 end
 
---[[local function onsave(inst,data)
-    data.base = inst.components.follower.leader or nil
-end
 
-local function onload(inst,data)
-    inst.components.follower.leader=data.base or nil
-end]]
 
 local function OnKilled(inst)
     inst:DoTaskInTime(1,explode)
@@ -471,8 +448,9 @@ local function scannerfn()
 
     inst.DynamicShadow:SetSize(1.2, 0.75)
 
-    inst:AddTag("NOBLOCK")
+    --inst:AddTag("NOBLOCK")
     inst:AddTag("hostile")
+    inst:AddTag("shadow_aligned")
     inst:AddTag("chess")
 
     inst.AnimState:SetBank("scanner")
@@ -502,7 +480,9 @@ local function scannerfn()
     inst:AddComponent("entitytracker")
 
     -------------------------------------------------------------------
-    inst:AddComponent("follower")
+    --inst:AddComponent("follower")
+
+    inst:AddComponent("homeseeker")
     -------------------------------------------------------------------
     inst:AddComponent("locomotor")
     inst.components.locomotor:EnableGroundSpeedMultiplier(false)
@@ -514,7 +494,7 @@ local function scannerfn()
     inst:AddComponent("timer")
     ----------------------------------------------------------------
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(200)
+    inst.components.health:SetMaxHealth(TUNING.ANCIENT_SCANNER_HEALTH)
 
     inst:AddComponent("combat")
     -------------------------------------------------------------------
@@ -550,8 +530,7 @@ local function scannerfn()
     inst.TryFindTarget = TryFindTarget
     inst.DoTurnOff = DoTurnOff
 
-    MakeTinyFreezableCharacter(inst)
-    inst.components.freezable:SetResistance(3)
+    MakeTinyFreezableCharacter(inst,"body")
 
     -------------------------------------------------------------------
     -- For an "onremove" when scan targets get deleted out from under us.
@@ -567,11 +546,55 @@ local function scannerfn()
     -------------------------------------------------------------------
 
     inst.components.timer:StartTimer("startproximityscan", 0.5)
-    inst:DoTaskInTime(0,findleader)
+    --inst:DoTaskInTime(0,findleader)
     inst:ListenForEvent("freeze",explode)
     inst:ListenForEvent("death", OnKilled)
     return inst
 end
 
+require("worldsettingsutil")
+local REGEN_TIME = 3*TUNING.TOTAL_DAY_TIME
+local prefabs =
+{
+    "ancient_scanner",
+}
 
-return Prefab("ancient_scanner", scannerfn, assets,prefabs)
+local function OnPreLoad(inst, data)
+    WorldSettings_ChildSpawner_PreLoad(inst, data, 60, REGEN_TIME)
+end
+local function spawnfn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddSoundEmitter()
+    inst.entity:AddNetwork()
+
+    inst:AddTag("NOCLICK")
+
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    -------------------
+    inst:AddComponent("childspawner")
+    inst.components.childspawner.childname = "ancient_scanner"
+    inst.components.childspawner:SetRegenPeriod(REGEN_TIME)
+    inst.components.childspawner:SetSpawnPeriod(60)
+    inst.components.childspawner:SetMaxChildren(2)
+    WorldSettings_ChildSpawner_SpawnPeriod(inst, 10, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, 2*TUNING.TOTAL_DAY_TIME, true)
+    --inst.components.childspawner:SetSpawnedFn( onspawnchild )
+
+    inst.components.childspawner:StartSpawning()
+    inst.components.childspawner:StartRegen()
+    inst.components.childspawner.childreninside = 2
+
+    inst.OnPreLoad = OnPreLoad
+    return inst
+end
+
+return Prefab("ancient_scanner", scannerfn, assets),
+    Prefab("scanner_spawn",spawnfn, nil, prefabs)

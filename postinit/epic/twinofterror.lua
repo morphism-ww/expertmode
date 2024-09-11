@@ -1,18 +1,8 @@
-local brain = require "brains/twinofterrorbrain"
-TUNING.TWINS_RESET_DAY_COUNT=5
-TUNING.EYEOFTERROR_ATTACKPERIOD=2
---TUNING.TWIN2_CHARGETIMEOUT= 0.60
-TUNING.EYEOFTERROR_DEAGGRO_DIST=36
-TUNING.TWIN1_CHARGECD		= 10 --0.25*TUNING.EYEOFTERROR_CHARGECD,   10
-TUNING.TWIN2_CHARGECD		= 10 --0.25*TUNING.EYEOFTERROR_CHARGECD,  10
-TUNING.TWIN1_MOUTHCHARGECD	= 12   ---9
-TUNING.TWIN2_MOUTHCHARGECD	= 14   ---10
-
-
------------------------------------------------------------------
+local brain = require "brains/twinofterror2brain"
+----------------------------------------------------------------
 local RETARGET_MUST_TAGS = { "_combat" }
 local RETARGET_CANT_TAGS = { "decor", "eyeofterror", "FX", "INLIMBO", "NOCLICK", "notarget", "playerghost", "wall" }
-local RETARGET_ONEOF_TAGS = { "player" }    -- The eye tries to fight players and also other Epic monsters
+local RETARGET_ONEOF_TAGS = { "player" }
 local function update_targets(inst)
     local to_remove = {}
     local pos = inst:GetPosition()
@@ -89,14 +79,16 @@ local function KeepTargetFn(inst, target)
 end
 
 local function warning(inst, data)
-    -- Target our attackers, unless it's one of our soldiers somehow.
     if data.attacker then
         inst.components.combat:ShareTarget(data.attacker, 36, ShareTargetFn, 8)
+        if data.attacker:HasTag("player") then
+            inst.attackerUSERIDs[data.attacker.userid] = true
+        end
     end
 end
 
 
-local function doupgrade(inst)
+--[[local function doupgrade(inst)
     if inst.sg.mem.transformed then
         local x,y,z=inst.Transform:GetWorldPosition()
         local ents = TheSim:FindEntities(x,y,z, 24,{"_health"},nil)
@@ -106,118 +98,135 @@ local function doupgrade(inst)
             end
         end
     end
-end
-
-local loots={}
-for i=1,10 do
-    loots[i]='purebrilliance'
-end
+end]]
 
 
-SetSharedLootTable("twin1hard",
-{
-    {"yellowgem",       1.00},
-    {"yellowgem",       1.00},
-    {"yellowgem",       1.00},
-    {"yellowgem",       0.50},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           0.50},
-    {"transistor",      1.00},
-    {"transistor",      1.00},
-    {"transistor",      0.75},
-    {"trinket_6",       1.00},
-    {"trinket_6",       0.50},
-})
-SetSharedLootTable("twin2hard",
-{
-    {"greengem",        1.00},
-    {"greengem",        1.00},
-    {"greengem",        1.00},
-    {"greengem",        1.00},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           1.00},
-    {"gears",           0.50},
-    {"transistor",      1.00},
-    {"transistor",      1.00},
-    {"transistor",      0.75},
-    {"trinket_6",       1.00},
-    {"trinket_6",       0.50},
-})
+
 
 local function nofreeze()
     return true
 end
+local function OnNewTarget(inst, data)
+	if data.target ~= nil then
+		inst:SetStalking(data.target)
+	end
+end
+
+local function SetStalking(inst, stalking)
+	if stalking ~= inst._stalking then
+        if inst._stalking ~= nil then
+            inst:RemoveEventCallback("onremove", inst._onremovestalking, inst._stalking)
+        end
+        inst._stalking = stalking
+        if stalking then
+            inst:ListenForEvent("onremove", inst._onremovestalking, stalking)
+            inst.components.timer:StopTimer("stalk_cd")
+            inst.components.timer:StartTimer("stalk_cd", 30)
+        end
+	end
+end
+
+local function IsStalking(inst)
+	return inst._stalking ~= nil
+end
 
 AddPrefabPostInit("twinofterror1",function(inst)
+    inst:AddTag("no_rooted")
+    inst:AddTag("nosinglefight_l")
     if not TheWorld.ismastersim then return end
+
+    inst.cycle = false
     inst.twin1=true
 
     inst:AddComponent("planarentity")
-    inst:AddComponent("damagetyperesist")
+
+    inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(30)
+
+    MakePlayerOnlyTarget(inst)
     inst.components.damagetyperesist:AddResist("aoeweapon_leap", inst, 0.6)
     inst.components.damagetyperesist:AddResist("wathom", inst, 0.2)
     
+    if inst.components.shockable then
+        inst:RemoveComponent("shockable") 
+     end
 
-    inst.components.lootdropper:SetChanceLootTable("twin1hard")
-    inst.components.lootdropper:SetLoot(loots)
+    
+    
 
-    inst.components.sleeper:SetResistance(100)
+    inst.components.sleeper:SetResistance(500)
 
+    inst.components.combat:SetRange(18)
 
-
-    inst.components.combat:SetRange(14)
-
-    inst.components.locomotor.walkspeed=14
+    inst.components.locomotor.walkspeed =  8
+    --inst.components.locomotor.runspeed = 18
     inst.components.locomotor.pathcaps = { ignorewalls = true, allowocean = true }
 
-    inst:AddComponent("follower")
+    --inst:AddComponent("follower")
     inst.components.freezable:SetRedirectFn(nofreeze)
     inst.components.combat:SetRetargetFunction(1, RetargetFn)
     inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
 
+    inst:AddComponent("entitytracker")
 
-    inst:DoPeriodicTask(20, doupgrade)
+    inst.SetStalking = SetStalking
+	inst.IsStalking = IsStalking
+    inst._onremovestalking = function(stalking) inst._stalking = nil end
 
+    inst.attackerUSERIDs = {}
     inst:ListenForEvent("attacked", warning)
 
     inst:SetStateGraph("SGtwinofterror")
     inst:SetBrain(brain)
+
 end)
 
 AddPrefabPostInit("twinofterror2",function(inst)
+    inst:AddTag("no_rooted")
+    inst:AddTag("nosinglefight_l")
     if not TheWorld.ismastersim then return end
+
+    inst.cycle = true
     inst.twin2=true
 
-    inst.components.lootdropper:SetChanceLootTable("twin2hard")
-    inst.components.lootdropper:SetLoot(loots)
 
 
-    inst.components.sleeper:SetResistance(100)
+    inst.components.sleeper:SetResistance(500)
     inst.components.freezable:SetRedirectFn(nofreeze)
 
-    inst.components.combat:SetRange(12)
+    inst.components.combat:SetRange(16)
     
-    inst.components.locomotor.walkspeed=12
+    inst.components.locomotor.walkspeed = 8
+    --inst.components.locomotor.runspeed = 18
     inst.components.locomotor.pathcaps = { ignorewalls = true, allowocean = true }
 
     inst:AddComponent("planarentity")
-    inst:AddComponent("damagetyperesist")
+
+    inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(30)
+
+    MakePlayerOnlyTarget(inst)
     inst.components.damagetyperesist:AddResist("aoeweapon_leap", inst, 0.6)
     inst.components.damagetyperesist:AddResist("wathom", inst, 0.2)
+
+    if inst.components.shockable then
+        inst:RemoveComponent("shockable") 
+     end
 
     inst.components.combat:SetRetargetFunction(1, RetargetFn)
     inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
 
-    inst:AddComponent("leader")
+    --inst:AddComponent("leader")
+    inst:AddComponent("entitytracker")
 
-    inst:DoPeriodicTask(20,doupgrade)
+    inst.SetStalking = SetStalking
+	inst.IsStalking = IsStalking
+    inst._onremovestalking = function(stalking) inst._stalking = nil end
+
     inst:SetStateGraph("SGtwinofterror")
     inst:SetBrain(brain)
+
+    inst.attackerUSERIDs = {}
     inst:ListenForEvent("attacked", warning)
     --inst.OnSave = OnSave
     --inst.OnLoad = OnLoad
@@ -239,16 +248,21 @@ AddPrefabPostInit("terrarium",function(inst)
     if not TheWorld.ismastersim then return end
     inst.components.trader:SetAbleToAcceptTest(AbleToAcceptTest)
 end)
-local EXTRA_LOOT = {"chesspiece_twinsofterror_sketch","insight_soul"}
+
+
+
 local function make_team(inst, target)
     local twin1 = inst.components.entitytracker:GetEntity("twin1")
 
     local twin2 = inst.components.entitytracker:GetEntity("twin2")
     if twin1 and twin2 then
-        twin1.components.follower:SetLeader(twin2)
-        twin1.components.follower:StartLeashing()
+        twin2.components.entitytracker:TrackEntity("twin", twin1)
+        twin1.components.entitytracker:TrackEntity("twin", twin2)
+        --twin1.components.follower:SetLeader(twin2)
+        --twin1.components.follower:StartLeashing()
     end
 end
+
 local function hookup_twin_listeners(inst, twin)
     inst:ListenForEvent("onremove", function(t)
         local et = inst.components.entitytracker
@@ -288,6 +302,10 @@ local function hookup_twin_listeners(inst, twin)
         local t2 = et:GetEntity("twin2")
         if (t1 == nil or t1.components.health:IsDead()) and (t2 == nil or t2.components.health:IsDead()) then
             -- This only really works because SetLoot doesn't clear lootdropper.chanceloottable
+            local EXTRA_LOOT = {"chesspiece_twinsofterror_sketch"}
+            for k,v in pairs(t.attackerUSERIDs) do
+                table.insert(EXTRA_LOOT,"insight_soul")
+            end
             t.components.lootdropper:SetLoot(EXTRA_LOOT)
         end
     end, twin)
@@ -323,8 +341,7 @@ local function hookup_twin_listeners(inst, twin)
 
         local t1_health = (t1 == nil and 0) or t1.components.health.currenthealth
         local t2_health = (t2 == nil and 0) or t2.components.health.currenthealth
-        if (t1_health + t2_health) < ((TUNING.TWIN1_HEALTH + TUNING.TWIN2_HEALTH) * TUNING.EYEOFTERROR_TRANSFORMPERCENT)
-            or t1_health<TUNING.TWIN1_HEALTH/2 or t2_health<TUNING.TWIN2_HEALTH/2 then
+        if (t1_health + t2_health) < ((TUNING.TWIN1_HEALTH + TUNING.TWIN2_HEALTH) * TUNING.EYEOFTERROR_TRANSFORMPERCENT) then
             if t1 ~= nil then
                 t1:PushEvent("health_transform")
             end
@@ -336,27 +353,6 @@ local function hookup_twin_listeners(inst, twin)
     end, twin)
 end
 
-
-local function  Dont_skip(inst)
-    local x, y, z = inst.Transform:GetWorldPosition()
-
-    local has_other=false
-    local no_twin=true
-	local bosscount = TheSim:FindEntities(x, y, z, 60, {"epic"})
-
-	for k,v in ipairs(bosscount) do
-        if v.twin1 or v.twin2 then
-            no_twin=false
-        end
-        if not v:HasTag("eyeofterror") then
-            has_other=true
-        end
-    end
-    if no_twin or has_other then
-        inst:PushEvent("leave")
-        inst:PushEvent("turnoff_terrarium")
-    end
-end
 
 
 

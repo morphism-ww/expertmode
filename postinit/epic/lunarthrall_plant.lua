@@ -91,20 +91,33 @@ AddPrefabPostInit("lunarthrall_plant_vine", function(inst)
     end
 end)
 
-
+local BLOCKERS_MUST_TAGS = {"no_queen"}
+local PLANT_MUST = {"lunarthrall_plant"}
 AddComponentPostInit('lunarthrall_plantspawner',function (self)
     function self:PushInvade()
         local plants = {}
 
-
-        local patch = self:FindWildPatch()
-        if patch and #patch > 0 then
-            for i,member in ipairs(patch)do
-                table.insert(plants,member)
+        local herd
+        if math.random()<0.5 then
+            herd = self:FindHerd()
+        end
+        
+        if not herd then
+            -- MAYBE FIND SOME WILD PLANTS?
+            local patch = self:FindWildPatch()
+            if patch and #patch > 0 then
+                for i,member in ipairs(patch)do
+                    table.insert(plants,member)
+                end
+            else
+                --"NOTHING FOUND THIS TIME"
+                return
             end
         else
-            --"NOTHING FOUND THIS TIME"
-            return
+            --"ALL PLANTS IN HERD"
+            for member, bool in pairs(herd.components.herd.members)do
+                table.insert(plants,member)
+            end
         end
 
 
@@ -117,11 +130,11 @@ AddComponentPostInit('lunarthrall_plantspawner',function (self)
 
                     -- NO EXISTING PLANTS TOO CLOSE.
                 local x,y,z = plant.Transform:GetWorldPosition()
-                local ents = TheSim:FindEntities(x,y,z, 40, {"no_queen"})
-                if #ents > 0 then
+                local ents = TheSim:FindEntities(x,y,z, 32, BLOCKERS_MUST_TAGS)
+                if next(ents)~=nil then
                     eligable = false
                 end
-                local ents = TheSim:FindEntities(x,y,z, 4, {"lunarthrall_plant"})
+                local ents = TheSim:FindEntities(x,y,z, 4, PLANT_MUST)
                 if #ents > 0 then
                     eligable = false
                 end
@@ -145,7 +158,7 @@ AddComponentPostInit('lunarthrall_plantspawner',function (self)
             local count = 0
             for member, i in pairs(herd.components.herd.members) do
                 local pt = Vector3(member.Transform:GetWorldPosition())
-                local ents = TheSim:FindEntities(pt.x,pt.y,pt.z, 36, nil,nil,{"lunarthrall_plant","no_queen"})
+                local ents = TheSim:FindEntities(pt.x,pt.y,pt.z, 30, nil,nil,{"lunarthrall_plant","no_queen"})
                 if #ents <= 0 then
                     if not member.lunarthrall_plant and
                         (not member.components.witherable or not member.components.witherable:IsWithered()) then

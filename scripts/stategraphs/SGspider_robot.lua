@@ -28,11 +28,9 @@ local events=
     CommonHandlers.OnLocomote(true,true), 
     EventHandler("doattack", function(inst,data)
 		if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy")) then
-                local target=data.target
+                local target = data.target
                 if target~=nil and target:IsValid() and inst:IsNear(target,8) then
                     inst.sg:GoToState("laserbeam",data.target)
-                elseif inst.components.rooted or inst.components.stuckdetection:IsStuck() then
-                    inst.sg:GoToState("laserbeam")
                 end     
         end            
 	end),
@@ -65,7 +63,7 @@ local function SpawnLaser(inst, dist, angle_offset, scale, scorchscale, targets)
 	local heavymult, mult =  scale, scale * 1.3
 
 	fx:Trigger(0, targets, nil, scorchscale < 0.2, animscale, scorchscale, hitscale, heavymult, mult, true)
-	return dist + 0.8
+	return dist + 0.5
 end
 
 local states=
@@ -203,11 +201,12 @@ local states=
             inst.components.timer:StartTimer("laserbeam_cd", 5)
         end,
         onupdate = function(inst)
+            
             if inst.sg.statemem.target then
 				if inst.sg.statemem.target:IsValid() then
 					local rot = inst.Transform:GetRotation()
 					local rot1 = inst:GetAngleToPoint(inst.sg.statemem.target.Transform:GetWorldPosition())
-					if DiffAngle(rot, rot1) < 60 then
+					if DiffAngle(rot, rot1) < 30 then
 						inst.Transform:SetRotation(rot1)
 					end
 				else
@@ -233,9 +232,10 @@ local states=
             FrameEvent(22, function(inst) 
                 inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/laser","laserfilter")
                 inst.SoundEmitter:SetParameter("laserfilter", "intensity", .12)
-
+                inst.sg.statemem.target = nil
             end),
             FrameEvent(24, function(inst) 
+                
                 inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/laser","laserfilter")
                 inst.SoundEmitter:SetParameter("laserfilter", "intensity", .24)
             end),
@@ -292,11 +292,13 @@ local states=
                 SetLightValueAndOverride(inst, .9, 0)                
             end),
             FrameEvent(30 , function(inst)
+                inst.sg.statemem.targets = { [inst] = true }
+                
                 SpawnPrefab("laserhit"):SetTarget(inst)
 				inst.sg.statemem.hit = true
 
 				SpawnLaserHitOnly(inst, 1.5, 2.5, inst.sg.statemem.targets)
-                local dist = 3
+                local dist = 2
 				SpawnLaser(inst, dist, -30, 2, 0, inst.sg.statemem.targets)
 				SpawnLaser(inst, dist, 30, 2, 0, inst.sg.statemem.targets)
 				dist = SpawnLaser(inst, dist, 0, 2, 5, inst.sg.statemem.targets)
@@ -321,12 +323,12 @@ local states=
             FrameEvent(32 , function(inst) 
                 local dist = inst.sg.statemem.dist
 				local scorchscale = inst.sg.statemem.scorchscale
-				for i = 1, 9 do
+				for i = 1, 6 do
 					--scorchscale = scorchscale * 0.8
 					dist = SpawnLaser(inst, dist, 0, Lerp(1, 0.5, i / 10), scorchscale, inst.sg.statemem.targets)
 				end
-				inst.sg.statemem.dist = dist
-				inst.sg.statemem.scorchscale = scorchscale
+				--inst.sg.statemem.dist = dist
+				--inst.sg.statemem.scorchscale = scorchscale
             end),
             FrameEvent(34 , function(inst) SetLightValueAndOverride(inst, 1.1, .6) end),
             FrameEvent(35 , function(inst) inst.sg.statemem.lightval = 1.1 end),

@@ -27,7 +27,7 @@ local function item_commonfn(bank, build, masterfn)
     inst.Light:Enable(true)
 
     inst:AddTag("lightbattery")
-    inst:AddTag("vasedecoration")
+
 	MakeInventoryFloatable(inst)	
 
     inst.entity:SetPristine()
@@ -55,8 +55,6 @@ local function item_commonfn(bank, build, masterfn)
     inst.components.perishable:StartPerishing()
     inst.components.perishable.onperishreplacement = "spoiled_food"
 
-    inst:AddComponent("fuel")
-    inst.components.fuel.fueltype = FUELTYPE.WORMLIGHT
 
     inst:AddComponent("stackable")
     inst.components.stackable.maxsize = TUNING.STACK_SIZE_LARGEITEM
@@ -103,7 +101,6 @@ local function itemfn()
             inst.components.edible.temperatureduration=TUNING.FOOD_TEMP_AVERAGE
             inst.components.edible:SetOnEatenFn(movefast)
 
-            inst.components.fuel.fuelvalue = TUNING.LARGE_FUEL * 1.33
         end
     )
 end

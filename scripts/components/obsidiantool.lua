@@ -114,7 +114,7 @@ function ObsidianTool:OnChargeDelta(old, new)
 		equipper = self.inst.components.inventoryitem:GetGrandOwner()
 	end
 
-	local suffix = self:GetAnimSuffix(self)
+	local suffix = self:GetAnimSuffix()
 	
 	--self.inst.components.floater:UpdateAnimations("idle_water"..suffix, "idle"..suffix)
 

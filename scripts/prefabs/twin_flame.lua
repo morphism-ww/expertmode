@@ -50,12 +50,12 @@ local function OnUpdateHitbox(inst)
 					end
 					if target_data.tick ~= tick then
 						target_data.tick = tick
-						v:AddDebuff("curse_fire", "curse_fire",{duration=10,upgrade=true})
+						v:AddDebuff("curse_fire", "curse_fire")
 						--Hit
 						if (target_data.hit_tick == nil or target_data.hit_tick + MULTIHIT_FRAMES < tick) and inst.attacker.components.combat:CanTarget(v) then
 							target_data.hit_tick = tick
 							if v:HasTag("player") then
-								v.components.health:DoDelta(-8,false,"curse_fire")
+								v.components.health:DoDelta(-10,false,"curse_fire")
 							else
 								inst.attacker.components.combat:DoAttack(v, weapon)
 							end
@@ -160,23 +160,8 @@ local function RestartFX(inst, scale, fadeoption, targets)
 	end
 end
 
-local function OnHit(inst, owner, target)
-	if target then
-		target:AddDebuff("curse_fire", "curse_fire")
-	end
-    local p=inst.Transform:GetWorldPosition()
-    inst:RestartFX(1.5, "nofade", p)
-end
 
-local function OnAnimOver(inst)
-    inst:DoTaskInTime(2, inst.Remove)
-end
-
-local function OnThrown(inst)
-    inst:ListenForEvent("animqueueover", OnAnimOver)
-end
-
-local function commonfn(data)
+local function flamefn()
 	local inst = CreateEntity()
 
 	inst.entity:AddTransform()
@@ -207,51 +192,17 @@ local function commonfn(data)
 		return inst
 	end
 
-	MakeInventoryPhysics(inst)
-    RemovePhysicsColliders(inst)
-
-	--inst:ListenForEvent("animqueueover", OnAnimQueueOver)
 	inst.persists = false
 
 	inst.AnimState:PushAnimation("flame1_loop", true)
 	inst.SetFXOwner = SetFXOwner
 	inst.RestartFX = RestartFX
 
-	if data then
-		data.postinitfn(inst)
-	end
-
-	return inst
-end
-
-local function flame_postinitfn(inst)
 	inst:ListenForEvent("animqueueover", OnAnimQueueOver)
 
 	RestartFX(inst)
-end
 
-local function flamefn()
-	return commonfn({postinitfn=flame_postinitfn})
-end
-
-
-
-local function projectile_postinitfn(inst)
-	inst:AddComponent("weapon")
-	inst.components.weapon:SetDamage(100)
-
-
-	inst:AddComponent("projectile")
-    inst.components.projectile:SetSpeed(20)         ---20
-    inst.components.projectile:SetHoming(false)
-    inst.components.projectile:SetHitDist(2)
-    inst.components.projectile:SetOnHitFn(OnHit)
-    inst.components.projectile:SetOnMissFn(inst.Remove)
-	inst.components.projectile:SetOnThrownFn(OnThrown)
-end
-
-local function projectilefn()
-	return commonfn({postinitfn=projectile_postinitfn})
+	return inst
 end
 
 
@@ -359,74 +310,170 @@ local function throwerfn()
 	return inst
 end
 
-local function RestartFX2(inst)
-	if inst:IsInLimbo() then
-		inst:ReturnToScene()
-	end
-
-	local anim = "flame"..tostring(math.random(3))
-	if not inst.AnimState:IsCurrentAnimation(anim.."_pre") then
-		inst.AnimState:PlayAnimation(anim.."_pre")
-		inst.AnimState:PushAnimation(anim.."_loop", true)
-	end
-
-	inst.scale =  1
-	inst.AnimState:SetScale(math.random() < 0.5 and -inst.scale or inst.scale, inst.scale)
-
-
-	inst:DoTaskInTime(10, KillFX)
-
-
+local function buff_OnTick(inst,target)
+    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
+        target.components.health:DoDelta(-2,true,"curse_fire")	
+    end
 end
 
-local function cursefn()
+local function OnAttached(inst, target, followsymbol, followoffset)
+    inst.entity:SetParent(target.entity)
+	if target.isplayer then
+		inst.Follower:FollowSymbol(target.GUID, "torso", 0, 0, 0)
+	end
+    inst:ListenForEvent("death", function()
+        inst.components.debuff:Stop()
+    end, target)
+	inst.task = inst:DoPeriodicTask(0.5, buff_OnTick, nil, target)
+end
+
+local function OnExtended(inst, target,followsymbol, followoffset, data)
+
+    inst.components.timer:StopTimer("buffover")
+    inst.components.timer:StartTimer("buffover", 15)
+    
+end
+
+local function OnTimerDone(inst, data)
+    if data.name == "buffover" then
+        inst.components.debuff:Stop()
+    end
+end
+
+local function OnDetached(inst, target)
+	if inst.task~=nil then
+		inst.task:Cancel()
+		inst.task = nil
+	end
+	inst:Remove()
+end
+
+local function bufffn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddFollower()
+    inst.entity:AddAnimState()
+    inst.entity:AddNetwork()
+
+    inst:AddTag("FX")
+    inst:AddTag("NOCLICK")
+
+    inst.AnimState:SetBank("warg_mutated_breath_fx")
+	inst.AnimState:SetBuild("warg_mutated_breath_fx")
+	inst.AnimState:PlayAnimation("flame1_loop", true)
+	inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
+	inst.AnimState:SetFinalOffset(2)
+	inst.AnimState:SetLightOverride(0.1)
+
+	inst.AnimState:SetMultColour(173/255,1,47/255,0.8)
+
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst:AddComponent("debuff")
+    inst.components.debuff:SetAttachedFn(OnAttached)
+    inst.components.debuff:SetExtendedFn(OnExtended)
+    inst.components.debuff:SetDetachedFn(OnDetached)
+	
+    inst:AddComponent("timer")
+    inst.components.timer:StartTimer("buffover",15)
+    inst:ListenForEvent("timerdone", OnTimerDone)
+
+
+    return inst
+end
+
+local function SpawnBreathFX2(inst, dist, targets, updateangle)
+	if updateangle then
+		inst.angle = (inst.entity:GetParent() or inst).Transform:GetRotation() * DEGREES
+
+		if not inst.SoundEmitter:PlayingSound("loop") then
+			inst.SoundEmitter:PlaySound("dontstarve/common/fireAddFuel")
+			inst.SoundEmitter:PlaySound("rifts3/mutated_varg/blast_lp", "loop")
+		end
+	end
+
+	local fx = table.remove(inst.flame_pool)
+	if fx == nil then
+		fx = SpawnPrefab("warg_mutated_breath_fx")
+		fx:SetFXOwner(inst, inst.flamethrower_attacker)
+	end
+
+	local scale = (2+ 0.5*math.random())
+	if dist < 10 then
+		scale = scale * 1.1
+	elseif dist <16 then
+		scale = scale * 1.3
+	else
+		scale = scale * 1.5
+	end		
+
+	local fadeoption = (dist < 8 and "nofade") or (dist <= 14 and "latefade") or nil
+
+	local x, y, z = inst.Transform:GetWorldPosition()
+	local angle = inst.angle
+	x = x + math.cos(angle) * dist
+	z = z - math.sin(angle) * dist
+	dist = dist / 20
+	angle = math.random() * PI2
+	x = x + math.cos(angle) * dist
+	z = z - math.sin(angle) * dist
+
+	fx.Transform:SetPosition(x, 0, z)
+	fx:RestartFX(scale, fadeoption, targets)
+end
+
+
+local function alter_throwerfn()
 	local inst = CreateEntity()
 
 	inst.entity:AddTransform()
-	inst.entity:AddAnimState()
+	inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()
 
-	inst.AnimState:SetBank("warg_mutated_breath_fx")
-	inst.AnimState:SetBuild("warg_mutated_breath_fx")
-	inst.AnimState:PlayAnimation("flame1_pre")
-	inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-	inst.AnimState:SetLightOverride(0.1)
-
-	inst:AddTag("FX")
-	inst:AddTag("NOCLICK")
-
-	inst.brightness = net_tinybyte(inst.GUID, "warg_mutated_breath_fx.brightness", "brightnessdirty")
-	inst.brightness:set(7)
-	--inst.updatingbrightness = false
-	OnBrightnessDirty(inst)
-	inst.AnimState:SetMultColour(173/255,1,47/255,0.8)
-	inst:AddComponent("updatelooper")
+	inst:AddTag("CLASSIFIED")
 
 	inst.entity:SetPristine()
 
 	if not TheWorld.ismastersim then
-		inst:ListenForEvent("brightnessdirty", OnBrightnessDirty)
-
 		return inst
 	end
 
-	--inst:ListenForEvent("animqueueover", OnAnimQueueOver)
+	inst.flame_pool = {}
+	inst.ember_pool = {}
+	inst.angle = 0
+
+	local targets = {}
+	local period = 8 * FRAMES
+	inst.tasks =
+	{
+		inst:DoPeriodicTask(period, SpawnBreathFX2, 0 * FRAMES, 4, targets, true),
+		inst:DoPeriodicTask(period, SpawnBreathFX2, 3 * FRAMES, 8, targets, true),
+		inst:DoPeriodicTask(period, SpawnBreathFX2, 6 * FRAMES, 12, targets, true),
+		inst:DoPeriodicTask(period, SpawnBreathFX2, 9 * FRAMES, 18, targets, true),
+		inst:DoPeriodicTask(period, SpawnBreathFX2, 9 * FRAMES, 24, targets, true),
+	}
+
+	inst:AddComponent("weapon")
+	inst.components.weapon:SetDamage(100)
+
+	inst.SetFlamethrowerAttacker = SetFlamethrowerAttacker
+	inst.KillFX = KillFX2
+	inst.OnRemoveEntity = OnRemoveEntity
+
 	inst.persists = false
-	MakeInventoryPhysics(inst)
-    RemovePhysicsColliders(inst)
-
-	inst.AnimState:PushAnimation("flame1_loop", true)
-	inst.RestartFX = RestartFX2
-	inst.SetFXOwner = SetFXOwner
-	inst:ListenForEvent("animqueueover", OnAnimQueueOver)
-	RestartFX2(inst)
-
-
 
 	return inst
 end
+
 --------------------------------------------------------------------------
 
 return Prefab("twin_flame", flamefn, assets),
-	Prefab("twin_flame_projectile", projectilefn, assets),
-	Prefab("twin_flamethrower_fx",throwerfn,nil,prefabs)
+	Prefab("twin_flamethrower_fx",throwerfn,nil,prefabs),
+	Prefab("curse_fire",bufffn,assets),
+	Prefab("huge_flame_thrower",alter_throwerfn)

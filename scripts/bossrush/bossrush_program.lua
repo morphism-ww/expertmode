@@ -2,14 +2,28 @@ local function TrueFn()
 	return true
 end
 
+local function MakeNoStun(inst)
+	inst:AddTag("no_rooted")
+	if inst.sg.sg.events.attacked then
+		inst.sg.sg.events.attacked.fn = function ()
+			return false
+		end
+	end
+end
+
 ---------------------------------------
 local function bearger_process(inst,data)
-    inst.components.health:SetMaxHealth(8000)
-    inst.components.locomotor.walkspeed = 8
-    inst.components.combat:SetAttackPeriod(2)
-
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(8)
+	local brain = require("brains/bossrush_beargerbrain")
+	inst:SetBrain(brain)
+    inst.Transform:SetScale(1.5,1.5,1.5)
+	inst:RemoveTag("hibernation")
+	inst.components.combat:SetRange(4,8)
+	MakeNoStun(inst)
+	inst.components.groundpounder.ringWidth = 2
+	inst.components.groundpounder.numRings = 4
+	inst.components.groundpounder.damageRings = 4
+	inst.components.groundpounder.destructionRings = 4
+	inst.components.sleeper:SetResistance(30)
 end
 ---------------------------------------
 local function MakeBaby(inst,prefab)
@@ -21,6 +35,8 @@ local function MakeBaby(inst,prefab)
         local x, y, z = inst.Transform:GetWorldPosition()
         spider.Transform:SetPosition(x + rad * math.cos(angle), 0, z - rad * math.sin(angle))
         spider.sg:GoToState("taunt")
+		spider:AddComponent("planarentity")
+		MakeNoStun(spider)
 		spider.components.lootdropper.DropLoot = TrueFn
         inst.components.leader:AddFollower(spider)
         if inst.components.combat.target ~= nil then
@@ -31,7 +47,7 @@ end
 
 local function MakeBabies(inst)
 	MakeBaby(inst,"spider_dropper")
-
+	
 	local type = math.random() > 0.5 and "spider_spitter" or "spider_healer"
 	MakeBaby(inst,type)
 end
@@ -49,73 +65,102 @@ local function AdditionalBabies(inst)
 end
 
 local function spider_process(inst)
-	inst.components.health:SetMaxHealth(8000)
+	MakeNoStun(inst)
 	inst.components.incrementalproducer.producefn = MakeBabies
 	inst.components.incrementalproducer.maxcountfn = MaxBabies
 	inst.components.incrementalproducer.incrementfn =	AdditionalBabies
+	inst.components.incrementalproducer.incrementdelay = 5
 end
 --------------------------------------------
 local function antlion_process(inst,data)
+	MakeNoStun(inst)
 	inst:StartCombat()
+
 end
 --------------------------------------------
 local function deerclops_process(inst)
-    inst.components.health:SetMaxHealth(8000)
-    inst.components.locomotor.walkspeed = 8
-    inst.components.combat:SetAttackPeriod(3)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(8)
+	inst.Transform:SetScale(1.5,1.5,1.5)
+	inst.components.combat:SetRange(6,TUNING.DEERCLOPS_ATTACK_RANGE)
+    inst.components.locomotor.walkspeed = 12
+	inst.freezepower = 5
+	MakeNoStun(inst)
 end
 
 local function winter_coming(inst)
 	inst.components.temperatureoverrider:SetTemperature(-20)
-	inst.components.temperatureoverrider:Enable()
+	
 end
 --------------------------------------------
 local function sharkboi_process(inst)
 	inst:AddTag("hostile")
+	inst.Transform:SetScale(1.5,1.5,1.5)
 	inst.components.health:SetMinHealth(0)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(8)
+	inst:SetStateGraph("SGbr_sharkboi")
+	inst:AddTag("no_rooted")
+	inst.components.sleeper:SetResistance(30)
+
 end
 ---------------------------------------------
 local function bee_process(inst,manager)
-	inst.components.health:SetMaxHealth(18000)
+	MakeNoStun(inst)
     inst.components.locomotor.walkspeed = 6
+	inst.components.sleeper:SetResistance(20)
 end
 ---------------------------------------------
-local function dragon_process(inst,manager)
-	inst.components.health:SetMaxHealth(18000)
-    inst.components.combat:SetAttackPeriod(3)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(8)
-end
+
 
 local function fire_era(inst)
 	inst.components.temperatureoverrider:SetTemperature(80)
-	inst.components.temperatureoverrider:Enable()
+
 
 	local x, y, z = inst.Transform:GetWorldPosition()
 
-	local angle_delta=0.4*PI
-	for i=1, 5	do
+	local angle_delta = PI/2
+	for i=1, 4	do
 		local lava = SpawnPrefab("lava_pond")
-		lava.Transform:SetPosition(x + 24*math.cos(angle_delta*i), 0, z - 24* math.sin(angle_delta*i))
+		lava.Transform:SetPosition(x + 18*math.cos(angle_delta*i), 0, z - 18* math.sin(angle_delta*i))
 	end
+end
+
+local function OnHealthTrigger(inst)
+    inst:PushEvent("transform", { transformstate = "fire" })
+    inst.components.rampingspawner:Start()
+end
+
+local function dragon_process(inst)
+	for k,v in pairs(inst.components.healthtrigger.triggers) do
+		inst.components.healthtrigger.triggers[k] = OnHealthTrigger
+	end
+	MakeNoStun(inst)
+	inst.OnEntitySleep = TrueFn
+
+	local brain = require("brains/br_dragonflybrain")
+	inst:SetBrain(brain)
+	
+	inst.components.rampingspawner.spawn_prefab = "dragoon_cs"
+
+	inst.components.sleeper:SetResistance(30)
+	inst.components.freezable:SetResistance(50)
 end
 ---------------------------------------------
 local function toadstool_process(inst)
-	inst.components.health:SetMaxHealth(20000)
+	MakeNoStun(inst)
+	--inst.Transform:SetScale(0.5,0.5,0.5)
+	local brain = require("brains/bossrush_toadstoolbrain")
+	inst:SetBrain(brain)
+	inst.components.sleeper:SetResistance(20)
 end
 ---------------------------------------------
 local function eye_process(inst)
 	TheNet:Announce(STRINGS.EYEOFTERROR_COMING)
+
 	local x,y,z = inst.Transform:GetWorldPosition()
-	local player = FindClosestPlayerInRangeSq(x, y, z,	900, true)
+	local player = FindClosestPlayerInRangeSq(x, y, z,	1600, true)
 	inst.sg:GoToState("arrive", player)
 	inst:PushEvent("set_spawn_target", player)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(5)
+	MakeNoStun(inst)
+	inst.components.sleeper:SetResistance(30)
+	inst.components.freezable:SetResistance(30)
 end
 ---------------------------------------------
 local function klaus_process(inst)
@@ -123,9 +168,9 @@ local function klaus_process(inst)
 	local minplayers = math.huge
 	local spawnx, spawnz
 	FindWalkableOffset(pos,
-		math.random() * 2 * PI, 33, 16, true, true,
+		math.random() * 2 * PI, 30, 16, true, true,
 		function(pt)
-			local count = #FindPlayersInRangeSq(pt.x, pt.y, pt.z, 400)
+			local count = #FindPlayersInRangeSq(pt.x, pt.y, pt.z, 900)
 			if count < minplayers then
 				minplayers = count
 				spawnx, spawnz = pt.x, pt.z
@@ -143,27 +188,81 @@ local function klaus_process(inst)
 	end
 
 	local klaus = SpawnPrefab("klaus")
+
+	klaus.components.sleeper:SetResistance(30)
+	klaus.components.freezable:SetResistance(10)
 	klaus.Transform:SetPosition(spawnx or pos.x, 0, spawnz or pos.z)
-	klaus.components.health:SetMaxHealth(8000*inst.mode)
-	klaus:SpawnDeer()
+	klaus.persists = false
+	MakeNoStun(klaus)
+	local pos = inst:GetPosition()
+    local rot = klaus.Transform:GetRotation()
+    local theta = (rot - 90) * DEGREES
+    local offset =
+        FindWalkableOffset(pos, theta, klaus.deer_dist, 5, true, false) or
+        FindWalkableOffset(pos, theta, klaus.deer_dist * .5, 5, true, false) or
+        Vector3(0, 0, 0)
+
+    local deer = SpawnPrefab("deer_red")
+    deer.Transform:SetRotation(rot)
+    deer.Transform:SetPosition(pos.x + offset.x, 0, pos.z + offset.z)
+	deer.components.health:SetAbsorptionAmount(0.99)
+    deer.components.spawnfader:FadeIn()
+    klaus.components.commander:AddSoldier(deer)
+
+    theta = (rot + 90) * DEGREES
+    offset =
+        FindWalkableOffset(pos, theta, klaus.deer_dist, 5, true, false) or
+        FindWalkableOffset(pos, theta, klaus.deer_dist * .5, 5, true, false) or
+        Vector3(0, 0, 0)
+
+    deer = SpawnPrefab("deer_blue")
+    deer.Transform:SetRotation(rot)
+    deer.Transform:SetPosition(pos.x + offset.x, 0, pos.z + offset.z)
+	deer.components.health:SetAbsorptionAmount(0.99)
+    deer.components.spawnfader:FadeIn()
+    klaus.components.commander:AddSoldier(deer)
+	
+	klaus:AddComponent("planardamage")
+	klaus.components.planardamage:SetBaseDamage(20)
+	klaus.soulcount = 100
 	-- override the spawn point so klaus comes to his sack
 	klaus.components.knownlocations:RememberLocation("spawnpoint", pos, false)
 	klaus.components.spawnfader:FadeIn()
 	klaus.components.lootdropper.DropLoot = TrueFn
 	inst:ListenForEvent("death",function (klaus)
 		if klaus:IsUnchained() then
-			inst:NextStage()
+			inst.components.battlemanager:Next()
 		end		
 	end,klaus)
 	
 end
 --------------------------------------------
+local function TryShadowFire(inst)
+    local startangle = 0
+   
+    local burst = 4
+    
+	local target = inst.components.combat.target
+    for i=1,burst do
+        local radius = 2
+        local theta = startangle + (PI*2/burst*i) - (PI*2/burst)
+        local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
+
+        local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
+        local fire = SpawnPrefab("shadow_flame")
+        fire.Transform:SetRotation(theta/DEGREES)
+        fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
+		fire:settargetdread(target,20,inst)
+    end
+end
 local function minotaur_process(inst)
-	inst.components.combat:SetAttackPeriod(0.5)
-	inst.components.locomotor.walkspeed = 7
-    inst.components.locomotor.runspeed = 19
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(10)
+	local brain = require("brains/bossrush_minotaurbrain")
+	inst:SetBrain(brain)
+	inst.atphase3 = true
+	MakeNoStun(inst)
+	inst.components.freezable:SetResistance(30)
+	inst.components.sleeper:SetResistance(30)
+	inst.components.groundpounder.groundpoundFn = TryShadowFire
 end
 local function pillar_process(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
@@ -177,13 +276,40 @@ local function pillar_process(inst)
 end
 -------------------------------------------
 local function daywalker_process(inst)
+	--inst:AddTag("shadowhide")
+	inst.AnimState:HideSymbol("HEAD_follow")
 	inst.components.health:SetMinHealth(0)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(10)
+	MakeNoStun(inst)
+
+	local healthtrigger = inst.components.healthtrigger.triggers
+	healthtrigger[0.2](inst)
+	for k,v in pairs(healthtrigger) do
+		healthtrigger[k] = nil
+	end
 end
 -------------------------------------------
+local function ChessProcess(inst)
+	inst:LevelUp(3)
+	inst.persists = false
+	inst.components.combat.playerdamagepercent = 1.5
+	inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(25)
+end
 local function heart_process(inst)	
-	inst:PushEvent("summon")
+	inst:RemoveComponent("healthtrigger")
+
+	inst:AddComponent("planarentity")
+	inst:AddComponent("planardamage")
+	inst.components.combat:SetAttackPeriod(4)
+	inst.components.planardamage:SetBaseDamage(35)
+
+	inst.echodamage = 100
+
+	inst.StartBattle = function (inst)
+		ChessProcess(inst:DoSpawnChess("shadow_rook"))
+		ChessProcess(inst:DoSpawnChess("shadow_knight"))
+		ChessProcess(inst:DoSpawnChess("shadow_bishop"))
+	end
 end
 --------------------------------------------
 local function SummonSpawn(pt, upgrade)
@@ -202,8 +328,10 @@ local function SummonSpawn(pt, upgrade)
 		spawn_pt = offset
 	end
     if spawn_pt ~= nil then
-        local spawn = SpawnPrefab("hound")
+        local spawn = SpawnPrefab(math.random()<0.5 and "icehound" or "hound")
         if spawn ~= nil then
+			spawn:AddComponent("planarentity")
+			MakeNoStun(spawn)
             spawn.Physics:Teleport(spawn_pt:Get())
             spawn:FacePoint(pt)
 			spawn.components.lootdropper.DropLoot = TrueFn
@@ -218,7 +346,7 @@ local function SpawnHounds(inst, radius_override)
     local hounds = nil
 
 
-    local num = 10
+    local num = 8
     if inst.max_hound_spawns then
         num = math.min(num,inst.max_hound_spawns)
         inst.max_hound_spawns = inst.max_hound_spawns - num
@@ -240,35 +368,114 @@ local function SpawnHounds(inst, radius_override)
     return hounds
 end
 local function mutatedwarg_postinit(inst)
-	inst.components.health:SetMaxHealth(6000)
+	MakeNoStun(inst)
 	inst.SpawnHounds = SpawnHounds
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(10)
+
 end
 --------------------------------------------
 local function mutatedbearger_postinit(inst)
-	inst.components.locomotor.walkspeed = 8
-	inst.components.locomotor.runspeed = 12
-    inst.components.combat:SetAttackPeriod(1)
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(10)
+	local brain = require("brains/bossrush_beargerbrain")
+	inst:SetBrain(brain)
+	inst.components.combat:SetRange(4,TUNING.MUTATED_BEARGER_ATTACK_RANGE)
+	MakeNoStun(inst)
+	inst.components.groundpounder.ringWidth = 3
+	inst.components.groundpounder.numRings = 5
+	inst.components.groundpounder.damageRings = 5
+	inst.components.groundpounder.destructionRings = 5
+
+	inst.Transform:SetScale(1.6,1.6,1.6)
+	inst.components.locomotor.walkspeed = 13
+	inst.components.locomotor.runspeed = 15
 end
 --------------------------------------------
 local function daywalker2_postinit(inst)
+	inst.Transform:SetScale(1.5,1.5,1.5)
 	inst.components.health:SetMinHealth(0)
 	inst:SetEngaged(true)
 	inst.OnItemUsed = TrueFn
+	MakeNoStun(inst)
+	inst.components.sleeper:SetResistance(30)
+	inst.components.freezable:SetResistance(30)
     inst:SetEquip("swing", "object")
     inst:SetEquip("tackle", "spike")
     inst:SetEquip("cannon", "cannon")
 end
 -------------------------------------------
+local function dont_leave(inst)
+	local x,y,z=inst.Transform:GetWorldPosition()
+	local players = FindPlayersInRange(x,y,z,50,true)
+	for i,v in ipairs(players) do
+		if v:IsValid() and not v:IsNear(inst, 26) then
+			local px,py,pz = v.Transform:GetWorldPosition()
+			SpawnPrefab("stalker_shield").Transform:SetPosition(1.02*(px-x)+x,0,1.02*(pz-z)+z)
+			--v.Physics:Teleport(x,y,z)
+		end
+	end
+end
+
+
+local function darkworld(inst)
+	if inst.leashtask==nil then
+		inst.leashtask = inst:DoPeriodicTask(5*FRAMES, dont_leave)
+	end
+	local x,y,z = inst.Transform:GetWorldPosition()
+	for i = -3,3 do
+		for j = -3,3 do
+			if i==3 or j==3 or i==-3 or j==-3 then
+				local nightmare = SpawnPrefab("nightmaregrowth_abyss")
+				nightmare.Transform:SetPosition(x+12*i,0,z+12*j)
+				nightmare.components.workable:SetShouldRecoilFn(TrueFn)
+			end
+		end
+	end
+
+	inst._miastrigger:set(true)
+	--SpawnPrefab("darkcloudring_spawner").Transform:SetPosition(inst.Transform:GetWorldPosition())
+end
+local function cleardarkworld(inst)
+	if inst.leashtask~=nil then
+		inst.leashtask:Cancel()
+		inst.leashtask = nil
+	end
+	inst._miastrigger:set(false)
+end	
+local function spawnvortex(inst)
+    local vortex = SpawnPrefab("darkvortex")
+    vortex.Transform:SetPosition(inst.Transform:GetWorldPosition())
+    --vortex.sg:GoToState("spawn")
+    vortex:SetScale(2)
+    inst._vortexes[vortex] = true
+    inst:ListenForEvent("onremove",function (inst2)
+        inst._vortexes[inst2] = nil
+    end,vortex)
+end
+local function SpawnVortexes(inst)
+    for i = 1,2 do
+        spawnvortex(inst)
+    end    
+end 
+
 local function stalker_postinit(inst)
-	inst.components.health:SetMaxHealth(18000)
+	RemovePhysicsColliders(inst)
+	inst.Physics:SetCollisionGroup(COLLISION.SANITY)
+	inst.Physics:CollidesWith(COLLISION.SANITY)
+	inst.SpawnVortex = SpawnVortexes
 	inst.IsNearAtrium = TrueFn
-	inst.components.lootdropper.DropLoot = TrueFn
-	inst:AddComponent("true_damage")
-    inst.components.true_damage:SetBaseDamage(20)
+end
+--------------------------------------------
+local function ironlord_postinit(inst) 
+	
+	inst.components.combat:SetAttackPeriod(2)
+	inst.components.locomotor.walkspeed = 16
+	inst.sg:GoToState("morph")
+end
+local function ancienthulk_postinit(inst)
+	MakeNoStun(inst)
+	inst.components.combat:SetAttackPeriod(1)
+	inst.components.locomotor.walkspeed = 10
+	inst.lob_count = 50
+	inst.angry = true
+	inst.cancharge = true
 end
 --------------------------------------------
 local function hookup_twin_listeners(inst, twin)
@@ -278,7 +485,7 @@ local function hookup_twin_listeners(inst, twin)
         local t2 = et:GetEntity("twin2")
         if (t1 == nil or t1.components.health:IsDead()) and (t2 == nil or t2.components.health:IsDead()) then
             -- This only really works because SetLoot doesn't clear lootdropper.chanceloottable
-            inst:NextStage()
+            inst.components.battlemanager:Next()
         end
     end, twin)
 
@@ -287,9 +494,9 @@ local function hookup_twin_listeners(inst, twin)
         local t1 = et:GetEntity("twin1")
         local t2 = et:GetEntity("twin2")
 
-        local t1_health = (t1 == nil and 0) or t1.components.health.currenthealth
-        local t2_health = (t2 == nil and 0) or t2.components.health.currenthealth
-        if (t1_health + t2_health) < ((TUNING.TWIN1_HEALTH + TUNING.TWIN2_HEALTH) * TUNING.EYEOFTERROR_TRANSFORMPERCENT) then
+        local t1_health = (t1 == nil and 0) or t1.components.health:GetPercent()
+        local t2_health = (t2 == nil and 0) or t2.components.health:GetPercent()
+        if (t1_health< 0.6 or t2_health<0.6) then
             if t1 ~= nil then
                 t1:PushEvent("health_transform")
             end
@@ -320,20 +527,22 @@ local function get_spawn_positions(inst, targeted_player)
 end
 local function twin_process(inst)
 	local x,y,z = inst.Transform:GetWorldPosition()
-	local player = FindClosestPlayerInRangeSq(x, y, z,	900, true)
+	local player = FindClosestPlayerInRangeSq(x, y, z,	1600, true) or inst
 
 	local twin1spawnpos, twin2spawnpos = get_spawn_positions(inst, player)
 
     local twin1 = SpawnPrefab("twinofterror1")
-	twin1.components.health:SetMaxHealth(10000*inst.mode)
+
+
 	twin1.components.lootdropper.DropLoot = TrueFn
+	twin1.persists = false
     inst.components.entitytracker:TrackEntity("twin1", twin1)
     twin1.Transform:SetPosition(twin1spawnpos:Get())
     twin1.sg:GoToState("arrive")
     hookup_twin_listeners(inst, twin1)
 
     local twin2 = SpawnPrefab("twinofterror2")
-	twin2.components.health:SetMaxHealth(10000*inst.mode)
+	twin2.persists = false
 	twin2.components.lootdropper.DropLoot = TrueFn
     inst.components.entitytracker:TrackEntity("twin2", twin2)
     twin2.Transform:SetPosition(twin2spawnpos:Get())
@@ -351,54 +560,56 @@ local function alter_process(inst)
 	end
 
 	boss.sg:GoToState("prespawn_idle")
-	inst:ListenForEvent("moonboss_defeated", function()
-		inst:NextStage()
+	inst:ListenForEvent("moonboss_defeated", function(world)
+		world.components.voidland_manager:ForceLunacy(false)
+		inst.components.battlemanager:Next()
 	end,	TheWorld)		
 
-	for i, v in ipairs(AllPlayers) do
+	--[[for i, v in ipairs(AllPlayers) do
         if v.entity:IsVisible() and
             v:GetDistanceSqToPoint(x, y, z) < 2500 then
 			v.components.sanity:EnableLunacy(true, "bossrush")
         end
-    end
-	
+    end]]
+	TheWorld.components.voidland_manager:ForceLunacy(true)
 end
+
 --------------------------------------------
-local function Chat(inst,i)
-	inst.components.talker:Chatter("BOSSRUSH", i, nil, nil, CHATPRIORITIES.HIGH)
+
+
+local function NextStage(inst)
+	inst.components.battlemanager:Next()
 end
 
 local function lv1_start(inst)
-	inst.level = 1
-	inst:DoTaskInTime(40,function ()
-		inst._musicdirty:set(1)
-		inst:NextStage()
+	inst._talkerdirty:set(1)
+	inst:DoTaskInTime(10,function ()
+		inst._musicdirty:set(2)
+		NextStage(inst)
 	end)
-	inst:DoTaskInTime(10,Chat,2)
-	inst:DoTaskInTime(20,Chat,3)
-	inst:DoTaskInTime(30,Chat,4)
-	inst:DoTaskInTime(35,Chat,5)
 end
 
 local function lv2_start(inst)
-	inst.level = 2
-	inst:DoTaskInTime(10,inst.NextStage)
-	Chat(inst,6)
+	
+	inst:DoTaskInTime(10,NextStage)
+	inst._talkerdirty:set(2)
 end
 local function lv3_start(inst)
-	inst.level = 3
-	inst:DoTaskInTime(10,inst.NextStage)
-	Chat(inst,7)
+	
+	inst._musicdirty:set(2)
+	inst:DoTaskInTime(10,NextStage)
+	inst._talkerdirty:set(3)
 end
 local function lv4_start(inst)
-	inst.level = 4
-	inst:DoTaskInTime(10,inst.NextStage)
-	Chat(inst,8)
+	
+	inst:DoTaskInTime(10,NextStage)
+	inst._talkerdirty:set(4)
 end
 local function lv5_start(inst)
-	inst.level = 5
-	inst:DoTaskInTime(10,inst.NextStage)
-	Chat(inst,9)
+	
+	inst._musicdirty:set(1)
+	inst:DoTaskInTime(10,NextStage)
+	inst._talkerdirty:set(5)
 end
 
 
@@ -406,41 +617,48 @@ end
 ---------------------------------------------
 local program = {
 
-	---------------level 1-----------------
-	{initfn = lv1_start, type_special = true},  --1
+	{---------------level 1-----------------
+	{initfn = lv1_start, type_special = true,level = 1},  --1
     {boss = "bearger",      postinitfn = bearger_process},
 	{boss = "spiderqueen",  postinitfn = spider_process},
 	{boss = "antlion",      postinitfn = antlion_process},
 	{boss = "deerclops",    postinitfn = deerclops_process,	scenery_postinit = winter_coming},
+	},
 
-	--------------level 2-------------------
-	{initfn = lv2_start, type_special = true},  --6
+	{--------------level 2-------------------
+	{initfn = lv2_start, type_special = true,level = 2},  --6
 	{boss = "eyeofterror",	postinitfn	= eye_process},
 	{boss = "sharkboi",		postinitfn	= sharkboi_process},
     {boss = "beequeen",     postinitfn 	= bee_process},
-	{boss = "dragonfly",	postinitfn	= dragon_process,	scenery_postinit = fire_era},
-	{boss = "toadstool",	postinitfn	= toadstool_process},
+	{boss = "dragonfly",	postinitfn = dragon_process,				scenery_postinit = fire_era},
+	{boss = "toadstool_dark",	postinitfn	= toadstool_process},
+	},
 
-	--------------level 3-------------------
-	{initfn = lv3_start, 	type_special = true},  --12
-	{boss = "klaus",		initfn	= klaus_process,	type_special = true},
+	{--------------level 3-------------------
+	{initfn = lv3_start, 	type_special = true,level = 2},  --12
 	{boss = "minotaur",		postinitfn	= minotaur_process,	scenery_postinit= pillar_process},
 	{boss = "daywalker",	postinitfn 	= 	daywalker_process},
 	{boss = "corrupt_heart",postinitfn = heart_process},
+	{boss = "klaus",		initfn	= klaus_process,	type_special = true},
+	},
 
-	--------------level 4-------------------
-	{initfn = lv4_start, type_special = true},  --17
+	{--------------level 4-------------------
+	{initfn = lv4_start, type_special = true,level= 4},  --17
 	{boss = "mutateddeerclops",	scenery_postinit = winter_coming},
 	{boss = "mutatedwarg",		postinitfn = mutatedwarg_postinit},
 	{boss = "mutatedbearger",	postinitfn = mutatedbearger_postinit},
 	{boss = "daywalker2",		postinitfn = daywalker2_postinit},
+	},
 
-	-------------level 5----------------------
-	{initfn = lv5_start, type_special = true},  --22
-	{boss = "stalker_atrium",	postinitfn = stalker_postinit},
-	{boss = "ancient_hulk"},
+	{-------------level 5----------------------
+	{initfn = lv5_start, type_special = true,level = 5},  --22
+	{boss = "ancient_hulk",		postinitfn = ancienthulk_postinit},
+	{boss = "ironlord",postinitfn = ironlord_postinit},
+	{boss = "stalker_atrium",	postinitfn = stalker_postinit, scenery_postinit = darkworld, onexit = cleardarkworld},
 	{boss = "twinofterror",		initfn	= twin_process, type_special = true},
 	{boss = "alterguardian",	initfn	= alter_process, type_special = true},
+	}
+	--{boss = "supreme_shadow"}
 }
 
 local function UpdatePlayerTargets(inst)
@@ -471,12 +689,12 @@ local function RetargetFn(inst)
 	UpdatePlayerTargets(inst)
 
 	local target = inst.components.combat.target
-	local inrange = target ~= nil and inst:IsNear(target, 30 + target:GetPhysicsRadius(0))
+	local inrange = target ~= nil and inst:IsNear(target, 40 + target:GetPhysicsRadius(0))
 
 	if target ~= nil and target:HasTag("player") then
 		local newplayer = inst.components.grouptargeter:TryGetNewTarget()
 		return newplayer ~= nil
-			and newplayer:IsNear(inst, inrange and 12 + newplayer:GetPhysicsRadius(0) or 22)
+			and newplayer:IsNear(inst, inrange and 20 + newplayer:GetPhysicsRadius(0) or 30)
 			and newplayer
 			or nil,
 			true
@@ -484,7 +702,7 @@ local function RetargetFn(inst)
 
 	local nearplayers = {}
 	for k in pairs(inst.components.grouptargeter:GetTargets()) do
-		if inst:IsNear(k, inrange and 18 + k:GetPhysicsRadius(0) or 30) then
+		if inst:IsNear(k, inrange and 20 + k:GetPhysicsRadius(0) or 40) then
 			table.insert(nearplayers, k)
 		end
 	end
@@ -492,44 +710,32 @@ local function RetargetFn(inst)
 end
 local function KeepTargetFn(inst, target)
 	return inst.components.combat:CanTarget(target)
-		and target:IsNear(inst, 20)
+		and target:IsNear(inst, 60)
 end
+
+local CREATURE_CLEAR_NOT = {"player","character","companion","shadowminion"}
+local CREATURE_CLEAR_ONEOF = {"_health","_combat"}
+local INVENTORY_CLEAR_NOT = {"irreplaceable","INLIMBO","_equippable","weapon","book","preparedfood","cs_soul","nosteal",
+"forgerepair_lunarplant","forgerepair_voidcloth","forgerepair_wagpunk_bits"}
+local OTHER_TAGS = {"antlion_sinkhole","groundspike","blocker","projectile","junk"}
 
 local function ClearLand(inst)
-	inst.components.temperatureoverrider:Disable()
+	inst.components.temperatureoverrider:SetTemperature(25)
 
 	local x,y,z = inst.Transform:GetWorldPosition()
-	local ents = TheSim:FindEntities(x, 0, z, 40, nil, {"player"})
-	for i,v in ipairs(ents) do
-		if v:HasOneOfTags("groundspike","rocky","lava","deer","charge_barrier","ancient_hulk_mine","structure","hound","quakedebris") 
-			or v.prefab=="bigshadowtentacle"
-			or v.prefab=="burntground" 
-			or v.prefab=="moonrocknugget"
-			or v.prefab=="moonglass"	then
-			v:Remove()
-		end
-	end
-
-	for i, v in ipairs(AllPlayers) do
-        if v.entity:IsVisible() and
-            v:GetDistanceSqToPoint(x, y, z) < 2500 then
-			v.components.sanity:EnableLunacy(false, "bossrush")
-        end
-    end
-end
-
-local ProgressReset = {1,6,12,17,22}
-
-local function ResetProgress(inst)
-	local x,y,z = inst.Transform:GetWorldPosition()
-	local ents = TheSim:FindEntities(x, 0, z, 50, nil, {"player"},{"epic","hound","ancient_hulk_mine","groundspike"})
-	for i,v in ipairs(ents) do
+	local creatures = TheSim:FindEntities(x, 0, z, 70,nil,CREATURE_CLEAR_NOT,CREATURE_CLEAR_ONEOF)
+	for i,v in ipairs(creatures) do
 		v:Remove()
 	end
-	if not inst.level == 6 then
-		inst._musicdirty:push()
-		inst.progress = ProgressReset[inst.level]
-		inst:OnProgressStart()
+
+	local items = TheSim:FindEntities(x, 0, z, 70,{"_inventoryitem","_stackable"},INVENTORY_CLEAR_NOT)
+	for i,v in ipairs(items) do
+		v:Remove()
+	end
+
+	local others = TheSim:FindEntities(x, 0, z, 70,nil,{"DECOR","irreplaceable"},OTHER_TAGS)
+	for i,v in ipairs(others) do
+		v:Remove()
 	end
 end
 

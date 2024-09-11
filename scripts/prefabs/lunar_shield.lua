@@ -5,13 +5,13 @@ local assets =
 
 local function buff_OnAttached(inst, target)
     target:AddTag("lunar_protect")
-	target:AddTag("stun_immune")
-	if target.sg~=nil then
-		target.sg:AddStateTag("nointerrupt")
-		target.sg:AddStateTag("nofreeze")
-	end
+	--target:AddTag("stun_immune")
+	if target.components.stunprotecter == nil then
+        target:AddComponent("stunprotecter")
+    end
+    target.components.stunprotecter:AddSource(inst)
 	if target.components.health ~= nil then
-	    target.components.health.externalabsorbmodifiers:SetModifier(inst, 1, "lunar_protect")
+	    target.components.health.externalabsorbmodifiers:SetModifier(inst, 0.8, "lunar_protect")
 	end
 
 	inst.entity:SetParent(target.entity)
@@ -27,7 +27,9 @@ end
 local function buff_OnDetached(inst, target)
 	if target ~= nil and target:IsValid() then
 		target:RemoveTag("lunar_protect")
-		target:RemoveTag("stun_immune")
+		if target.components.stunprotecter ~= nil then
+			target.components.stunprotecter:RemoveSource(inst)
+		end
 	end
     inst:Remove()
 end

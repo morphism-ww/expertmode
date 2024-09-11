@@ -2,7 +2,7 @@ local assets =
 {
     Asset("ANIM", "anim/lunarthrall_plant_front.zip"),
     Asset("ANIM", "anim/lunarthrall_plant_back.zip"),
-    Asset("MINIMAP_IMAGE", "lunarthrall_plant"),
+    Asset("MINIMAP_IMAGE", "brightshade_queen"),
 }
 
 
@@ -356,7 +356,7 @@ local function SetMedium(inst)
 end
 
 local function SetLarge(inst)
-    inst.components.health:SetMaxHealth(3000)
+    inst.components.health:SetMaxHealth(TUNING.LUNARTHRALL_PLANT_QUEEN_HEALTH[2])
     inst.Transform:SetScale(3.5,3.5,3.5)
 
     inst.components.brightshadespawner.shouldspawn = true
@@ -364,6 +364,8 @@ local function SetLarge(inst)
     
     inst.queen=true
     inst.vinelimit=0
+
+    --inst.icon.MiniMapEntity:SetIcon("lunarrift_portal_max1.png")
 end
 local Absorption_list={0,0.2,0.8,0.9}
 local function UpdateLevel(inst)
@@ -401,11 +403,8 @@ local growth_stages =
 
 
 local function summonholylight(inst)
-    local target=inst.components.combat.target
+    local target = inst.components.combat.target
     if inst.queen and target and target:IsValid() then
-        if target.components.grogginess~=nil then
-            target:AddDebuff("lunar_corrupt","corrupt",{duration=60})
-        end
         SpawnPrefab("sporecloud").Transform:SetPosition(target.Transform:GetWorldPosition())
     end
 end
@@ -459,7 +458,13 @@ local function TryStartCorrupt(inst)
     end
 end
 
+local function show_minimap(inst)
+    -- Create a global map icon so the minimap icon is visible to other players as well.
+    inst.icon = SpawnPrefab("globalmapicon")
+    inst.icon:TrackEntity(inst)
+    inst.icon.MiniMapEntity:SetPriority(21)
 
+end
 
 local function fn()
     local inst = CreateEntity()
@@ -473,7 +478,7 @@ local function fn()
 	MakeObstaclePhysics(inst, .8)
 	inst:SetPhysicsRadiusOverride(.4) --V2C: WARNING intentionally reducing range for incoming attacks; make sure everyone can still reach!
 
-    inst.MiniMapEntity:SetIcon("lunarthrall_plant.png")
+    inst.MiniMapEntity:SetIcon("brightshade_queen.tex")
     inst.MiniMapEntity:SetCanUseCache(false)
     inst.MiniMapEntity:SetDrawOverFogOfWar(true)
     inst.MiniMapEntity:SetPriority(22)
@@ -519,14 +524,14 @@ local function fn()
     inst:customSetRandomFrame()
 
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(2000)
+    inst.components.health:SetMaxHealth(TUNING.LUNARTHRALL_PLANT_QUEEN_HEALTH[1])
     inst.components.health.fire_damage_scale=0
     inst.components.health:StartRegen(40, 5)
 
     inst:AddComponent("combat")
     inst.components.combat:SetRetargetFunction(1, Retarget)
     inst.components.combat:SetKeepTargetFunction(keeptargetfn)
-    inst.components.combat:SetDefaultDamage(TUNING.LUNARTHRALL_PLANT_DAMAGE)
+    inst.components.combat:SetDefaultDamage(TUNING.LUNARTHRALL_PLANT_QUEEN_DAMAGE)
 
 	inst:AddComponent("planarentity")
 	inst:AddComponent("planardamage")
@@ -578,7 +583,7 @@ local function fn()
     inst.infest = infest
     inst.deinfest = deinfest
 
-    inst.queen=false
+    inst.queen = false
 
 
     inst:DoPeriodicTask(15,summonholylight)
@@ -595,6 +600,10 @@ local function fn()
 
 
 	spawnback(inst)
+
+    inst.icon = SpawnPrefab("globalmapicon")
+    inst.icon:TrackEntity(inst)
+    inst.icon.MiniMapEntity:SetPriority(0)
 
     return inst
 end

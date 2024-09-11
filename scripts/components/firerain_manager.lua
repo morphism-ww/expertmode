@@ -21,29 +21,34 @@ local _activeplayers = {}
 local _worldstate = TheWorld.state
 local _worldsettingstimer = TheWorld.components.worldsettingstimer
 
-local _spawntime = 5
-local _fireduration = 90
-local _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME 
-local _warning= false
+local _spawntime = 3
+local _fireduration = 120
+local _attackdelay = (TheWorld.state.summerlength + 1) * TUNING.TOTAL_DAY_TIME/2
+local _warning = false
 local _warnduration = 60
-local _timetonextwarningsound=0
+local _timetonextwarningsound = 0
 local _announcewarningsoundinterval = 4
-local _scheduleddrops=nil
+local _scheduleddrops = nil
+
 --------------------------------------------------------------------------
 --[[ Private member functions ]]
 --------------------------------------------------------------------------
 local function CanFire()
-    return TUNING.FIRERAIN_ENABLE and self.firerain_enabled and (_worldstate.season == "summer") and #_activeplayers>0
+    return TUNING.FIRERAIN_ENABLE and self.firerain_enabled 
+    and (_worldstate.season == "summer") and #_activeplayers>0
 end
+
 local function PauseAttacks()
     _warning = false
     self.inst:StopUpdatingComponent(self)
     _worldsettingstimer:PauseTimer("FireRain", true)
 end
+
 local function ResetAttacks()
     _worldsettingstimer:StopTimer("FireRain")
     PauseAttacks()
 end
+
 local function TryStartAttacks()
     if CanFire() then
         if  _worldsettingstimer:GetTimeLeft("FireRain") == nil then
@@ -53,12 +58,12 @@ local function TryStartAttacks()
         _worldsettingstimer:ResumeTimer("FireRain")
         self.inst:StartUpdatingComponent(self)
         self:StopWatchingWorldState("cycles", TryStartAttacks)
-        self.inst.watchingcycles = nil
+        self.watchingcycles = nil
     else
         PauseAttacks()
-        if not self.inst.watchingcycles then
+        if not self.watchingcycles then
             self:WatchWorldState("cycles", TryStartAttacks)  -- keep checking every day until NO_BOSS_TIME is up
-            self.inst.watchingcycles = true
+            self.watchingcycles = true
         end
     end
 end
@@ -67,10 +72,10 @@ local function TargetLost()
     local timetoattack = _worldsettingstimer:GetTimeLeft("FireRain")
     if timetoattack == nil then
         _warning = false
-        _worldsettingstimer:StartTimer("FireRain", _warnduration + 1)
+        _worldsettingstimer:StartTimer("FireRain", _warnduration + 5)
     elseif (timetoattack < _warnduration and _warning) then
         _warning = false
-        _worldsettingstimer:SetTimeLeft("FireRain", _warnduration + 1)
+        _worldsettingstimer:SetTimeLeft("FireRain", _warnduration + 5)
     end
 
     PauseAttacks()
@@ -91,25 +96,23 @@ local function hasprotecter(pos)
 end
 
 
-local function SpawnFireForPlayer(inst,player)
-    local pos = player:GetPosition()
-    if hasprotecter(pos) then return end
-    local firerain
-    if math.random() <= 0.4 then
-        firerain = SpawnPrefab("dragoonegg_falling")
-    else
-        firerain = SpawnPrefab("firerain")
+local function SpawnFireForPlayer(player)
+    if player and player:IsValid() then
+        local pos = player:GetPosition()
+        if not hasprotecter(pos) then 
+            local firerain = SpawnPrefab(math.random() <= 0.4 and  "dragoonegg_falling_cs" or "firerain_cs" )
+            local theta = math.random() * PI2
+            local radius = math.random(4,10)
+            firerain.Transform:SetPosition(pos.x+radius*math.cos(theta),0,pos.z-radius*math.sin(theta))
+            firerain:StartStep()
+        end    
     end
-    local theta = math.random() * 2 * PI
-    local radius = 4+math.random() * 4
-    firerain.Transform:SetPosition(pos.x+radius*math.cos(theta),0,pos.z-radius*math.sin(theta))
-    firerain:StartStep()
 end
 
 local function SpawnFireForPlayers()
-    for i, v in ipairs(_activeplayers) do
-        self.inst:DoTaskInTime(i,SpawnFireForPlayer,v)
-    end
+    if #_activeplayers > 0 then
+        SpawnFireForPlayer(_activeplayers[math.random(#_activeplayers)])
+    end     
 end
 
 local function CancelSpawn()
@@ -124,7 +127,8 @@ local function ScheduleSpawn()
         _scheduleddrops:Cancel()
         _scheduleddrops=nil
     end
-    _scheduleddrops=self.inst:DoPeriodicTask(_spawntime,SpawnFireForPlayers)
+    _spawntime = #_activeplayers>3 and 3 or 5
+    _scheduleddrops = self.inst:DoPeriodicTask(_spawntime,SpawnFireForPlayers)
     self.inst:DoTaskInTime(_fireduration,CancelSpawn)
 end
 
@@ -139,6 +143,9 @@ local function OnPlayerJoined(src, player)
         end
     end
     table.insert(_activeplayers, player)
+
+
+
     TryStartAttacks()
 end
 
@@ -163,22 +170,6 @@ local function OnFireRainTimerDone()
 end
 
 --------------------------------------------------------------------------
---[[ Initialization ]]
---------------------------------------------------------------------------
-
---Initialize variables
-for i, v in ipairs(AllPlayers) do
-    table.insert(_activeplayers, v)
-end
-
---Register events
-self:WatchWorldState("season", OnSeasonChange)
-self.inst:ListenForEvent("ms_playerjoined", OnPlayerJoined, TheWorld)
-self.inst:ListenForEvent("ms_playerleft", OnPlayerLeft, TheWorld)
-self.inst:ListenForEvent("FireEra",function() self:FirstAttack() end,TheWorld)
-
-
---------------------------------------------------------------------------
 --[[ Public member functions ]]
     --------------------------------------------------------------------------
 function self:EnableFire()
@@ -188,27 +179,28 @@ end
 function self:FirstAttack()
     if not self.firerain_enabled then
         self:EnableFire()
-        TheNet:Announce("古老的龙与火已经苏醒")
+        TheNet:Announce(STRINGS.FIRE_ERA_COME)
         self.inst:DoTaskInTime(60, ScheduleSpawn)
         --ResetAttacks()
     end
 end
 
 function self:OnPostInit()
-    -- Shorten the time used for winter to account for the time deerclops spends stomping around
-    -- Then add one to _attacksperseason to shift the attacks so the last attack isn't right when the season changes to spring
-    _attackdelay = (TheWorld.state.summerlength - 1) * TUNING.TOTAL_DAY_TIME/2 
+    
+    _attackdelay = (TheWorld.state.summerlength + 1) * TUNING.TOTAL_DAY_TIME/2
     _worldsettingstimer:AddTimer("FireRain", _attackdelay, true, OnFireRainTimerDone)
     
     TryStartAttacks()
 end
 
 function self:DoWarningSpeech()
-    TheNet:Announce("空气变得燥热")
+    for i, v in ipairs(_activeplayers) do
+        v.components.talker:Say(STRINGS.FIRERAIN_COMING)
+    end
 end
 
 function self:DoWarningSound()
-    TheNet:Announce("远处传来巨龙的吼叫")
+    TheNet:Announce(STRINGS.FIRERAIN_COMING)
 end
 
 function self:OnUpdate(dt)
@@ -221,7 +213,7 @@ function self:OnUpdate(dt)
     if not _warning then
         if timetoattack > 0 and timetoattack < _warnduration then
 			-- let's pick a random player here
-			if #_activeplayers==0 then
+			if next(_activeplayers)==nil then
 				PauseAttacks()
 				return
 			end
@@ -232,8 +224,8 @@ function self:OnUpdate(dt)
         _timetonextwarningsound	= _timetonextwarningsound - dt
 
 		if _timetonextwarningsound <= 0 then
-	        if #_activeplayers==0 then
-                TargetLost()
+	        if next(_activeplayers)==nil then
+                PauseAttacks()
                 return
 	        end
 			_announcewarningsoundinterval = _announcewarningsoundinterval - 1
@@ -258,12 +250,12 @@ function self:OnSave()
     return
     {
         warning=_warning,
-        _firerain_enabled=self.firerain_enabled
+        _firerain_enabled = self.firerain_enabled
     }
 end
 
 function self:OnLoad(data)
-    _warning=data.warning
+    _warning = data.warning
     self.firerain_enabled = data._firerain_enabled or false
 end
 --------------------------------------------------------------------------
@@ -278,7 +270,7 @@ function self:GetDebugString()
 	elseif self.inst.updatecomponents[self] == nil then
 		s = s .. "DORMANT "..timetoattack
 	elseif timetoattack > 0 then
-		s = s .. string.format("%s Deerclops is coming in %2.2f", _warning and "WARNING" or "WAITING", timetoattack)
+		s = s .. string.format("%s FireRain is coming in %2.2f", _warning and "WARNING" or "WAITING", timetoattack)
 	else
 		s = s .. string.format("ATTACKING!!!")
 	end
@@ -287,11 +279,22 @@ function self:GetDebugString()
 end
 
 function self:SummonMonster()
-    self.inst:DoTaskInTime(20, ScheduleSpawn)
+    ScheduleSpawn()
+end
+--------------------------------------------------------------------------
+--[[ Initialization ]]
+--------------------------------------------------------------------------
+
+--Initialize variables
+for i, v in ipairs(AllPlayers) do
+    table.insert(_activeplayers, v)
 end
 
-
-
+--Register events
+self:WatchWorldState("season", OnSeasonChange)
+self.inst:ListenForEvent("ms_playerjoined", OnPlayerJoined, TheWorld)
+self.inst:ListenForEvent("ms_playerleft", OnPlayerLeft, TheWorld)
+self.inst:ListenForEvent("FireEra",function() self:FirstAttack() end,TheWorld)
 --------------------------------------------------------------------------
 --[[ End ]]
 --------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+<Atlas>
+    <Texture filename="apocalypse-of-the-constant.tex"/>
+    <Elements>
+        <Element name="dreadspear.tex" u1="0" u2="0.25" v1="0.75" v2="1"/>
+        <Element name="dread_pickaxe.tex" u1="0.25" u2="0.5" v1="0.75" v2="1"/>
+        <Element name="armor_nightmare.tex" u1="0.5" u2="0.75" v1="0.75" v2="1"/>
+        <Element name="cs_dreadsword.tex" u1="0.75" u2="1" v1="0.75" v2="1"/>
+        <Element name="night_edge.tex" u1="0" u2="0.25" v1="0.5" v2="0.75"/>
+        <Element name="hat_nightmare.tex" u1="0" u2="0.25" v1="0.25" v2="0.5"/>
+        <Element name="lunar_spark_blade.tex" u1="0.25" u2="0.5" v1="0.25" v2="0.5"/>
+        <Element name="dread_axe.tex" u1="0.5" u2="0.75" v1="0.25" v2="0.5"/>
+    </Elements>
+</Atlas>

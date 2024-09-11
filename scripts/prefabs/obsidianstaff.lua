@@ -7,8 +7,8 @@ local assets =
 local prefabs =
 {
     volcano = {
-        "fire_projectile",
-        "dragoonegg_falling"
+        "cs_fireball_projectile",
+        "dragoonegg_falling_cs"
     },
 }
 
@@ -36,8 +36,6 @@ local function commonfn(colour, tags, hasskin, equipfn, unequipfn, hasshadowleve
 
     MakeInventoryPhysics(inst)
 
-    MakeInventoryFloatable(inst)
-
 
     inst.AnimState:SetBank("ia_staffs")
     inst.AnimState:SetBuild("ia_staffs")
@@ -53,6 +51,8 @@ local function commonfn(colour, tags, hasskin, equipfn, unequipfn, hasshadowleve
         --shadowlevel (from shadowlevel component) added to pristine state for optimization
         inst:AddTag("shadowlevel")
     end
+
+    MakeInventoryFloatable(inst)
 
     inst.entity:SetPristine()
 
@@ -93,18 +93,20 @@ end
 ---------VOLCANO STAFF---------
 
 local function createeruption(staff, target, pos)
-    local owner = staff.components.inventoryitem:GetGrandOwner() or nil
+    local owner = staff.components.inventoryitem:GetGrandOwner()
     if owner then
         staff.components.finiteuses:Use(4)
-        local delay = 0.0
+        local delay = 0
         for i = 1, 3 do
-            local x, y, z = 2* UnitRand() + pos.x, pos.y,2* UnitRand() + pos.z
+            
+            local x, y, z = 2* UnitRand() + pos.x, 0, 2* UnitRand() + pos.z
             staff:DoTaskInTime(delay, function()
                 local firerain = SpawnPrefab("firerain_summon")
                 firerain.Transform:SetPosition(x, y, z)
-                firerain:StartStep()
+                firerain.caster = owner
+                
             end)
-            delay = delay + 0.2
+            delay = delay + 0.3
         end
     end    
 end
@@ -147,14 +149,17 @@ local function onattack_red(inst, attacker, target, skipsanity)
     end
 end
 
-
-local function cancast(doer, target, pos)
-    return false and doer:IsValid() and doer:GetDistanceSqToPoint(pos)<7
+local function mustred(inst,gem)
+    if gem.prefab=="redgem" then
+        return true
+    else
+        return false, "WRONG_GEM_COLOUR"
+    end    
 end
 
 
 local function volcano()
-    local inst = commonfn("meteor", {"nosteal", "nopunch", "allow_action_on_impassable","quickcast"}, nil, nil, nil)
+    local inst = commonfn("meteor", {"rangedweapon", "allow_action_on_impassable","quickcast","rangedlighter"}, nil, nil, nil)
     
     if not TheWorld.ismastersim then
         return inst
@@ -164,27 +169,28 @@ local function volcano()
     inst.castsound = "dontstarve/common/staffteleport"
 
     inst:AddComponent("weapon")
-    inst.components.weapon:SetDamage(20)
+    inst.components.weapon:SetDamage(TUNING.STAFF_OBSIDIAN_DAMAGE)
     inst.components.weapon:SetRange(8, 10)
     inst.components.weapon:SetOnAttack(onattack_red)    
-    inst.components.weapon:SetProjectile("fire_projectile")
+    inst.components.weapon:SetProjectile("cs_fireball_projectile")
 
     inst:AddComponent("spellcaster")
     inst.components.spellcaster:SetSpellFn(createeruption)
     inst.components.spellcaster.canuseonpoint = true
     inst.components.spellcaster.canuseonpoint_water = true
-    inst.components.spellcaster.quickcast = true
-    inst.components.spellcaster:SetCanCastFn(cancast)
+    --inst.components.spellcaster.quickcast = true
+    --inst.components.spellcaster:SetCanCastFn(cancast)
 
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetOnFinished(onfinished)
-    inst.components.finiteuses:SetMaxUses(100)
-    inst.components.finiteuses:SetUses(100)
+    inst.components.finiteuses:SetMaxUses(TUNING.STAFF_OBSIDIAN_USES)
+    inst.components.finiteuses:SetUses(TUNING.STAFF_OBSIDIAN_USES)
 
 
     inst:AddComponent("repairable")
-    inst.components.repairable.repairmaterial="obsidian"
+    inst.components.repairable.repairmaterial = MATERIALS.GEM
     inst.components.repairable:SetFiniteUsesRepairable(true)
+    inst.components.repairable.checkmaterialfn = mustred
 
     return inst
 end

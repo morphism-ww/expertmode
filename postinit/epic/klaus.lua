@@ -115,14 +115,14 @@ State{
             DoChainSound(inst)
             DoBellSound(inst)
         end),
-        TimeEvent(19.5 * FRAMES, function(inst)
+        TimeEvent(21 * FRAMES, function(inst)
             inst.sg.statemem.spells = inst:DoSacrifice(inst.sg.statemem.targets)
             inst.sg.statemem.targets = nil
         end),
         TimeEvent(22 * FRAMES, DoBellSound),
         TimeEvent(23 * FRAMES, DoChainSound),
     },
-
+    
     events =
     {
         EventHandler("animover", function(inst)
@@ -163,6 +163,7 @@ State{
     {
         TimeEvent(0, DoChainIdleSound),
         TimeEvent(9 * FRAMES, function(inst)
+            
             inst.SoundEmitter:PlaySound("dontstarve/creatures/together/deer/scratch")
         end),
         TimeEvent(14 * FRAMES, DoBellIdleSound),
@@ -262,73 +263,38 @@ EventHandler("sacrifice", function(inst)
     end    
 end))
 
-
-
-
-
-
-
-
-
-
 -----------------------------------------------------------------------
 local function HasSoul(victim)
-    return not (victim:HasTag("veggie") or
-                victim:HasTag("structure") or
-                victim:HasTag("wall") or
-                victim:HasTag("balloon") or
-                victim:HasTag("soulless") or
-                victim:HasTag("chess") or
-                victim:HasTag("shadow") or
-                victim:HasTag("shadowcreature") or
-                victim:HasTag("shadowminion") or
-                victim:HasTag("shadowchesspiece") or
-                victim:HasTag("groundspike") or
-                victim:HasTag("smashable"))
+    return not victim:HasAnyTag(SOULLESS_TARGET_TAGS)
+            and not (victim.components.inventory~=nil and victim.components.inventory:EquipHasTag("soul_protect"))
         and (  (victim.components.combat ~= nil and victim.components.health ~= nil)
             or victim.components.murderable ~= nil )
 end
 
-local function SoulHunter(inst,data)
-    if data.redirected then
-        return
-    end
-    local target=data.target
-	if target ~= nil then
-        if HasSoul(target) then
-            local soul=SpawnPrefab("klaus_soul_spawn")
-            soul.Transform:SetPosition(target.Transform:GetWorldPosition())
-            if target.components.mightiness~=nil then
-                target.components.mightiness:DoDelta(-8)
-            end
-            if target.components.sanity~=nil then
-                target.components.sanity:DoDelta(-10)
-            end
-            if inst.enraged and target.components.grogginess~=nil then
-                target.components.grogginess:AddGrogginess(0.5, 1)
-            end
+local function SoulHunter(inst,target,damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+    if target:IsValid() and HasSoul(target) and damageredirecttarget==nil then
+        local soul = SpawnPrefab("klaus_soul_spawn")
+        soul.Transform:SetPosition(target.Transform:GetWorldPosition())
+        if target.components.mightiness~=nil then
+            target.components.mightiness:DoDelta(-8)
         end
-        if target.components.upgrademoduleowner~=nil then
-            target.components.upgrademoduleowner:AddCharge(-1)
+        if target.components.sanity~=nil then
+            target.components.sanity:DoDelta(-5)
+        end
+        if inst.enraged and target.components.grogginess~=nil then
+            target.components.grogginess:AddGrogginess(0.5, 1)
         end
     end
 end
 
-local function spawnsoul(inst)
-    if not TheWorld:HasTag("cave") then
-        local x,y,z=inst.Transform:GetWorldPosition()
-        for i=1,10 do
-            local radius=4*math.random()
-            local angle=2*PI*math.random()
-            SpawnPrefab("demon_soul").Transform:SetPosition(x+radius*math.cos(angle),2,z-radius*math.sin(angle))
-        end
-        if inst.enraged then
-            SpawnPrefab("krampus_sack").Transform:SetPosition(x,0,z)
-        end
-    end    
+local function lootsetfn(self)
+    for i = 1, math.random(8,10) do
+        table.insert(self.loot,"demon_soul")
+    end
+    if self.inst.enraged then
+        table.insert(self.loot,"krampus_sack")
+    end 
 end
-
-
 
 
 AddPrefabPostInit("klaus", function(inst)
@@ -336,13 +302,12 @@ AddPrefabPostInit("klaus", function(inst)
 	if not TheWorld.ismastersim then
 		return
 	end
-    inst:AddComponent("damagetypebonus")
-    inst.components.damagetypebonus:AddBonus("ghost",inst,2)
+    
     inst:AddComponent("colouradder")
-    inst.soulcount=0
+    inst.soulcount = 0
 
-    inst:ListenForEvent("dropkey",spawnsoul)
-    inst:ListenForEvent("onhitother",SoulHunter)
+    inst.components.combat.onhitotherfn = SoulHunter
+    inst.components.lootdropper:SetLootSetupFn(lootsetfn)
 end)
 
 local function LaunchItem(inst, target, item)
@@ -358,7 +323,7 @@ local function LaunchItem(inst, target, item)
     end
 end
 local function dropeverthing(inst)
-    local x,y,z=inst.Transform:GetWorldPosition()
+    local x,y,z = inst.Transform:GetWorldPosition()
     local players=FindPlayersInRange(x,y,z,12,true)
     for i,v in ipairs(players) do
         local item = v.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
@@ -366,7 +331,7 @@ local function dropeverthing(inst)
             v.components.inventory:DropItem(item)
             LaunchItem(inst, v, item)
         end
-        v:AddDebuff("vulnerable","vulnerable",{duration=20})
+        v:AddDebuff("vulnerable","vulnerable")
     end
 end
 
@@ -479,6 +444,13 @@ State{
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("idle_loop")
             if dest ~= nil then
+                local offset =
+                    FindWalkableOffset(dest, PI2*math.random(),1, 8, true, false) or 
+                    FindWalkableOffset(dest, PI2*math.random(),2, 8, true, false) or nil
+                    if offset~=nil then
+                        dest = dest + offset
+                    end
+                inst:ForceFacePoint(dest)    
                 inst.Physics:Teleport(dest:Get())
             else
                 dest = inst:GetPosition()
@@ -592,7 +564,7 @@ State{
     onexit = function(inst)
         if not inst.sg.statemem.commanding then
             inst.components.timer:StopTimer("sacrifice_cd")
-            inst.components.timer:StartTimer("sacrifice_cd", 90)
+            inst.components.timer:StartTimer("sacrifice_cd", 70)
         end
     end,
 }

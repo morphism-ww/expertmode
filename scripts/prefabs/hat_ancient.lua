@@ -3,31 +3,32 @@ local assets =
 	Asset("ANIM", "anim/hat_crowndamager.zip"),
 }
 
-local function truedefence(damage)
-    return math.min(70, 0.5*damage)
-end
-
 local function OnEnabledSetBonus(inst)
-	inst.components.equippable.walkspeedmult = 1.6
-    inst.components.true_defence:SetResistFn(truedefence)
-    inst._owner:AddTag("playercharge")
+	inst.components.equippable.walkspeedmult = 1.2
+    inst.components.damagetyperesist:AddResist("shadow_aligned", inst, TUNING.ARMOR_VOIDCLOTH_SETBONUS_SHADOW_RESIST, "setbonus")
+    inst:AddTag("playercharge")
+    --[[if inst._owner.components.electricattacks == nil then
+        inst._owner:AddComponent("electricattacks")
+    end
+    inst._owner.components.electricattacks:AddSource(inst)]]
     if inst.fx ~= nil then
         inst.fx:Remove()
     end
     inst.fx = SpawnPrefab("ancientelectric_fx")
     inst.fx:AttachToOwner(inst._owner)
+    inst:AddTag("miasmaimmune")
 end
 
 local function OnDisabledSetBonus(inst)
-	inst.components.equippable.walkspeedmult = 1.2
-    inst.components.true_defence:SetResistFn(nil)
-    if inst._owner~=nil then
-        inst._owner:RemoveTag("playercharge")
-        if inst.fx ~= nil then
-            inst.fx:Remove()
-            inst.fx = nil
-        end
+	inst.components.equippable.walkspeedmult = 1
+    inst.components.damagetyperesist:RemoveResist("shadow_aligned", inst, "setbonus")
+   
+    inst:RemoveTag("playercharge")
+    if inst.fx ~= nil then
+        inst.fx:Remove()
+        inst.fx = nil
     end
+    inst:RemoveTag("miasmaimmune")
 end
 
 local function onequip(inst, owner)
@@ -45,11 +46,11 @@ local function onequip(inst, owner)
         owner.AnimState:Show("HEAD_HAT")
         owner.AnimState:Show("HEAD_HAT_NOHELM")
         owner.AnimState:Hide("HEAD_HAT_HELM")
-        owner.components.combat.externaldamagemultipliers:SetModifier(inst, 1.5)
-        
-        inst._owner = owner
+        --owner.components.planardamage:AddBonus(inst, 20, "ancienthat_buff")
+        --owner.components.combat.externaldamagemultipliers:SetModifier(inst, 1.5)
+        owner:AddTag("notdevourable")
     end
-    
+    inst._owner = owner
 end
 
 local function onunequip(inst, owner)
@@ -65,13 +66,15 @@ local function onunequip(inst, owner)
         owner.AnimState:Hide("HEAD_HAT")
         owner.AnimState:Hide("HEAD_HAT_NOHELM")
         owner.AnimState:Hide("HEAD_HAT_HELM")
+
+        owner:RemoveTag("notdevourable")
+        --owner.components.planardamage:RemoveBonus(inst,  "ancienthat_buff")
     end
-    owner:RemoveTag("playercharge")
+    --owner.components.combat.externaldamagemultipliers:RemoveModifier(inst)
     if inst.fx ~= nil then
         inst.fx:Remove()
         inst.fx = nil
     end
-    inst._owner.components.combat.externaldamagemultipliers:RemoveModifier(inst)
     inst._owner = nil
 end
 
@@ -93,9 +96,9 @@ local function fn()
     inst:AddTag("metal")
     inst:AddTag("ancient")
     inst:AddTag("nosteal")
-    inst:AddTag("moonstormgoggles")
-    inst:AddTag("goggles") 
-    inst:AddTag("miasmaimmune")
+    --inst:AddTag("moonstormgoggles")
+    --inst:AddTag("goggles") 
+    
 
     local swap_data = { bank = "crowndamagerhat", anim = "anim" }
     MakeInventoryFloatable(inst)
@@ -115,36 +118,39 @@ local function fn()
     inst.components.inventoryitem.imagename = "lavaarena_crowndamagerhat"
 
     inst:AddComponent("armor")
-    inst.components.armor:InitCondition(3000, 0.9)
-    inst.components.armor.indestructible = true
+    inst.components.armor:InitCondition(2200, 0.9)
 
 
     inst:AddComponent("waterproofer")
-    inst.components.waterproofer:SetEffectiveness(1)
+    inst.components.waterproofer:SetEffectiveness(0.5)
 
     inst:AddComponent("planardefense")
-	inst.components.planardefense:SetBaseDefense(30)
+	inst.components.planardefense:SetBaseDefense(10)
 
     inst:AddComponent("equippable")
     inst.components.equippable.equipslot = EQUIPSLOTS.HEAD
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
-    inst.components.equippable.walkspeedmult = 1.2
     inst.components.equippable.restrictedtag = "player"
 
+    inst:AddComponent("damagetyperesist")
+	inst.components.damagetyperesist:AddResist("shadow_aligned", inst, TUNING.ARMOR_VOIDCLOTH_SHADOW_RESIST)
 
     local setbonus = inst:AddComponent("setbonus")
-    setbonus:SetSetName("ancient")
+    setbonus:SetSetName(EQUIPMENTSETNAMES.ANCIENT)
     setbonus:SetOnEnabledFn(OnEnabledSetBonus)
 	setbonus:SetOnDisabledFn(OnDisabledSetBonus)
 
-    inst:AddComponent("true_defence")
+    --inst:AddComponent("true_defence")
+    inst:AddComponent("forgerepairable")
+	inst.components.forgerepairable:SetRepairMaterial(FORGEMATERIALS.IRON)
 
-    inst:AddComponent("aoeweapon_lunge")
+
+    --[[inst:AddComponent("aoeweapon_lunge")
     inst.components.aoeweapon_lunge:SetDamage(68)
     inst.components.aoeweapon_lunge:SetSideRange(2)
     inst.components.aoeweapon_lunge:SetWorkActions()
-    inst.components.aoeweapon_lunge:SetTags("_combat")
+    inst.components.aoeweapon_lunge:SetTags("_combat")]]
 
     MakeHauntableLaunch(inst)
 

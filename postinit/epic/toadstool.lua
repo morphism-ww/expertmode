@@ -1,18 +1,3 @@
-TUNING.TOADSTOOL_SPEED_LVL =
-        {
-            [0] = 1,
-            [1] = 2,
-            [2] = 3,
-            [3] = 4,
-        }
-TUNING.TOADSTOOL_MUSHROOMBOMB_COUNT_PHASE =
-{
-    [1] = 6,
-    [2] = 7,
-    [3] = 8,
-}
-
-
 AddStategraphPostInit("SGtoadstool",function(sg)
     sg.states.roar.timeline[5]=
     TimeEvent(20 * FRAMES, function(inst)
@@ -20,7 +5,7 @@ AddStategraphPostInit("SGtoadstool",function(sg)
         for k, v in pairs(inst.components.grouptargeter.targets) do
             if k:IsValid() and not k.components.health:IsDead() 
                 and k:DebuffsEnabled() and inst:GetDistanceSqToInst(k)<100  then
-                k:AddDebuff("toad_weak","weak",{duration=duration,speed=0.5})
+                k:AddDebuff("weak","weak",{duration=duration})
                 k:AddDebuff("life_break","exhaustion",{duration=30})
                 local inventory = k.components.inventory
                 if inventory~=nil then
@@ -36,9 +21,9 @@ AddStategraphPostInit("SGtoadstool",function(sg)
 end)
 
 local function PoisonOther2(inst, data)
-    if data.target ~= nil and data.target:HasTag("player") then
-		data.target:AddDebuff("toad_poison","poison_2",{upgrade=true,duration=40})
-        data.target:AddDebuff("toad_weak","weak",{duration=60,speed=0.7})
+    if data.target ~= nil and data.target:IsValid() and not data.target.components.health:IsDead() then
+		data.target:AddDebuff("toad_poison","poison_2")
+        data.target:AddDebuff("weak","weak")
     end
 end
 
@@ -56,8 +41,8 @@ end)
 
 local function WeakenTarget(inst,data)
     if data.target and data.target:DebuffsEnabled() then
-        data.target:AddDebuff("food_sick","food_sickness",{duration=40})
-        data.target:AddDebuff("toad_weak","weak",{duration=60,speed=0.7})
+        data.target:AddDebuff("food_sick","food_sickness")
+        data.target:AddDebuff("weak","weak")
     end
 end
 

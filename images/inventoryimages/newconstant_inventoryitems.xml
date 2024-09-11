@@ -1,0 +1,19 @@
+<Atlas>
+	<Texture filename="newconstant_inventoryitems.tex" />
+    <Elements>
+        <Element name="cs_void_bag.tex" u1="0" u2="0.25" v1="0.75" v2="1" />
+        <Element name="demon_soul.tex" u1="0.25" u2="0.5" v1="0.75" v2="1" />
+        <Element name="insight_soul.tex" u1="0.5" u2="0.75" v1="0.75" v2="1" />
+        <Element name="iron_soul.tex" u1="0" u2="0.25" v1="0.5" v2="0.75" />
+        <Element name="northpole.tex" u1="0.25" u2="0.5" v1="0.5" v2="0.75" />
+        <Element name="shadow_soul.tex" u1="0.5" u2="0.75" v1="0.5" v2="0.75" />
+        <Element name="staff_lunarblast.tex" u1="0" u2="0.25" v1="0.25" v2="0.5" />
+        <Element name="sword_lunarblast.tex" u1="0.25" u2="0.5" v1="0.25" v2="0.5" />
+        <Element name="true_voidcloth_scythe.tex" u1="0.5" u2="0.75" v1="0.25" v2="0.5" />
+        <Element name="cs_waterdrop.tex" u1="0.75" u2="0.9960938" v1="0.2539063" v2="0.5" />
+        <Element name="cs_infused_iron.tex" u1="0" u2="0.2460938" v1="0.00390625" v2="0.25" />
+        <Element name="cs_iron.tex" u1="0.2460938" u2="0.4921875" v1="0.00390625" v2="0.25" />
+        <Element name="armorabyss.tex" u1="0.4921875" u2="0.7382813" v1="0.00390625" v2="0.25" />
+        <Element name="laser_generator.tex" u1="0.7382813" u2="0.984375" v1="0.00390625" v2="0.25" />
+    </Elements>
+</Atlas>

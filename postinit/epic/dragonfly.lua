@@ -1,5 +1,3 @@
-TUNING.LAVAE_HEALTH=300
-
 local function OnTimerDone(inst, data)
     if data.name == "selfdestruct" and inst.components.explosive~=nil then
         inst.components.explosive:OnBurnt()
@@ -38,7 +36,7 @@ AddStategraphPostInit("lavae",function(sg)
 end)
 
 local function Dofire(inst)
-    if not inst.enraged and inst.components.health and inst.components.health:GetPercent() <= 0.3
+    if not inst.enraged and inst.components.health and inst.components.health:GetPercent() <= TUNING.DRAGONFLY_TRANSFORM
             and not inst.components.health:IsDead() then
         inst.sg:GoToState("transform_fire")
     end
@@ -53,4 +51,5 @@ AddPrefabPostInit("dragonfly", function(inst)
     inst.components.freezable:SetResistance(8)
     inst:DoPeriodicTask(8,Dofire)
     inst:ListenForEvent("death", StartFireEra)
+    inst.components.groundpounder.noTags[5] = "lavae"
 end)

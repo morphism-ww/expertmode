@@ -8,7 +8,7 @@ local function OnGetItemFromPlayer(inst, giver, item)
     new_inst:PushEvent("upgrade")
 end
 
-AddPrefabPostInit("punchingbag",function(inst)
+--[[ddPrefabPostInit("punchingbag",function(inst)
     inst:AddTag("trader")
 	if not TheWorld.ismastersim then
 		return inst
@@ -17,4 +17,4 @@ AddPrefabPostInit("punchingbag",function(inst)
 
     inst.components.trader:SetAcceptTest(AcceptTest)
     inst.components.trader.onaccept = OnGetItemFromPlayer
-end)
+end)]]

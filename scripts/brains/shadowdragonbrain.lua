@@ -23,14 +23,14 @@ local function ShouldUseAbility(self)
     if self.inst.components.combat.target==nil then
         return false
     end
-    local target=self.inst.components.combat.target
+    local target = self.inst.components.combat.target
     local dsq_to_target = self.inst:GetDistanceSqToInst(target)
-    self.abilityname = dsq_to_target<49 and (
-        (not self.inst.components.timer:TimerExists("wave_cd") and "wave_atk") or
-        (not self.inst.components.timer:TimerExists("fire_cd") and "fire_atk")
+    self.abilityname = dsq_to_target<64 and (
+        self.inst.canwave and not self.inst.components.timer:TimerExists("wave_cd") and "wave_atk"
     ) or nil
     return self.abilityname ~= nil
 end
+--(not self.inst.components.timer:TimerExists("fire_cd") and "fire_atk")
 
 local function ShouldHarass(self)
     return self._harasstarget ~= nil
@@ -54,12 +54,16 @@ end)
 
 function NightmareCreatureBrain:OnStart()
     local root = PriorityNode(
-    {   WhileNode(function() return ShouldUseAbility(self) end, "Ability",
-                ActionNode(function()
-                    self.inst:PushEvent(self.abilityname)
-                    self.abilityname = nil
-                end)),
-        WhileNode(function() return ShouldAttack(self) end, "Attack", ChaseAndAttack(self.inst, 40)),
+    {   
+        WhileNode(function() return ShouldAttack(self) end, "Attack", 
+            PriorityNode({
+                WhileNode(function() return ShouldUseAbility(self) end, "Ability",
+                    ActionNode(function()
+                        self.inst:PushEvent(self.abilityname)
+                        self.abilityname = nil
+                    end)),
+                ChaseAndAttack(self.inst, 40),
+            }, 0.5)),
         WhileNode(function() return ShouldHarass(self) end, "Harass",
             PriorityNode({
                 WhileNode(function() return ShouldChaseAndHarass(self) end, "ChaseAndHarass",
@@ -73,7 +77,6 @@ function NightmareCreatureBrain:OnStart()
             }, .25)),
         WhileNode(function() return self._harasstarget ~= nil end, "LoiterAndHarass",
             Wander(self.inst, function() return self._harasstarget:GetPosition() end, 20, { minwaittime = 0, randwaittime = 1 }, function() return GetHarassWanderDir(self) end)),
-        Wander(self.inst, function() return self.inst.components.knownlocations:GetLocation("war_home") or self.inst.components.knownlocations:GetLocation("home") end, 20),
     }, .25)
 
     self.bt = BT(self.inst, root)

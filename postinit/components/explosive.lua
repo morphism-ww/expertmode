@@ -108,3 +108,12 @@ AddComponentPostInit("explosive", function(self)
         self.inst:Remove()
     end
 end)
+--[[AddComponentPostInit("health",function (self)
+    local oldDoDelta = self.DoDelta
+    function self:DoDelta(amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
+        if amount>0 and self.noregen then
+            return
+        end
+        return oldDoDelta(self,amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
+    end    
+end)]]

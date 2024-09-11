@@ -77,13 +77,13 @@ local function onattack(inst,owner,target)
         local cos_rot = math.cos(theta)
         local sin_rot = math.sin(theta)
 
-        local proj=SpawnPrefab("sword_ancient_proj")
+        local proj = SpawnPrefab("sword_ancient_proj")
         proj.Transform:SetPosition(x+2*cos_rot,0.75,z-2*sin_rot)
         proj.Transform:SetRotation(angle)
-        proj.Physics:SetMotorVel(36, 0, 0)
+        proj.Physics:SetMotorVel(30, 0, 0)
 
         local doer_combat = owner.components.combat
-        local ents = TheSim:FindEntities(x,0,z,30,{"_combat","_health"}, {"FX", "DECOR", "INLIMBO","player"})
+        local ents = TheSim:FindEntities(x,0,z,30,{"_combat","_health"}, {"FX", "DECOR", "INLIMBO","player","wall", "campion"})
         for _, v in ipairs(ents) do
             if v~=target and doer_combat:CanTarget(v) and not doer_combat:IsAlly(v)
                 and not (v.components.health and v.components.health:IsDead()) then
@@ -93,7 +93,7 @@ local function onattack(inst,owner,target)
                     drot = drot - 360
                 end
                 
-                if math.abs(drot) <= 70 and math.abs(sin_rot*(x-tx)+cos_rot*(y-ty))<=2 then
+                if math.abs(drot) <= 70 and math.abs(sin_rot*(x-tx)+cos_rot*(z-tz))<=2 then
                     local dmg, spdmg = doer_combat:CalcDamage(v, inst)
                     v.components.combat:GetAttacked(owner, dmg, inst, nil, spdmg)
                 end    
@@ -104,7 +104,7 @@ local function onattack(inst,owner,target)
             summon_star(inst,owner,target)
         elseif inst.buff_stacks== 6 then
             summon_star(inst,owner,target)
-            inst:DoChop(owner,target:GetPosition())
+            --inst:DoChop(owner,target:GetPosition())
             reset_stacks(inst)
             --inst:AddTag("allow_chop")
         end            
@@ -121,7 +121,7 @@ end
 local function onunequip(inst, owner)
     owner.AnimState:Hide("ARM_carry")
     owner.AnimState:Show("ARM_normal")
-    inst.buff_stacks = nil
+    inst.buff_stacks = 0
 end
 
 
@@ -152,7 +152,6 @@ local function fn()
     
     inst:AddTag("ancient")
     inst:AddTag("sharp")
-    inst:AddTag("quick_attack")
     inst:AddTag("nosteal")
 
     MakeInventoryPhysics(inst)
@@ -169,8 +168,8 @@ local function fn()
     inst:AddComponent("inventoryitem")
 
     inst:AddComponent("weapon")
-    inst.components.weapon:SetDamage(200)
-    inst.components.weapon:SetRange(18)
+    inst.components.weapon:SetDamage(150)
+    inst.components.weapon:SetRange(14)
     inst.components.weapon:SetOnAttack(onattack)
 
     local planardamage = inst:AddComponent("planardamage")
@@ -180,7 +179,7 @@ local function fn()
     inst:AddComponent("equippable")
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
-    inst.components.equippable.walkspeedmult = 1.5
+    inst.components.equippable.walkspeedmult = 1.2
 
     --inst:AddComponent("move_attack")
     MakeHauntableLaunch(inst)
@@ -272,6 +271,20 @@ local function fxfn()
     return inst
 end
 
+local function onhit(inst, attacker)
+
+    local x,y,z = inst.Transform:GetWorldPosition()
+    local ents = TheSim:FindEntities(x, y, z, 2, {"_combat"}, { "INLIMBO", "brightmare","flight", "invisible", "notarget", "noattack"})
+    for i, v in ipairs(ents) do
+        if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
+            v:AddDebuff("moon_curse","moon_curse")
+            v.components.combat:GetAttacked(attacker,200,nil,nil,{["planar"] = 40})
+        end
+    end
+
+    inst:Remove()
+end
+
 local function projfn()
     local inst = CreateEntity()
     inst.entity:AddTransform()
@@ -302,87 +315,21 @@ local function projfn()
 
     inst.persists = false
 
-    inst:DoTaskInTime(3,inst.Remove)
+    inst:AddComponent("linearprojectile")
+    inst.components.linearprojectile:SetHorizontalSpeed(25)
+    inst.components.linearprojectile:SetRange(30)
+    inst.components.linearprojectile:SetOnHit(onhit)
+    inst.components.linearprojectile:SetOnMiss(inst.Remove)
+    table.insert(inst.components.linearprojectile.notags,"deity")
+
+    inst:DoTaskInTime(1,inst.Remove)
 
 
     return inst
 end
 
-local function buff_OnTick(inst,target)
-    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-200,true,"constant_fire",true,nil,true)
-    end
-end
-
-local function OnAttached(inst, target, followsymbol, followoffset)
-    inst.entity:SetParent(target.entity)
-    inst:ListenForEvent("death", function()
-        inst.components.debuff:Stop()
-    end, target)
-    inst.task = inst:DoPeriodicTask(0.5, buff_OnTick, nil, target)
-end
-
-local function OnExtended(inst)
-
-    inst.components.timer:StopTimer("buffover")
-    inst.components.timer:StartTimer("buffover", 15)
-end
-
-local function OnTimerDone(inst, data)
-    if data.name == "buffover" then
-        inst.components.debuff:Stop()
-    end
-end
-
-local function OnDetached(inst, target)
-	inst:Remove()
-end
-
-local buffassets =
-    {
-        Asset("ANIM", "anim/fireball_2_fx.zip"),
-        Asset("ANIM", "anim/deer_fire_charge.zip"),
-    }
-
-local function bufffn()
-    local inst = CreateEntity()
-
-    inst.entity:AddTransform()
-    inst.entity:AddFollower()
-    inst.entity:AddAnimState()
-    inst.entity:AddNetwork()
-
-    inst:AddTag("FX")
-    inst:AddTag("NOCLICK")
-
-    inst.AnimState:SetBank("fireball_fx")
-    inst.AnimState:SetBuild("deer_fire_charge")
-    inst.AnimState:PlayAnimation("blast",true)
-    inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-    inst.AnimState:SetLightOverride(1)
-    inst.AnimState:SetFinalOffset(3)
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
-    inst:AddComponent("debuff")
-    inst.components.debuff:SetAttachedFn(OnAttached)
-    inst.components.debuff:SetExtendedFn(OnExtended)
-    inst.components.debuff:SetDetachedFn(OnDetached)
-
-    inst:AddComponent("timer")
-    inst.components.timer:StartTimer("buffover",15)
-    inst:ListenForEvent("timerdone", OnTimerDone)
-
-
-    return inst
-end
 
 return Prefab( "sword_ancient", fn,assets),
     Prefab("sword_ancient_fx",fxfn,assets),
-    Prefab("sword_ancient_proj",projfn,assets),
-    Prefab("constantfire_buff",bufffn,buffassets)
+    Prefab("sword_ancient_proj",projfn,assets)
     

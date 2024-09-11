@@ -2,6 +2,8 @@ local function OnUpgrade(inst)
 	inst.components.upgradeable.upgradetype = nil
 
     inst.components.prototyper.trees = TUNING.PROTOTYPER_TREES.OBSIDIAN_THREE
+
+	inst:AddTag("super_forge")
 	inst.SoundEmitter:PlaySound("dontstarve/common/together/dragonfly_furnace/place")
 	inst.AnimState:PlayAnimation("incinerate")
     inst.AnimState:PushAnimation("hi", true)

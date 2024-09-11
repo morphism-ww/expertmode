@@ -3,7 +3,6 @@ require("stategraphs/commonstates")
 local events =
 {
     CommonHandlers.OnLocomote(false, true),
-     CommonHandlers.OnFreeze()
 }
 
 local function return_to_idle(inst)

@@ -82,7 +82,7 @@ end
 local function TrySpawnGestaltForPlayer(player, level, data)
 	local pt = FindGestaltSpawnPtForPlayer(player, false)
 	if pt ~= nil then
-		if level==3 then
+		if level==3 and TUNING.ALLOW_LUNAR_QUEEN then
 			local ent = SpawnPrefab("gestalt_guard")
 			ent.persists = false
 			ent:ListenForEvent("entitysleep", RemoveMare)

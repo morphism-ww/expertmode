@@ -1,6 +1,6 @@
 local RuinsRespawner = require "prefabs/ruinsrespawner"
-local brain=require("brains/ancient_hulkbrain")
-local SHAKE_DIST = 40
+local brain = require("brains/ancient_hulkbrain")
+
 --local easing=require("easing")
 
 
@@ -18,17 +18,17 @@ local assets =
     Asset("ANIM", "anim/laser_explode_sm.zip"),  
     Asset("ANIM", "anim/smoke_aoe.zip"),
     Asset("ANIM", "anim/laser_explosion.zip"),
-    --Asset("ANIM", "anim/ground_chunks_breaking.zip"),
     Asset("ANIM", "anim/ground_chunks_breaking_brown.zip"),
-
-    --Asset("SOUND", "sound/bearger.fsb"),
 }
 
 local prefabs =
-{
+{   
+    "deerclops_laserhit",
+    "deerclops_laserscorch",
     "groundpound_fx",
     "groundpoundring_fx",
-    "ancient_hulk_orb_small",
+    "ancient_hulk_mine",
+    "ancient_hulk_orb"
 }
 
 SetSharedLootTable('ancient_hulk',
@@ -36,39 +36,42 @@ SetSharedLootTable('ancient_hulk',
     {'gears',           1.0},
     {'gears',           1.0},
     {'gears',           1.0},
-    {'gears',           1.0},
+    {'gears',           0.5},
+    {"thulecite",       1.0},
+    {"thulecite",       1.0},
+    {"thulecite",       1.0},
+    {"thulecite",       1.0},
+    {"thulecite",       1.0},
+    {"thulecite",       0.5},
+    {"thulecite",       0.5},
+    {"cs_iron",         1.0},
+    {"cs_iron",         1.0},
+    {"cs_iron",         1.0},
+    {"cs_iron",         1.0},
+    {"cs_iron",         0.5},
+    {"cs_iron",         0.5},
     {'opalpreciousgem', 1.0},
-    {'iron_soul', 1.0},
 })
 
 
-local many_ruins={}
-for i=1,30 do
-    table.insert(many_ruins,"thulecite")
-end
+
 local PHASES =
 {
-	[1] = {
-		hp = 1,
-		fn = function(inst)
-            print("???")
-		end,
-	},
+
 	--
-	[2] = {
+	[1] = {
 		hp = 0.7,
 		fn = function(inst)
             inst.angry=true
-            inst.canspark=true
+            
             inst.cancharge=false
             inst.canbarrier=false
 		end,
 	},
-	[3] = {
+	[2] = {
 		hp = 0.4,
 		fn = function(inst)
-            inst.angry=true
-            inst.canspark=true
+            inst.angry = true
             inst.cancharge=true
             inst.canbarrier=true
 		end,
@@ -77,7 +80,6 @@ local PHASES =
 
 local INTENSITY = .75
 local function SetLightValue(inst, val1, val2, time)
-    print("LIGHT VALUE", val1, val2, time)
     inst.components.fader:StopAll()
     if val1 and val2 and time then
         inst.Light:Enable(true)
@@ -95,182 +97,92 @@ local function SetLightValue(inst, val1, val2, time)
     end
 end
 
-local function setfires(x,y,z, rad)
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z, rad,nil, { "laser", "DECOR", "INLIMBO" ,"FX","chess"})) do
-        if v.components.burnable then
-            v.components.burnable:Ignite()
-        end
-    end
-end
 
-local function applydamagetoent(inst,ent, targets, rad, hit)
-    local x, y, z = inst.Transform:GetWorldPosition()
-    if hit then 
-        targets = {}
-    end    
-    if not rad then 
-        rad = 0
+local function ApplyDamageToEnt(inst,v,targets)
+    local isworkable = false
+    if v.components.workable ~= nil then
+        local work_action = v.components.workable:GetWorkAction()
+        --V2C: nil action for NPC_workable (e.g. campfires)
+        isworkable =
+            (   work_action == nil and v:HasTag("NPC_workable") ) or
+            (   v.components.workable:CanBeWorked() and
+                (   work_action == ACTIONS.CHOP or
+                    work_action == ACTIONS.HAMMER or
+                    work_action == ACTIONS.MINE or
+                    (   work_action == ACTIONS.DIG and
+                        v.components.spawner == nil and
+                        v.components.childspawner == nil
+                    )
+                )
+            )
     end
-    local v = ent
-    if not targets[v] and v:IsValid() and not v:IsInLimbo() and not (v.components.health ~= nil and v.components.health:IsDead()) and not v:HasTag("laser_immune") then            
-        local vradius = 0
-        if v.Physics then
-            vradius = v.Physics:GetRadius()
-        end
+    if isworkable then
+        targets[v] = true
+        v.components.workable:Destroy(inst.caster and inst.caster:IsValid() and inst.caster or inst)
 
-        local range = rad + vradius
-        if hit or v:GetDistanceSqToPoint(Vector3(x, y, z)) < range * range then
-            local isworkable = false
-                if v.components.workable ~= nil then
-                    local work_action = v.components.workable:GetWorkAction()
-                    --V2C: nil action for NPC_workable (e.g. campfires)
-                    isworkable =
-                        (   work_action == nil and v:HasTag("NPC_workable") ) or
-                        (   v.components.workable:CanBeWorked() and
-                            (   work_action == ACTIONS.CHOP or
-                                work_action == ACTIONS.HAMMER or
-                                work_action == ACTIONS.MINE or
-                                (   work_action == ACTIONS.DIG and
-                                    v.components.spawner == nil and
-                                    v.components.childspawner == nil
-                                )
-                            )
-                        )
+        -- Completely uproot trees.
+        if v:HasTag("stump") then
+            v:Remove()
+        end
+    elseif v.components.pickable ~= nil
+            and v.components.pickable:CanBePicked()
+            and not v:HasTag("intense") then
+        targets[v] = true
+        v.components.pickable:Pick(inst)
+    elseif v.components.combat == nil and v.components.health ~= nil then
+        targets[v] = true
+    elseif inst.components.combat:CanTarget(v) then
+        targets[v] = true
+        inst.components.combat:DoAttack(v)
+    
+        SpawnPrefab("deerclops_laserhit"):SetTarget(v)
+        if not v.components.health:IsDead() then
+            if v.components.temperature ~= nil then
+                local maxtemp = math.min(v.components.temperature:GetMax(), 10)
+                local curtemp = v.components.temperature:GetCurrent()
+                if maxtemp > curtemp then
+                    v.components.temperature:DoDelta(math.min(10, maxtemp - curtemp))
                 end
-                if isworkable then
-                    targets[v] = true
-                    v.components.workable:Destroy(inst)
-                    local vx,vy,vz = v.Transform:GetWorldPosition()
-                    v:DoTaskInTime(0.3, function() setfires(vx,vy,vz,1) end)
-                    -- Completely uproot trees.
-                    if v:HasTag("stump") then
-                        v:Remove()
-                    end
-                elseif v.components.pickable ~= nil
-                        and v.components.pickable:CanBePicked()
-                        and not v:HasTag("intense") then
-                    targets[v] = true
-                    local num = v.components.pickable.numtoharvest or 1
-                    local product = v.components.pickable.product
-                    local x1, y1, z1 = v.Transform:GetWorldPosition()
-                    v.components.pickable:Pick(inst) -- only calling this to trigger callbacks on the object
-                    if product ~= nil and num > 0 then
-                        for i = 1, num do
-                            local loot = SpawnPrefab(product)
-                            loot.Transform:SetPosition(x1, 0, z1)
-                            targets[loot] = true
-                        end
-                    end
-
-            elseif v.components.health~=nil then
-                inst.components.combat.ignorehitrange = true
-                inst.components.combat:DoAttack(v)
-                inst.components.combat.ignorehitrange = false
-                if v:IsValid() then
-                    if not v.components.health or not v.components.health:IsDead() then
-                        if v.components.freezable ~= nil then
-                            if v.components.freezable:IsFrozen() then
-                                v.components.freezable:Unfreeze()
-                            elseif v.components.freezable.coldness > 0 then
-                                v.components.freezable:AddColdness(-2)
-                            end
-                        end
-                        if v.components.temperature ~= nil then
-                            local maxtemp = math.min(v.components.temperature:GetMax(), 20)
-                            local curtemp = v.components.temperature:GetCurrent()
-                            if maxtemp > curtemp then
-                                v.components.temperature:DoDelta(math.min(20, maxtemp - curtemp))
-                            end
-                        end
-                    end
-                end                   
             end
-            if v:IsValid() and v.AnimState then
-                SpawnPrefab("laserhit"):SetTarget(v)
+            if v.components.fueled == nil and
+                v.components.burnable ~= nil and not v.components.burnable:IsBurning() then
+                v.components.burnable:Ignite()
             end
         end
-    end 
-    return targets   
+    end
 end
 
+local DAMAGE_CANT_TAGS = { "laser_immune", "playerghost", "INLIMBO", "DECOR", "FX"}
 local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
 
-local function DoDamage(inst, rad, startang, endang, spawnburns)
+local function DoDamage(inst, rad, startang, endang)
     local targets = {}
     local x, y, z = inst.Transform:GetWorldPosition()
-    local angle = nil
-    if startang and endang then
-        startang = startang + 90
-        endang = endang + 90
-        
-        local down = TheCamera:GetDownVec()             
-        angle = math.atan2(down.z, down.x)/DEGREES
-    end
 
-    setfires(x,y,z, rad)
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z, rad, nil, { "laser", "DECOR", "INLIMBO" ,"FX","nightmarecreature"},DAMAGE_ONEOF_TAGS)) do  --  { "_combat", "pickable", "campfire", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
-        local dodamage = true
-        if startang and endang then
-            local dir = inst:GetAngleToPoint(Vector3(v.Transform:GetWorldPosition())) 
+    inst.components.combat.ignorehitrange = true
 
-            local dif = angle - dir         
-            while dif > 450 do
-                dif = dif - 360 
-            end
-            while dif < 90 do
-                dif = dif + 360
-            end                       
-            if dif < startang or dif > endang then                
-                dodamage = nil
-            end
-        end
-        if dodamage then
-            targets = applydamagetoent(inst,v, targets, rad)
-        end
+    for i, v in ipairs(TheSim:FindEntities(x, 0, z, rad + 3, nil, DAMAGE_CANT_TAGS ,DAMAGE_ONEOF_TAGS)) do
+        if not targets[v] and v:IsValid() and
+            not (v.components.health ~= nil and v.components.health:IsDead()) then
+            local range = rad + v:GetPhysicsRadius(.5)
+            local dsq_to_laser = v:GetDistanceSqToPoint(x, y, z)
+            if dsq_to_laser < range * range then    
+                local dir = inst:GetAngleToPoint(v.Transform:GetWorldPosition()) + 180
+
+                if not (startang and endang and (dir<startang or dir>endang)) then
+                    ApplyDamageToEnt(inst,v,targets)
+                end
+            end    
+        end        
     end
+    inst.components.combat.ignorehitrange = false
+
 end
 
----------------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------------
-
-local function dropparts(inst,x,z)
-
-    local parts = {
-        "ancient_robot_claw",
-        "ancient_robot_claw",
-        "ancient_robot_leg",
-        "ancient_robot_leg",
-        "ancient_robot_ribs",
-    }
-
-    for i, part in ipairs(parts) do        
-        local partprop = SpawnPrefab(part)
-        partprop.spawntask:Cancel()
-        partprop.spawntask = nil
-        partprop.spawned = true
-        partprop:AddTag("dormant")                                                    
-        partprop.sg:GoToState("idle_dormant")
-
-
-        partprop.Transform:SetPosition(x,0,z)
-        
-        inst.DoDamage(partprop, 5)        
-    end
-end
-
-local TARGET_DIST = 30
-
-local function CalcSanityAura(inst, observer)
-    if inst.components.combat:HasTarget() then
-        return -TUNING.SANITYAURA_HUGE
-    end
-
-    return -TUNING.SANITYAURA_LARGE
-end
 
 local RETARGET_MUST_TAGS = { "_combat" }
-local RETARGET_CANT_TAGS = { "chess", "INLIMBO" ,"shadow_aligned","ancient_hulk_mine"}
+local RETARGET_CANT_TAGS = { "chess", "INLIMBO", "FX", "playerghost"}
 local RETARGET_ONEOF_TAGS = { "character","monster"}
 
 local function RetargetFn(inst)
@@ -291,23 +203,11 @@ local function RetargetFn(inst)
 end
 
 local function KeepTargetFn(inst, target)
-
     local homePos = inst.components.knownlocations:GetLocation("home")
-    return homePos ~= nil and inst:GetDistanceSqToPoint(homePos:Get()) < 900
+    return inst.components.combat:CanTarget(target) and not (homePos ~= nil and inst:GetDistanceSqToPoint(homePos:Get()) > 1600)
 end
 
 
---[[local function OnLoadPostPass(inst, newents, data)
-    if not inst.spawnlocation then
-        for i,v in pairs(Ents) do
-            if v.prefab == "ancient_hulk_ruinsrespawner_inst" then
-                inst.spawnlocation = Vector3(v.Transform:GetWorldPosition())
-
-                break
-            end
-        end
-    end
-end]]
 
 local function onload(inst)
     local healthpct = inst.components.health:GetPercent()
@@ -321,7 +221,12 @@ local function onload(inst)
 end
 
 local function OnAttacked(inst, data)
-    inst.components.combat:SetTarget(data.attacker)
+    if data.attacker then
+        inst.components.combat:SetTarget(data.attacker)
+        if data.attacker:HasTag("player") then
+            inst.attackerUSERIDs[data.attacker.userid] = true
+        end
+    end
 end
 
 local function OnCollide(inst, other)
@@ -344,58 +249,28 @@ end
 
 local function LaunchProjectile(inst, targetpos)
     local x, y, z = inst.Transform:GetWorldPosition()
-
     local projectile = SpawnPrefab("ancient_hulk_mine")
-
-    projectile.primed = false
-    projectile.components.creatureprox:SetEnabled(false)
-    projectile.AnimState:PlayAnimation("spin_loop",true)
-    projectile.Transform:SetPosition(x, 1, z)
-
-    --V2C: scale the launch speed based on distance
-    --     because 15 does not reach our max range.
-    local dx = targetpos.x - x
-    local dz = targetpos.z - z
-    --local rangesq = dx * dx + dz * dz
-    --local maxrange = 15  --FIRE_DETECTOR_RANGE
-    --local speed = 60
-    projectile.components.complexprojectile:SetHorizontalSpeed(60)
-    projectile.components.complexprojectile:SetGravity(25)
+    projectile.Transform:SetPosition(x, 0, z)
+    --projectile.components
     projectile.components.complexprojectile:Launch(targetpos, inst, inst)
-    projectile.owner = inst
+
 end
 
 
 local function ShootProjectile(inst, targetpos)
-    local x, y, z = inst.Transform:GetWorldPosition()
-
+    
     local projectile = SpawnPrefab("ancient_hulk_orb")
-
-    projectile.primed = false
-    projectile.AnimState:PlayAnimation("spin_loop",true)
-
-    local pt = inst.shotspawn:GetPosition()
-    projectile.Transform:SetPosition(pt.x, pt.y, pt.z)
-    --projectile.Transform:SetPosition(x, 4, z)
-
-   -- inst.shotspawn:Remove()
-   -- inst.shotspawn = nil
-    --local dx = targetpos.x - x
-    --local dz = targetpos.z - z
-    --local rangesq = dx * dx + dz * dz
-    --local maxrange = 24  --FIRE_DETECTOR_RANGE
-    local speed =    65--easing.linear(rangesq, 15, 3, maxrange * maxrange)
-    projectile.components.linearprojectile:SetHorizontalSpeed(speed)
-    --projectile.components.linearprojectile:SetGravity(25)
-    projectile.components.linearprojectile:Launch(targetpos, inst, inst)
-    projectile.owner = inst
-    --projectile.components.projectile:Throw(inst, target, inst)
+    projectile.Transform:SetPosition(inst.AnimState:GetSymbolPosition("hand01"))
+    --projectile.Physics:Teleport(x,4,z)
+    projectile.components.complexprojectile:Launch(targetpos, inst)
+    --projectile.owner = inst
 end
 
-local function spawnbarrier(inst,pt)
+local function spawnbarrier(inst)
     local angle = 0
     local radius = 10
     local number = 8
+    local pt = inst:GetPosition()
     for i=1,number do        
         local offset = Vector3(radius * math.cos( angle ), 0, -radius * math.sin( angle ))
         local newpt = pt + offset
@@ -413,89 +288,17 @@ local function spawnbarrier(inst,pt)
     end
 end
 
---[[local function checkforAttacks(inst)
-    local pct=inst.components.health:GetPercent()
-    if pct<0.5 then
-        inst.crazy=true
-    end
-    -- mine
-    local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x,y,z,20,{"ancient_hulk_mine"})
-    if #ents < 12 then
-        inst.wantstomine = true
-    else
-        inst.wantstomine = nil
-    end
-    -- lob
-    if inst.orbs > 0 then
-        if inst.components.combat.target and inst.components.combat.target:IsValid() then
-            local dist = inst:GetDistanceSqToInst(inst.components.combat.target)
-            if dist > 12*12  and dist < 25*25 then
-                inst.wantstolob = true
-            else
-                inst.wantstolob = nil
-            end
-        end
-    else
-        inst.orbtime = inst.orbtime -1
-        if inst.orbtime <= 0 then
-            inst.orbtime = nil
-            inst.orbs = 4
-        end
-    end
 
-    -- teleport
-    if inst.components.combat.target and inst.components.combat.target:IsValid() then
-        local dist = inst:GetDistanceSqToInst(inst.components.combat.target)
-        if dist < 6*6 then
-            if not inst.teleporttime then
-                inst.teleporttime = 0
-            end
-            inst.teleporttime = inst.teleporttime + 1
-            if inst.teleporttime > 3 then
-                inst.wantstoteleport = true
-            end
-        else
-            inst.teleporttime =  nil
-        end
-    end
-
-    -- spin
-    if inst.components.combat.target and inst.components.combat.target:IsValid() and pct < 0.8  then
-        if not inst.spintime or inst.spintime <=0 then
-            local dist = inst:GetDistanceSqToInst(inst.components.combat.target)
-            if dist < 6*6 then
-                inst.wantstospin = true
-            else            
-                inst.wantstospin = nil
-            end
-        else
-            inst.spintime = inst.spintime - 1            
-        end
-    end
-
-    -- barrier?
-    if inst.components.combat.target and inst.components.combat.target:IsValid() and pct < 0.3  then
-        if not inst.barriertime or inst.barriertime <=0 then
-            local dist = inst:GetDistanceSqToInst(inst.components.combat.target)
-            if dist < 6*6 then
-                inst.wantstobarrier = true
-            else            
-                inst.wantstobarrier = nil
-            end
-        else
-            inst.barriertime = inst.barriertime - 1            
-        end
-    end    
-end]]
 local function EnterShield(inst)
     inst._is_shielding = true
 
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0, "ruins_shield")
-
+    inst.components.planardefense:SetBaseDefense(15)
+    inst.components.debuffable:RemoveOnDespawn()
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
     end
+
     inst._shieldfx = SpawnPrefab("forcefieldfx")
     inst._shieldfx.Transform:SetScale(1.8,1.8,1.8)
     inst._shieldfx.entity:SetParent(inst.entity)
@@ -509,35 +312,24 @@ local function ExitShield(inst)
         inst._shieldfx = nil
     end
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 1, "ruins_shield")
+    inst.components.planardefense:SetBaseDefense(0)
 end
-
 
 
 local function rememberhome(inst)
-    --[[local x,y,z=inst.Transform:GetWorldPosition()
-    local pos=inst:GetPosition()
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z,40, {"CLASSIFIED"})) do
-        if v.prefab=="ancient_hulk_ruinsrespawner_inst" then
-            pos=v:GetPosition()
-        end
+    if inst.components.knownlocations:GetLocation("home") == nil then
+        inst.components.knownlocations:RememberLocation("home", inst:GetPosition())
     end
-    inst.components.knownlocations:RememberLocation("home",pos)]]
-    inst.components.knownlocations:RememberLocation("home", inst:GetPosition())
 end
-local function OnSave(inst, data)
 
+local function OnTimerDone(inst,data)
+    if data.name == "lob_cd" then
+        inst.lob_count = 5
+        inst.components.combat.attackrange = 18
+    end
 end
-local function CanSpark(inst)
-    return inst.canspark
-end
-local function SparkOnSpawned(inst, poop)
-    local heading_angle = inst.Transform:GetRotation()*DEGREES
 
-    local pos = Vector3(inst.Transform:GetWorldPosition())
-    pos.x = pos.x + 4*math.cos(heading_angle)
-    pos.z = pos.z + 4*math.sin(heading_angle)
-    poop.Transform:SetPosition(pos.x, 2, pos.z)
-end
+
 
 local function OnNewTarget(inst, data)
     if data.target ~= nil then
@@ -558,11 +350,12 @@ local function SetEngaged(inst, engaged)
         end
     end
 end
+
 local function fn()
     local inst = CreateEntity()
+
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
-    inst.entity:AddLight()
     inst.entity:AddDynamicShadow()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
@@ -571,16 +364,11 @@ local function fn()
 
 	inst.DynamicShadow:SetSize(6, 3.5)
 
-    MakeGiantCharacterPhysics(inst, 1000, 1.5)
-    --MakeCharacterPhysics(inst, 1000, 1.5)
+    MakeGiantCharacterPhysics(inst, 3000, 2)
+    
     inst.AnimState:SetBank("metal_hulk")
     inst.AnimState:SetBuild("metal_hulk_build")
-    inst.AnimState:PlayAnimation("idle", true)
-
-    inst.Physics:SetCollisionCallback(OnCollide)
-
-
-
+    inst.AnimState:PlayAnimation("idle")
     inst.AnimState:AddOverrideBuild("laser_explode_sm")
     inst.AnimState:AddOverrideBuild("smoke_aoe")
     inst.AnimState:AddOverrideBuild("laser_explosion")
@@ -588,92 +376,95 @@ local function fn()
     --inst.Transform:SetScale(1.2,1.2,1.2)
 
 
+    inst:AddComponent("fader")
+
+    inst.entity:AddLight()
+    inst.Light:SetIntensity(.6)
+    inst.Light:SetRadius(5)
+    inst.Light:SetFalloff(3)
+    inst.Light:SetColour(1, 0.3, 0.3)
+    inst.Light:Enable(false)
+
     inst:AddTag("epic")
     inst:AddTag("hostile")
     inst:AddTag("scarytoprey")
+    inst:AddTag("shadow_aligned")
     inst:AddTag("largecreature")
     inst:AddTag("ancient_hulk")
-    inst:AddTag("dontteleporttointerior")
     inst:AddTag("laser_immune")
     inst:AddTag("mech")
-    inst:AddTag("chess")
-
-    inst:AddComponent("fader")
-    inst.glow = inst.entity:AddLight()
-    inst.glow:SetIntensity(.6)
-    inst.glow:SetRadius(5)
-    inst.glow:SetFalloff(3)
-    inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(false)
-
-
 
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
     end
-     
+    
+    
+    inst.Physics:SetCollisionCallback(OnCollide)
     ----------------------------------------
     inst.angry=false
-    inst.canspark=false
     inst.cancharge=false
     inst.canbarrier=false
+    inst.lob_count = 4
 
     inst:AddComponent("sanityaura")
-    inst.components.sanityaura.aurafn = CalcSanityAura
+    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
 
     ------------------
-    
+
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(20000)
+    inst.components.health:SetMaxHealth(TUNING.ANCIENT_HULK_HEALTH)
     inst.components.health.destroytime = 5
     inst.components.health.fire_damage_scale = 0
 
+    inst:AddComponent("combat")
+    inst.components.combat:SetDefaultDamage(250)
+    inst.components.combat.playerdamagepercent = .5
+    inst.components.combat:SetRange(18, 6.5)
+    inst.components.combat:SetAreaDamage(6, 0.8)
+    inst.components.combat.hiteffectsymbol = "segment01"
+    inst.components.combat:SetAttackPeriod(3)
+    inst.components.combat:SetRetargetFunction(1, RetargetFn)
+    inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
+
     ----------------------
     inst:AddComponent("timer")
-    -----------------
+
+    inst:AddComponent("knownlocations")
+
+    inst:AddComponent("drownable")
+
     inst:AddComponent("healthtrigger")
     for i, v in pairs(PHASES) do
 		inst.components.healthtrigger:AddTrigger(v.hp, v.fn)
 	end
-    inst:AddComponent("knownlocations")
+    
     -----------------
-    inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(200)
-    inst.components.combat.playerdamagepercent = .5
-    inst.components.combat:SetRange(18, 5.5)
-    inst.components.combat:SetAreaDamage(5.5, 0.8)
-    inst.components.combat.hiteffectsymbol = "segment01"
-    inst.components.combat:SetAttackPeriod(3)
-    inst.components.combat:SetRetargetFunction(2, RetargetFn)
-    inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
-    --inst.components.combat:SetHurtSound("dontstarve_DLC001/creatures/bearger/hurt")
+
+    inst:AddComponent("planarentity")
 
     inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(10)
-
-    inst:AddComponent("explosiveresist")
-    inst:AddComponent("drownable")
-    --inst:AddComponent("epicscare")
-    --inst.components.epicscare:SetRange(TUNING.STALKER_EPICSCARE_RANGE)
+	inst.components.planardamage:SetBaseDamage(30)
+    
+   
     local stunnable = inst:AddComponent("stunnable")
-    stunnable.stun_threshold = 1000
+    stunnable.stun_threshold = 1200
     stunnable.stun_period = 5
     stunnable.stun_duration = 10
     stunnable.stun_resist = 0
     stunnable.stun_cooldown = 5
 
-    inst:AddComponent("periodicspawner")
+    --[[inst:AddComponent("periodicspawner")
     inst.components.periodicspawner:SetPrefab("laser_spark")
     inst.components.periodicspawner:SetRandomTimes(6, 8)
     inst.components.periodicspawner:SetDensityInRange(10, 4)
 	inst.components.periodicspawner:SetSpawnTestFn(CanSpark)
     inst.components.periodicspawner:SetOnSpawnFn(SparkOnSpawned)
-    inst.components.periodicspawner:Start()
+    inst.components.periodicspawner:Start()]]
 
 
-    inst._shieldfx=nil
+    inst._shieldfx = nil
     inst._is_shielding = nil
     inst.EnterShield = EnterShield
     inst.ExitShield = ExitShield
@@ -681,142 +472,113 @@ local function fn()
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable("ancient_hulk")
-    inst.components.lootdropper:SetLoot(many_ruins)
     ------------------------------------------
 
     inst:AddComponent("inspectable")
 
-    ------------------------------------------
-
-    inst:AddComponent("groundpounder")
-    inst.components.groundpounder.destroyer = true
-    inst.components.groundpounder.damageRings = 4
-    inst.components.groundpounder.destructionRings = 5
-    inst.components.groundpounder.numRings = 3
-    --inst.components.groundpounder.groundpoundfx = "groundpound_fx_hulk"
+    inst:AddComponent("planardefense")
 
     ------------------------------------------
 
-    inst.OnSave = OnSave
+    local groundpounder = inst:AddComponent("groundpounder")
+    groundpounder:UseRingMode()
+    groundpounder.numRings = 3
+    groundpounder.initialRadius = 1.5
+    groundpounder.radiusStepDistance = 2
+    groundpounder.ringWidth = 2
+    groundpounder.damageRings = 2
+    groundpounder.destructionRings = 3
+    groundpounder.platformPushingRings = 3
+
+    ------------------------------------------
+
     inst.OnLoad = onload
-    --inst.OnLoadPostPass = OnLoadPostPass
     inst.LaunchProjectile = LaunchProjectile
     inst.ShootProjectile = ShootProjectile
     inst.DoDamage = DoDamage
     inst.spawnbarrier = spawnbarrier
-    --inst.dropparts = dropparts
     inst.SetLightValue = SetLightValue
     inst.SetEngaged = SetEngaged
 
+    inst.attackerUSERIDs = {}
+
     inst:ListenForEvent("attacked", OnAttacked)
-    --inst:DoPeriodicTask(1,function() checkforAttacks(inst) end)
-    inst:ListenForEvent( "onremove", function() inst.SoundEmitter:KillSound("gears") print("KILLLL GEARS!!!!!!!!!")  end, inst )
-    
+    inst:ListenForEvent("timerdone",OnTimerDone)
     ------------------------------------------
 
     inst:AddComponent("locomotor")
     inst.components.locomotor.walkspeed = 6
-    inst.components.locomotor.runspeed = 12
-    inst.components.locomotor:SetShouldRun(true)
 
-
-
-
+    inst:AddComponent("debuffable")
+ 
     inst:SetStateGraph("SGancient_hulk")
     inst:SetBrain(brain)
     inst:DoTaskInTime(0, rememberhome)
 
-
-    if not inst.shotspawn then
-        inst.shotspawn = SpawnPrefab( "ancient_hulk_marker" )
-        inst.shotspawn:Hide()
-        inst.shotspawn.persists = false
-        local follower = inst.shotspawn.entity:AddFollower()
-        follower:FollowSymbol( inst.GUID, "hand01", 0,0,0 )
-    end
     SetEngaged(inst, false)
 
 
     return inst
 end
 
---[[local function OnMineCollide(inst, other)
-    -- may want to do some charging damage?
-end]]
 
-local function OnHit(inst, dist)    
+
+local function MineOnHit(inst)    
     inst.AnimState:PlayAnimation("land")
+    inst.AnimState:PushAnimation("open",false)
+
     inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/ribs/step_wires")
-    --inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step_wires")
-    inst.AnimState:PushAnimation("open")
     inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/rust")
-    inst:ListenForEvent("animover", function()
-        inst.components.creatureprox:SetEnabled(true)
-        if inst.AnimState:IsCurrentAnimation("open") then
-            inst.primed  = true
-            inst.AnimState:PlayAnimation("green_loop",true)
-        end
+    inst:ListenForEvent("animqueueover", function()
+        
+        inst.components.mine:Reset()
+        inst.AnimState:PlayAnimation("green_loop",true)
     end)
 end
 
 local function minetrigger(inst)
-            --explode, end beep
     inst.SoundEmitter:KillSound("boom_loop")
-    inst:Hide()
-    local ring = SpawnPrefab("laser_ring")
-    ring.Transform:SetPosition(inst.Transform:GetWorldPosition())
-    inst:DoTaskInTime(0.4,function() DoDamage(inst, 5) inst:Remove() end)
-
-    local explosion = SpawnPrefab("laser_explosion")
-    explosion.Transform:SetPosition(inst.Transform:GetWorldPosition())
-    --inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/smash_3")
     inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/smash")
+
+    local x,y,z = inst.Transform:GetWorldPosition()
+    inst:Hide()
+
+    SpawnPrefab("laser_ring").Transform:SetPosition(x,y,z)
+    SpawnPrefab("laser_explosion").Transform:SetPosition(x,y,z)
+    inst:DoTaskInTime(0.4,function() inst:DoDamage(5) inst:Remove() end)
+
 end
 
-local function onnearmine(inst, ents)    
-    local detonate = false
-    for i,ent in ipairs(ents)do
-        if not ent:HasTag("ancient_hulk") then
-            detonate = true
-            break
-        end
-    end
-    if inst.primed and detonate then
-        inst:SetLightValue(0,0.75,0.2 )
-        inst.AnimState:PlayAnimation("red_loop", true)
-        --start beep
-        inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/active_LP","boom_loop")
-        inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/electro")
-        inst:DoTaskInTime(0.5,minetrigger)
-    end
+local function onnearmine(inst)    
+    inst.AnimState:PlayAnimation("red_loop", true)
+    inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/active_LP","boom_loop")
+    inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/electro")
+    inst:DoTaskInTime(0.5,minetrigger)
 end
 
 local function minefn()
     local inst = CreateEntity()
+
     inst.entity:AddTransform()
-    local anim = inst.entity:AddAnimState()
+    inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
+
     MakeInventoryPhysics(inst, 75, 0.5)
 
-    --inst.Physics:SetCollisionCallback(OnMineCollide)
 
-    anim:SetBank("metal_hulk_mine")
-    anim:SetBuild("metal_hulk_bomb")
-    anim:PlayAnimation("green_loop", true)
-    inst:AddTag("ancient_hulk_mine")
+    inst.AnimState:SetBank("metal_hulk_mine")
+    inst.AnimState:SetBuild("metal_hulk_bomb")
+    inst.AnimState:PlayAnimation("green_loop", true)
 
-    inst.primed =true
+    inst:AddTag("NOCLICK")
 
-
-    inst.glow = inst.entity:AddLight()
-    inst.glow:SetIntensity(.6)
-    inst.glow:SetRadius(2)
-    inst.glow:SetFalloff(1)
-    inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(false)
-
-    inst:AddComponent("fader")
+    inst.entity:AddLight()
+    inst.Light:SetIntensity(.6)
+    inst.Light:SetRadius(2)
+    inst.Light:SetFalloff(1)
+    inst.Light:SetColour(1, 0.3, 0.3)
+    inst.Light:Enable(false)
 
     inst.entity:SetPristine()
 
@@ -824,214 +586,78 @@ local function minefn()
         return inst
     end
 
-
     inst:AddComponent("complexprojectile")
-    inst.components.complexprojectile:SetOnHit(OnHit)
-    --inst.components.complexprojectile.yOffset = 2.5
+    inst.components.complexprojectile:SetHorizontalSpeed(50)
+    inst.components.complexprojectile:SetGravity(20)
+    inst.components.complexprojectile:SetOnHit(MineOnHit)
+    inst.components.complexprojectile:SetLaunchOffset(Vector3(0,1,0))
 
     inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(100)  --ANCIENT_HULK_MINE_DAMAGE
+    inst.components.combat:SetDefaultDamage(200)  --ANCIENT_HULK_MINE_DAMAGE
     inst.components.combat.playerdamagepercent = .5
 
     inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(10)
+	inst.components.planardamage:SetBaseDamage(20)
 
-    inst.SetLightValue = SetLightValue
+    
+    inst:AddComponent("mine")
+    inst.components.mine:SetRadius(5)
+    inst.components.mine:SetAlignment("ancient_hulk")
+    inst.components.mine:SetOnExplodeFn(onnearmine)
+    inst.components.mine:SetReusable(false)
+    
+    inst.DoDamage = DoDamage
 
-    inst:AddComponent("creatureprox")
-    inst.components.creatureprox.period = 0.02
-    inst.components.creatureprox:SetDist(4,5)
-    inst.components.creatureprox:SetOnPlayerNear(onnearmine)
+    inst:DoTaskInTime(60, minetrigger)
 
-    inst:DoTaskInTime(60,minetrigger)
     return inst
 end
 
-local function OnHitOrb(inst, dist)    
-    --[[local player = GetClosestInstWithTag("player", inst, SHAKE_DIST)
-    if player then
-        player.components.playercontroller:ShakeCamera(inst, "VERTICAL", 0.4, 0.03, 1.5, SHAKE_DIST)
-    end]]
-    --ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 1, inst, 40)
-    inst.AnimState:PlayAnimation("impact")  
+local function OnHitOrb(inst)    
+
+    inst.AnimState:PlayAnimation("impact")
+    inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/smash")
+
     inst:ListenForEvent("animover", function() 
-        if inst.AnimState:IsCurrentAnimation("impact") then
-           inst:Remove()
-        end
+        inst:Remove()
     end)
-    local ring = SpawnPrefab("laser_ring")
-    ring.Transform:SetPosition(inst.Transform:GetWorldPosition())     
+
+
+    SpawnPrefab("laser_ring").Transform:SetPosition(inst.Transform:GetWorldPosition())     
     inst:DoTaskInTime(0.3,function() DoDamage(inst, 3.5) end)
     --inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/smash_2")
-    inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/smash")
+    
 end
 
 local function orbfn()
-    local inst = CreateEntity()
-    local trans = inst.entity:AddTransform()
-    local anim = inst.entity:AddAnimState()
-    local sound = inst.entity:AddSoundEmitter()
-    inst.entity:AddNetwork()
-    MakeInventoryPhysics(inst, 75, 0.5)
-
-    anim:SetBank("metal_hulk_projectile")
-    anim:SetBuild("metal_hulk_projectile")
-    anim:PlayAnimation("spin_loop", true)
-
-    inst:AddComponent("fader")
-    inst.glow = inst.entity:AddLight()
-    inst.glow:SetIntensity(.6)
-    inst.glow:SetRadius(3)
-    inst.glow:SetFalloff(1)
-    inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(true)
-    inst:AddTag("ancient_hulk_orb")
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
-
-
-
-    inst.persists = false
-
-    inst:AddComponent("locomotor")
-
-    inst:AddComponent("linearprojectile")
-    inst.components.linearprojectile:SetOnHit(OnHitOrb)
-    
-
-    --[[inst:AddComponent("projectile")
-    inst.components.projectile:SetSpeed(28)
-    inst.components.projectile:SetHoming(false)
-    inst.components.projectile:SetHitDist(1.5)
-    inst.components.projectile.yOffset=2.5
-    inst.components.projectile:SetOnHitFn(OnHit)
-    inst.components.projectile:SetOnMissFn(inst.Remove)]]
-
-
-
-    inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(100)--ANCIENT_HULK_MINE_DAMAGE
-    inst.components.combat.playerdamagepercent = 0.5
-
-     inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(10)
-
-
-
-
-    inst.SetLightValue = SetLightValue
-
-    return inst
-end
-
-local function OnCollidesmall(inst,owner,target)
-    if target~=nil and target.components.combat~=nil then
-        target.components.combat:GetAttacked(owner,200)
-    end
-    -- DANY SOUND          inst.SoundEmitter:PlaySound( smallexplosion )  
-    inst:Remove()
-end
-
-local function orbsmallfn()
     local inst = CreateEntity()
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
-    MakeInventoryPhysics(inst)
-    RemovePhysicsColliders(inst)
-	--[[inst.Physics:CollidesWith(COLLISION.WAVES)
-    inst.Physics:CollidesWith(COLLISION.INTWALL)]]
-    
-    inst.Transform:SetFourFaced()
+    inst.entity:AddPhysics()
+    inst.Physics:SetMass(1)
+    inst.Physics:SetFriction(0)
+    inst.Physics:SetDamping(0)
+    inst.Physics:SetCollisionGroup(COLLISION.ITEMS)
+    inst.Physics:ClearCollisionMask()
+    inst.Physics:CollidesWith(COLLISION.GROUND)
+    inst.Physics:SetSphere(0.2)
 
     inst.AnimState:SetBank("metal_hulk_projectile")
     inst.AnimState:SetBuild("metal_hulk_projectile")
-    inst.AnimState:PlayAnimation("spin_loop")    
-    inst.AnimState:SetMultColour(0,0,0,0.5)
-    inst:AddTag("projectile")
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
+    inst.AnimState:PlayAnimation("spin_loop", true)
 
 
-    inst.persists = false
+    inst.entity:AddLight()
+    inst.Light:SetIntensity(.6)
+    inst.Light:SetRadius(3)
+    inst.Light:SetFalloff(1)
+    inst.Light:SetColour(1, 0.3, 0.3)
 
-    --inst:AddComponent("locomotor")
-    inst:AddComponent("weapon")
-    inst.components.weapon:SetDamage(100)
-
-
-    inst:AddComponent("projectile")
-    inst.components.projectile:SetSpeed(40)
-    inst.components.projectile:SetHitDist(2)
-    inst.components.projectile:SetOnHitFn(OnCollidesmall)
-    inst.components.projectile:SetOnMissFn(inst.Remove)
-
-
-    inst:DoTaskInTime(4,inst.Remove)
-
-    --[[inst:AddComponent("fader")
-    inst.glow = inst.entity:AddLight()    
-    inst.glow:SetIntensity(.6)
-    inst.glow:SetRadius(3)
-    inst.glow:SetFalloff(1)
-    inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(true)]]
-
-    --inst.SetLightValue = SetLightValue
-
-    
-
-    return inst
-end
-
-local function OnCollidecharge(inst,other)
-    inst.Physics:SetMotorVelOverride(0,0,0)
-    --[[local player = GetClosestInstWithTag("player", inst, SHAKE_DIST)
-    if player then
-        player.components.playercontroller:ShakeCamera(inst, "VERTICAL", 0.4, 0.03, 1.5, SHAKE_DIST)
-    end ]]
-    ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 1, inst, 40)
-    inst.AnimState:PlayAnimation("impact")  
-    inst:ListenForEvent("animover", function() 
-        if inst.AnimState:IsCurrentAnimation("impact") then
-           inst:Remove()
-        end
-    end)
-    local ring = SpawnPrefab("laser_ring")
-    ring.Transform:SetPosition(inst.Transform:GetWorldPosition())     
-    inst:DoTaskInTime(0.3,function() DoDamage(inst, 3.5) end)
-    --inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/smash_2")
-    inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/smash")
-end
-
-local function orbchargefn(Sim)
-
-    local inst = CreateEntity()
-    local trans = inst.entity:AddTransform()
-    local anim = inst.entity:AddAnimState()
-    local sound = inst.entity:AddSoundEmitter()
-    inst.entity:AddNetwork()
-    MakeCharacterPhysics(inst, 1, 0.5)
-    
-    inst.Physics:SetCollisionCallback(OnCollidecharge)
-
-    anim:SetBank("metal_hulk_projectile")
-    anim:SetBuild("metal_hulk_projectile")
-    anim:PlayAnimation("spin_loop", true)    
 
     inst:AddTag("projectile")
-    inst:AddComponent("fader")
 
     inst.entity:SetPristine()
 
@@ -1041,48 +667,132 @@ local function orbchargefn(Sim)
 
     inst.persists = false
 
+    --[[inst:AddComponent("linearprojectile")
+    inst.components.linearprojectile:SetOnHit(OnHitOrb)
+    inst.components.linearprojectile:SetHorizontalSpeed(34)]]
+    inst:AddComponent("complexprojectile")
+    inst.components.complexprojectile.usehigharc = false
+    inst.components.complexprojectile:SetOnHit(OnHitOrb)
+    inst.components.complexprojectile:SetHorizontalSpeed(38)
+    inst.components.complexprojectile:SetGravity(-20)
+    
+    
 
-
-    inst:AddComponent("locomotor")
-
-
+    
     inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(100)  --ANCIENT_HULK_MINE_DAMAGE
+    inst.components.combat:SetDefaultDamage(100)
     inst.components.combat.playerdamagepercent = 0.5
- 
-    inst.Physics:SetMotorVelOverride(40,0,0)
 
-    inst:DoTaskInTime(2,function() inst:Remove() end)
-
-
-    --[[inst.glow = inst.entity:AddLight()
-    inst.glow:SetIntensity(.6)
-    inst.glow:SetRadius(3)
-    inst.glow:SetFalloff(1)
-    inst.glow:SetColour(1, 0.3, 0.3)
-    inst.glow:Enable(true)]]
-
-    inst.SetLightValue = SetLightValue
+    inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(30)
 
     return inst
 end
 
-local function markerfn()
+local WORK_RADIUS_PADDING = 0.5
+local COLLAPSIBLE_WORK_ACTIONS =
+{
+	CHOP = true,
+	DIG = true,
+	HAMMER = true,
+	MINE = true,
+}
+local COLLAPSIBLE_TAGS = { "NPC_workable" }
+for k, v in pairs(COLLAPSIBLE_WORK_ACTIONS) do
+	local tag = k.."_workable"
+	table.insert(COLLAPSIBLE_TAGS, tag)
+end
+
+local NON_COLLAPSIBLE_TAGS = { "FX", --[["NOCLICK",]] "DECOR", "INLIMBO", --[["structure",]] "wall", "walkableperipheral" }
+
+local function DoAOEWork(inst, x, z)
+	for i, v in ipairs(TheSim:FindEntities(x, 0, z, 3 + WORK_RADIUS_PADDING, nil, NON_COLLAPSIBLE_TAGS, COLLAPSIBLE_TAGS)) do
+		if v:IsValid() and not v:IsInLimbo() then
+			if (not v:HasTag("structure") or
+					(v.components.childspawner and not v:HasTag("playerowned")) or
+					(v:HasTag("statue") and not v:HasTag("sculpture")) or
+					v:HasTag("smashable")
+				)
+			then
+				local isworkable = false
+				if v.components.workable then
+					local work_action = v.components.workable:GetWorkAction()
+					--V2C: nil action for NPC_workable (e.g. campfires)
+					--     allow digging spawners (e.g. rabbithole)
+					isworkable = (
+						(work_action == nil and v:HasTag("NPC_workable")) or
+						(v.components.workable:CanBeWorked() and work_action and COLLAPSIBLE_WORK_ACTIONS[work_action.id])
+					)
+				end
+				if isworkable then
+					v.components.workable:Destroy(inst)
+					if v:IsValid() and v:HasTag("stump") and v.components.workable and v.components.workable:CanBeWorked() then
+						v.components.workable:Destroy(inst)
+					end
+				elseif v.components.pickable and v.components.pickable:CanBePicked() and not v:HasTag("intense") then
+					v.components.pickable:Pick(inst)
+				end
+			end
+		end
+	end
+end
+
+local function onhit(inst, attacker)
+    local x,y,z = inst.Transform:GetWorldPosition()
+    
+    SpawnPrefab("explode_small").Transform:SetPosition(inst.Transform:GetWorldPosition())
+    SpawnPrefab("laser_ring").Transform:SetPosition(x,y,z)
+    DoAOEWork(inst,x,z)
+    local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO", "player","flight", "invisible", "notarget", "noattack"})
+    for i, v in ipairs(ents) do
+        if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
+            v.components.combat:GetAttacked(attacker,100,nil,nil,{["planar"] = 50})
+        end
+    end
+    inst:Remove()
+end
+
+local function smallorbfn()
     local inst = CreateEntity()
-    local trans = inst.entity:AddTransform()
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
+
+    MakeProjectilePhysics(inst)
+
+    inst.AnimState:SetBank("metal_hulk_projectile")
+    inst.AnimState:SetBuild("metal_hulk_projectile")
+    inst.AnimState:PlayAnimation("spin_loop", true)
+    inst.AnimState:SetScale(0.7,0.7,0.7)
+
+
+    inst:AddTag("projectile")
+
+    inst.entity:SetPristine()
+
     if not TheWorld.ismastersim then
         return inst
     end
+
     inst.persists = false
+
+    inst:AddComponent("linearprojectile")
+    inst.components.linearprojectile:SetOnHit(OnHitOrb)
+    inst.components.linearprojectile:SetHorizontalSpeed(28)
+    inst.components.linearprojectile:SetRange(16)
+    inst.components.linearprojectile:SetOnHit(onhit)
+    inst.components.linearprojectile:SetOnMiss(onhit)
+    inst.components.linearprojectile.musttags = nil
+    inst.components.linearprojectile.oneoftags = {"_combat","blocker"}
+    table.insert(inst.components.linearprojectile.notags,"player")
+    table.insert(inst.components.linearprojectile.notags,"structure")
+
     return inst
 end
-
 
 return Prefab( "ancient_hulk", fn, assets, prefabs),
-       Prefab( "ancient_hulk_mine", minefn, assets, prefabs),
-       Prefab( "ancient_hulk_orb", orbfn, assets, prefabs),
-       Prefab( "ancient_hulk_orb_small", orbsmallfn, assets, prefabs),
-       Prefab( "ancient_hulk_orb_charge", orbchargefn, assets, prefabs),
-       Prefab( "ancient_hulk_marker", markerfn, assets, prefabs),
+       Prefab( "ancient_hulk_mine", minefn, assets),
+       Prefab( "ancient_hulk_orb", orbfn, assets),
+       Prefab("laser_orb",smallorbfn,assets),
     RuinsRespawner.Inst("ancient_hulk"), RuinsRespawner.WorldGen("ancient_hulk")

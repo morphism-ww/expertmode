@@ -5,11 +5,11 @@ local function shadowremains(inst)
         inst.atphase3 = true
     end
     if pct<0.6 and inst.shadow==nil then
-        inst.shadow=SpawnPrefab("leechterror")
-        inst.shadow.entity:SetParent(inst.entity)
-        inst.shadow.entity:AddFollower():FollowSymbol(inst.GUID, "innerds", 0, 0, 0)
+        inst.shadow = SpawnPrefab("leechterror")
+        inst.shadow:SetHost(inst,"innerds")
     end
 end
+
 local DESTROYSTUFF_IGNORE_TAGS = { "INLIMBO", "mushroomsprout", "NET_workable" }
 local BOUNCESTUFF_MUST_TAGS = { "_inventoryitem" }
 local BOUNCESTUFF_CANT_TAGS = { "locomotor", "INLIMBO" }
@@ -82,9 +82,6 @@ local function OnHitOther(inst, data)
 
 end
 
-local function  hitmonster(target)
-    return not target:HasTag("player")
-end
 
 AddPrefabPostInit("minotaur",function(inst)
 
@@ -92,9 +89,9 @@ AddPrefabPostInit("minotaur",function(inst)
     inst.components.freezable:SetResistance(8)
     inst.components.sleeper:SetResistance(12)
 
-    inst.components.combat:SetAreaDamage(5, 1.5, hitmonster)
+    inst.components.combat:SetAreaDamage(4, 0.8)
 
-    inst:DoTaskInTime(0, function() shadowremains(inst) end)
+    inst:DoTaskInTime(0, shadowremains)
     inst:ListenForEvent("attacked", shadowremains)
     inst:ListenForEvent("onhitother",OnHitOther)
 end)
@@ -125,7 +122,7 @@ State{
         {
             EventHandler("animover", function(inst)
 
-                inst.components.timer:StartTimer("endstun", 25)
+                inst.components.timer:StartTimer("endstun", TUNING.MINOTAUR_STUNTIME)
                 inst:StopBrain()
                 inst.sg:GoToState("shadowfire_loop")
             end),
@@ -275,14 +272,11 @@ AddStategraphPostInit("minotaur",function(sg)
             inst.sg:GoToState("stun",{land_stun=true})
         end
     end
-
     sg.states.death.onenter = function(inst)
         inst.components.locomotor:StopMoving()
         inst.AnimState:PlayAnimation("death")
-        inst.persists = false
-
-        if not (TheWorld.components.voidland_manager~=nil and TheWorld.components.voidland_manager.bossrush_on) then
-            inst.components.lootdropper:DropLoot()
+        
+        if inst.persists then
             local chest = SpawnPrefab("minotaurchestspawner")
             chest.Transform:SetPosition(inst.Transform:GetWorldPosition())
             for i = 1, 8 do
@@ -291,15 +285,15 @@ AddStategraphPostInit("minotaur",function(sg)
                 end
             end
             chest.minotaur = inst
+            inst.components.lootdropper:DropLoot()
         end
-        
-
+        inst.persists = false
         inst:AddTag("NOCLICK")
     end
 end)
 
 
-local chest_loot =
+--[[local chest_loot =
 {
     {item = {"armorruins"}, count = 1},
     {item = {"ruinshat"}, count = 1},
@@ -312,6 +306,20 @@ local chest_loot =
     {item = {"thulecite"}, count = { 16,20 }},
     {item = {"thulecite_pieces"}, count = {30, 38 }},
     {item = {"yellowstaff"}, count = 1},
+}]]
+
+local chest_loot =
+{
+    {item = {"armorruins", "ruinshat", "ruins_bat"}, count = 1},
+    {item = {"orangestaff", "yellowstaff"}, count = 1},
+    {item = {"orangeamulet", "yellowamulet"}, count = 1},
+    {item = {"yellowgem"}, count = {2, 4}},
+    {item = {"orangegem"}, count = {2, 4}},
+    {item = {"greengem"}, count = {2, 3}},
+    {item = {"thulecite"}, count = {8, 14}},
+    {item = {"thulecite_pieces"}, count = {12, 36}},
+    {item = {"gears"}, count = {3, 6}},
+    {item = {"maze_key"}, count = {7, 10}},
 }
 
 
@@ -386,4 +394,69 @@ AddPrefabPostInit("minotaurchestspawner",function (inst)
     end    
     inst.task = inst:DoTaskInTime(3, dospawnchest)
     inst.OnLoad = OnLoadChest
+end)
+
+local function OnUnlock(inst)
+    if inst.components.klaussacklock~=nil then
+        inst:RemoveComponent("klaussacklock")
+    end
+	
+	inst.SoundEmitter:PlaySound("dontstarve/quagmire/common/safe/key")
+
+	inst.components.container.canbeopened = true
+
+    inst._isunlocked = true
+
+    SpawnPrefab("pandorachest_reset").Transform:SetPosition(inst.Transform:GetWorldPosition())
+end
+
+local function OnUseKey(inst, key, doer)
+	if not key:IsValid() or key.components.klaussackkey == nil or inst._isunlocked then
+		return false, nil, false
+	elseif key.components.klaussackkey.keytype ~= inst.keyid then
+		return false, "QUAGMIRE_WRONGKEY", false
+	end
+
+	OnUnlock(inst)
+
+	return true, nil, true
+end
+
+local function onsave(inst, data)
+    data._isunlocked = inst._isunlocked
+end
+
+local function onload(inst, data)
+    if data ~= nil and data._isunlocked then
+        inst._isunlocked = true
+        OnUnlock(inst)
+    end
+end
+
+AddPrefabPostInit("pandoraschest",function(inst)
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    
+    inst.components.container.canbeopened = false
+
+
+    inst:AddComponent("klaussacklock")
+	inst.components.klaussacklock:SetOnUseKey(OnUseKey)
+
+    inst.keyid = "maze_key"
+
+    inst.OnSave = onsave    
+    inst.OnLoad = onload
+
+    inst:ListenForEvent("resetruins", function()
+        inst._isunlocked = false
+        inst.components.container.canbeopened = false
+
+        if inst.components.klaussacklock==nil then
+            inst:AddComponent("klaussacklock")
+	        inst.components.klaussacklock:SetOnUseKey(OnUseKey)
+        end    
+    end,TheWorld)    
 end)

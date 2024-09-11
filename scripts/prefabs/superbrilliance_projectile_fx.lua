@@ -3,14 +3,10 @@ local assets =
 	Asset("ANIM", "anim/brilliance_projectile_fx.zip")
 }
 
-local prefabs =
-{
-	"brilliance_projectile_blast_fx"
-}
 
-local SPEED = 20
+local SPEED = 16
 local BOUNCE_RANGE = 15
-local BOUNCE_SPEED = 20
+local BOUNCE_SPEED = 16
 
 local function PlayAnimAndRemove(inst, anim)
 	inst.AnimState:PlayAnimation(anim)
@@ -24,12 +20,12 @@ local function OnThrown(inst, owner, target, attacker)
 	inst.owner = owner
 	if inst.bounces == nil then
 		local hat = attacker ~= nil and attacker.components.inventory ~= nil and attacker.components.inventory:GetEquippedItem(EQUIPSLOTS.HEAD) or nil
-		inst.bounces = hat ~= nil and hat.prefab == "lunarplanthat" and 20 or 12   --bounce
+		inst.bounces = hat ~= nil and hat.prefab == "lunarplanthat" and TUNING.TRUE_STAFF_SETBONUS_BOUNCES or TUNING.TRUE_STAFF_BOUNCES   --bounce
 		inst.initial_hostile = target ~= nil and target:IsValid() and target:HasTag("hostile")
 	end
 end
 
-local BOUNCE_ATLEAST_TAGS = { "_combat","mushroomsprout" }
+local BOUNCE_ATLEAST_TAGS = { "_combat" }
 local BOUNCE_NO_TAGS = { "INLIMBO", "wall", "notarget", "player", "companion", "flight", "invisible", "noattack", "hiding" }
 
 local function TryBounce(inst, x, z, attacker, target)
@@ -105,30 +101,23 @@ local function TryBounce(inst, x, z, attacker, target)
 end
 
 local function OnHit(inst, attacker, target)
-	local blast = SpawnPrefab("brilliance_projectile_blast_fx")
-	local x, y, z
-	if target:IsValid() then
-		local radius = target:GetPhysicsRadius(0) + .2
-		local angle = (inst.Transform:GetRotation() + 180) * DEGREES
-		x, y, z = target.Transform:GetWorldPosition()
-		x = x + math.cos(angle) * radius + GetRandomMinMax(-.2, .2)
-		y = GetRandomMinMax(.1, .3)
-		z = z - math.sin(angle) * radius + GetRandomMinMax(-.2, .2)
-		blast:PushFlash(target)
-	else
-		x, y, z = inst.Transform:GetWorldPosition()
+	if attacker==nil or attacker.components.combat == nil or not attacker:IsValid() then
+		inst:Remove()
+		return
 	end
-	blast.Transform:SetPosition(x, y, z)
-	local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO" ,"FX" ,"player"})
-    for i, ent in ipairs(ents) do
-        if ent ~= attacker then
-			ent.components.combat:GetAttacked(attacker, 0, nil, nil,{["planar"] = 50})
+	local x, y, z = inst.Transform:GetWorldPosition()
+
+	local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO" ,"FX" ,"player","noattack","invisible"})
+    for i, v in ipairs(ents) do
+        if v:IsValid() and v.components.combat ~= nil and not (v.components.health ~= nil and v.components.health:IsDead()) then
+			v.components.combat:SuggestTarget(attacker)
+			v.components.combat:GetAttacked(inst, 0, nil, nil,{["planar"] = TUNING.TRUE_STAFF_EXPLOSIVE})
         end
     end
 	
 	SpawnPrefab("bomb_lunarplant_explode_fx").Transform:SetPosition(x, y, z)
 
-	if inst.bounces ~= nil and inst.bounces > 1 and attacker ~= nil and attacker.components.combat ~= nil and attacker:IsValid() then
+	if inst.bounces ~= nil and inst.bounces > 1 then
 		inst.bounces = inst.bounces - 1
 		inst.Physics:Stop()
 		inst:Hide()
@@ -149,7 +138,6 @@ local function fn()
 
 	inst.entity:AddTransform()
 	inst.entity:AddAnimState()
-	inst.entity:AddPhysics()
 	inst.entity:AddNetwork()
 
 	MakeInventoryPhysics(inst)
@@ -171,6 +159,8 @@ local function fn()
 	--projectile (from projectile component) added to pristine state for optimization
 	inst:AddTag("projectile")
 
+	inst:AddTag("explosive")
+
 	inst.entity:SetPristine()
 
 	if not TheWorld.ismastersim then
@@ -191,68 +181,6 @@ local function fn()
 	return inst
 end
 
---------------------------------------------------------------------------
 
-local function PushColour(inst, r, g, b)
-	if inst.target:IsValid() then
-		if inst.target.components.colouradder == nil then
-			inst.target:AddComponent("colouradder")
-		end
-		inst.target.components.colouradder:PushColour(inst, r, g, b, 0)
-	end
-end
 
-local function PopColour(inst)
-	inst.OnRemoveEntity = nil
-	if inst.target.components.colouradder ~= nil and inst.target:IsValid() then
-		inst.target.components.colouradder:PopColour(inst)
-	end
-end
-
-local function PushFlash(inst, target)
-	inst.target = target
-	PushColour(inst, .1, .1, .1)
-	inst:DoTaskInTime(4 * FRAMES, PushColour, .075, .075, .075)
-	inst:DoTaskInTime(7 * FRAMES, PushColour, .05, .05, .05)
-	inst:DoTaskInTime(9 * FRAMES, PushColour, .025, .025, .025)
-	inst:DoTaskInTime(10 * FRAMES, PopColour)
-	inst.OnRemoveEntity = PopColour
-end
-
-local function blastfn()
-	local inst = CreateEntity()
-
-	inst.entity:AddTransform()
-	inst.entity:AddAnimState()
-	inst.entity:AddNetwork()
-
-	inst:AddTag("FX")
-	inst:AddTag("NOCLICK")
-
-	inst.AnimState:SetBank("brilliance_projectile_fx")
-	inst.AnimState:SetBuild("brilliance_projectile_fx")
-	inst.AnimState:PlayAnimation("blast1")
-	inst.AnimState:SetSymbolMultColour("light_bar", 1, 1, 1, .5)
-	inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-	inst.AnimState:SetLightOverride(.5)
-
-	if not TheWorld.ismastersim then
-		return inst
-	end
-
-	if math.random() < 0.5 then
-		inst.AnimState:PlayAnimation("blast2")
-	end
-
-	inst:ListenForEvent("animover", inst.Remove)
-	inst.persists = false
-
-	inst.PushFlash = PushFlash
-
-	return inst
-end
-
---------------------------------------------------------------------------
-
-return Prefab("superbrilliance_projectile_fx", fn, assets, prefabs),
-	Prefab("brilliance_projectile_blast_fx", blastfn, assets)
+return Prefab("superbrilliance_projectile_fx", fn, assets)

@@ -5,7 +5,7 @@ local assets = {
 
 local function UpdateDamage(inst)
     if inst.components.weapon and inst.components.obsidiantool then
-        local dmg = 51 * inst.components.obsidiantool:GetPercent()+51
+        local dmg = TUNING.OBSIDIAN_SPEAR_DAMAGE * (inst.components.obsidiantool:GetPercent() + 1)
         inst.components.weapon:SetDamage(dmg)
     end
 end
@@ -26,10 +26,6 @@ local function onunequipobsidian(inst, owner)
     UpdateDamage(inst)
     owner.AnimState:Hide("ARM_carry")
     owner.AnimState:Show("ARM_normal")
-    local skin_build = inst:GetSkinBuild()
-    if skin_build ~= nil then
-        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
-    end
  end
 
 local function onattack(inst,attacker,target)
@@ -53,7 +49,9 @@ local function fn()
     inst:AddTag("sharp")
     inst:AddTag("pointy")
 
-    MakeInventoryPhysics(inst)
+    --weapon (from weapon component) added to pristine state for optimization
+    inst:AddTag("weapon")
+
 	MakeInventoryFloatable(inst, "med", 0.05, {1.1, 0.5, 1.1}, true, -9)
 
 
@@ -64,24 +62,21 @@ local function fn()
     end
 
     inst:AddComponent("weapon")
-    inst.components.weapon:SetDamage(51)
+    inst.components.weapon:SetDamage(TUNING.OBSIDIAN_SPEAR_DAMAGE)
     inst.components.weapon:SetOnAttack(onattack)
 
     inst:AddComponent("finiteuses")
-    inst.components.finiteuses:SetMaxUses(375)
-    inst.components.finiteuses:SetUses(375)
+    inst.components.finiteuses:SetMaxUses(TUNING.OBSIDIAN_SPEAR_USES)
+    inst.components.finiteuses:SetUses(TUNING.OBSIDIAN_SPEAR_USES)
     inst.components.finiteuses:SetOnFinished(inst.Remove)
 
     inst:AddComponent("repairable")
-    inst.components.repairable.repairmaterial="obsidian"
+    inst.components.repairable.repairmaterial = "obsidian"
     inst.components.repairable:SetFiniteUsesRepairable(true)
 
     inst:AddComponent("inspectable")
 
     inst:AddComponent("inventoryitem")
-
-    inst:AddComponent("waterproofer")
-    inst.components.waterproofer:SetEffectiveness(0)
 
     inst:AddComponent("equippable")
     inst.components.equippable:SetOnEquip(onequipobsidian)

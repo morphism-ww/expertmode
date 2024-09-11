@@ -1,7 +1,6 @@
 local assets =
 {
 	Asset("ANIM", "anim/armor_obsidian.zip"),
-	Asset("SOUNDPACKAGE", "sound/dontstarve_DLC002.fev"),
 }
 
 
@@ -16,9 +15,6 @@ local function OnBlocked(owner, data)
         data.attacker.components.burnable:Ignite(nil,nil,owner)
     end
 end
-
-
-
 
 -- These represent the boundaries between the ranges (relative to ambient, so ambient is always "0")
 local relative_temperature_thresholds = { -20, -10, 10, 20 }
@@ -114,8 +110,9 @@ local function fn()
 	inst.entity:AddTransform()
     inst.entity:AddSoundEmitter()
 	inst.entity:AddAnimState()
-    MakeInventoryPhysics(inst)
 	inst.entity:AddNetwork()
+
+    MakeInventoryPhysics(inst)
  
     inst.AnimState:SetBank("armor_obsidian")
     inst.AnimState:SetBuild("armor_obsidian")
@@ -123,7 +120,6 @@ local function fn()
 
     inst.foleysound = "dontstarve_DLC002/common/foley/obsidian_armour"
 
-    inst:AddTag("heavyarmor")
     inst:AddTag("obsidian")
 	local swap_data = {bank = "armor_obsidian", anim = "anim"}
     MakeInventoryFloatable(inst, "small", 0.2, 0.80, nil, nil, swap_data)
@@ -141,16 +137,19 @@ local function fn()
     inst:AddComponent("temperature")
     inst.components.temperature.current = TheWorld.state.temperature
     inst.components.temperature.inherentinsulation = TUNING.INSULATION_LARGE
+    inst.components.temperature:IgnoreTags("obsidian")
     inst.components.temperature.mintemp= 0
 
     inst:AddComponent("heater")
     inst.components.heater.heatfn = HeatFn
     inst.components.heater.carriedheatfn = HeatFn
+    inst.components.heater.carriedheatmultiplier = 0.8
+    inst.components.heater.equippedheatfn = HeatFn
     inst.components.heater:SetThermics(true, false)
-    inst.components.temperature:IgnoreTags("obsidian")
+    
 
     inst:AddComponent("armor")
-    inst.components.armor:InitCondition(1350, 0.9)
+    inst.components.armor:InitCondition(TUNING.ARMOROBSIDIAN, TUNING.ARMOROBSIDIAN_ABSORPTION)
 
     --[[inst:AddComponent("repairable")
     inst.components.repairable.repairmaterial="obsidian"
@@ -159,7 +158,6 @@ local function fn()
 
     inst:AddComponent("equippable")
     inst.components.equippable.equipslot = EQUIPSLOTS.BODY
-    
     inst.components.equippable:SetOnEquip(onequip)
     inst.components.equippable:SetOnUnequip(onunequip)
 

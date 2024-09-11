@@ -6,9 +6,9 @@ local function fertilize(inst,owner)
         TheWorld.components.farming_manager:AddTileNutrients(tile_x, tile_z, nutrients[1], nutrients[2], nutrients[3])
         owner.SoundEmitter:PlaySound(inst.components.fertilizer.fertilize_sound)
     end
-    local ents = TheSim:FindEntities(x, 0, z, 5, nil, { "FX", "DECOR", "INLIMBO", "burnt" },{"plant"})
+    local ents = TheSim:FindEntities(x, 0, z, 5, {"plant"}, { "DECOR", "INLIMBO", "burnt" })
     for i,v in ipairs(ents) do
-        if v:IsValid() and v.components.pickable ~= nil then
+        if v:IsValid() and v.components.pickable ~= nil and v.components.pickable:CanBeFertilized() then
             v.components.pickable:Fertilize(inst, owner)
         end
     end
@@ -17,7 +17,9 @@ end
 
 local function onequip(inst,owner)
 	inst._oldonequipfn(inst,owner)
-	inst.farmtask = inst:DoPeriodicTask(2, fertilize, nil, owner)
+    if inst.farmtask == nil then
+        inst.farmtask = inst:DoPeriodicTask(1, fertilize, nil, owner)
+    end
 end
 
 local function onunequip(inst,owner)

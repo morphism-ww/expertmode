@@ -1,105 +1,40 @@
 local assets =
 {
     Asset("ANIM", "anim/shadowheart.zip"),
-	Asset("ANIM", "anim/umbrella_voidcloth.zip"),
 }
-local brain=require("brains/corrupt_heartbrain")
 
-local PHASES =
-{
-	[1] = {
-		hp = 1,
-		fn = function(inst)
-			inst.phase2=false
-            for k,v in pairs(inst.components.leader.followers) do
-				if k.prefab=="shadow_rook" then
-					k:RestartBrain()
-				else
-					k:StopBrain()
-				end		
-			end
-		end,
-	},
-	[2] = {
-		hp = 0.7,
-		fn = function(inst)
-			inst.phase2=false
-			for k,v in pairs(inst.components.leader.followers) do
-				if k.prefab=="shadow_bishop" then
-					k:RestartBrain()
-				else
-					k:StopBrain()
-				end		
-			end
-		end,
-	},
-	[3] = {
-		hp = 0.85,
-		fn = function(inst)
-			inst.phase2=false
-            for k,v in pairs(inst.components.leader.followers) do
-				if k.prefab=="shadow_knight" then
-					k:RestartBrain()
-				else
-					k:StopBrain()
-				end		
-			end
-		end,
-	},
-	[4] = {
-		hp = 0.7,
-		fn = function(inst)
-			inst.phase2=false
-			for k,v in pairs(inst.components.leader.followers) do
-				if k.prefab=="shadow_bishop" then
-					k:RestartBrain()
-				else
-					k:StopBrain()
-				end		
-			end
-		end,
-	},
-	[5] = {
+local brain = require("brains/corrupt_heartbrain")
+
+local prefabs = {
+	"shadow_bishop",
+	"shadow_rook",
+	"shadow_knight",
+	"nightmarefuel",
+	"armor_sanity",
+	"nightsword",
+	"darkball_projectile",
+	"sanity_lower",
+	"shadow_trap",
+	"shadowecho_fx"
+}
+
+local PHASES = {
+	{
 		hp = 0.6,
 		fn = function(inst)
-			inst.phase2=true
-			for k,v in pairs(inst.components.leader.followers) do
-				k:LevelUp(3)
-				if k.prefab=="shadow_bishop" then
-					k:StopBrain()
-				else
-					k:RestartBrain()
-				end
-			end
-		end,
-	},
-	[6] = {
-		hp = 0.4,
-		fn = function(inst)
-			inst.phase2=true
-			for k,v in pairs(inst.components.leader.followers) do
 
-				if k.prefab=="shadow_knight" then
-					k:StopBrain()
-				else
-					k:RestartBrain()
-				end
+            for k,v in pairs(inst.components.leader.followers) do
+				k.shouldprotect = k.prefab~="shadow_knight"
 			end
-			
 		end,
 	},
-	[7] = {
-		hp = 0.2,
+	{
+		hp = 0.3,
 		fn = function(inst)
-			inst.phase2=true
-			for k,v in pairs(inst.components.leader.followers) do
-				if k.prefab=="shadow_rook" then
-					k:StopBrain()
-				else
-					k:RestartBrain()
-				end
+
+            for k,v in pairs(inst.components.leader.followers) do
+				k.shouldprotect = k.prefab~="shadow_bishop"
 			end
-			
 		end,
 	},
 }
@@ -115,124 +50,58 @@ local function DoSpawnChess(inst,type,stopbrain)
 	inst.components.leader:AddFollower(chess)
 	
 	chess:PushEvent("levelup", { source = inst })
-	if stopbrain then
+	--[[if stopbrain then
 		chess:DoTaskInTime(2,chess.StopBrain)
-	end
-	chess:AddTag("noplayertarget")
+	end]]
+	chess.shouldprotect = stopbrain
+	
+	return chess
     --inst.components.commander:AddSoldier(chess)
 end
 
 
 
 
-local WAVE_FX_LEN = 0.5
-local function WaveFxOnUpdate(inst, dt)
-	inst.t = inst.t + dt
-
-	if inst.t < WAVE_FX_LEN then
-		local k = 1 - inst.t / WAVE_FX_LEN
-		k = k * k
-		inst.AnimState:SetMultColour(1, 1, 1, k)
-		k = (2 - 1.7 * k) * (inst.scalemult or 1)
-		inst.AnimState:SetScale(k, k)
-	else
-		inst:Remove()
-	end
-end
-
-local function CreateWaveFX()
-	local inst = CreateEntity()
-
-	inst:AddTag("FX")
-	--[[Non-networked entity]]
-	inst.entity:SetCanSleep(false)
-	inst.persists = false
-
-	inst.entity:AddTransform()
-	inst.entity:AddAnimState()
-
-	inst.AnimState:SetBank("umbrella_voidcloth")
-	inst.AnimState:SetBuild("umbrella_voidcloth")
-	inst.AnimState:PlayAnimation("barrier_rim")
-	inst.AnimState:SetOrientation(ANIM_ORIENTATION.OnGround)
-	inst.AnimState:SetLayer(LAYER_BACKGROUND)
-	inst.AnimState:SetSortOrder(3)
-
-	inst:AddComponent("updatelooper")
-	inst.components.updatelooper:AddOnUpdateFn(WaveFxOnUpdate)
-	inst.t = 0
-	inst.scalemult = .75
-	WaveFxOnUpdate(inst, 0)
-
-	return inst
-end
-
-local function CreateDomeFX()
-	local inst = CreateEntity()
-
-	inst:AddTag("FX")
-	--[[Non-networked entity]]
-	inst.entity:SetCanSleep(false)
-	inst.persists = false
-
-	inst.entity:AddTransform()
-	inst.entity:AddAnimState()
-	inst.entity:AddSoundEmitter()
-
-	inst.AnimState:SetBank("umbrella_voidcloth")
-	inst.AnimState:SetBuild("umbrella_voidcloth")
-	inst.AnimState:PlayAnimation("barrier_dome")
-	inst.AnimState:SetFinalOffset(7)
-
-	inst:AddComponent("updatelooper")
-	inst.components.updatelooper:AddOnUpdateFn(WaveFxOnUpdate)
-	inst.t = 0
-	WaveFxOnUpdate(inst, 0)
-
-	inst.persists = false
-
-	return inst
-end
-
-
 local function beat(inst)
-    --inst.AnimState:PlayAnimation("idle")
+    inst.AnimState:PlayAnimation("idle")
     inst.SoundEmitter:PlaySound("dontstarve/sanity/shadow_heart")
     inst.beattask = inst:DoTaskInTime(.75 + math.random() * .75, beat)
 end
 
+local function DoPowerUp(inst)
+	inst.components.health:SetMaxHealth(inst.power*3000+TUNING.CORRUPT_HEART_HEALTH)
+	inst.components.combat:SetAttackPeriod(6-0.5*inst.power)
+	inst.echodamage = 40 + 20*inst.power
 
+end
 
-local function start_the_battle(inst)
-	inst:DoTaskInTime(2,function ()
+local function startbattle(inst)
+	
 	local x,y,z=inst.Transform:GetWorldPosition()
     local ents = TheSim:FindEntities(x, y, z, 40, {"shadowchesspiece"})
+	inst.power = math.min(math.floor(0.5*#ents + 0.5),4)
     for i, v in ipairs(ents) do
-		v:Remove()
-    end	
+		if v:IsValid() then
+			SpawnPrefab("shadow_despawn").Transform:SetPosition(v.Transform:GetWorldPosition())
+			v:Remove()
+		end
+    end
+	if inst.power>1 then
+		DoPowerUp(inst)
+	end
+	
 	inst:DoSpawnChess("shadow_rook")
 	inst:DoSpawnChess("shadow_knight",true)
 	inst:DoSpawnChess("shadow_bishop",true)
-	end)
+	
 end
 
-
-
-local function dont_leave(inst)
-	local x,y,z=inst.Transform:GetWorldPosition()
-	local players=FindPlayersInRange(x,y,z,50,true)
-	for i,v in ipairs(players) do
-		if v:IsValid() and not v:IsNear(inst, 30) then
-			v.Physics:Teleport(x,y,z)
-		end
-	end
-end
 
 local function retargetfn(inst)
 	local target
     local x, y, z = inst.Transform:GetWorldPosition()
-    local players = FindPlayersInRange(x, y, z, 24, true)
-    local rangesq = 100
+    local players = FindPlayersInRange(x, y, z, 36, true)
+    local rangesq = math.huge
     for i, v in ipairs(players) do
         local distsq = v:GetDistanceSqToPoint(x, y, z)
         if distsq < rangesq and inst.components.combat:CanTarget(v) then
@@ -244,42 +113,103 @@ local function retargetfn(inst)
 end
 
 
-local function do_corrupt(inst,data)
-	if data.target~=nil and data.stimuli=="shadow" then
-		data.target:AddDebuff("exhaustion","exhaustion",{duration=10})
-		data.target:AddDebuff("vulnerable","vulnerable",{duration=30})
-	end
-end
-
-
-local function CLIENT_TriggerFX(inst)
-	local x, y, z = inst.Transform:GetWorldPosition()
-	CreateWaveFX().Transform:SetPosition(x, 0, z)
-	local fx = CreateDomeFX()
-	fx.Transform:SetPosition(x, 0, z)
-	fx.SoundEmitter:PlaySound("meta2/voidcloth_umbrella/barrier_activate")
-end
-
-local function SERVER_TriggerFX(inst)
-	inst.triggerfx:push()
-	if not TheNet:IsDedicated() then
-		CLIENT_TriggerFX(inst)
-	end
-end
 
 local function do_echo(inst)
-	SERVER_TriggerFX(inst)
+	local x,y,z = inst.Transform:GetWorldPosition()
+    
+    local players = FindPlayersInRangeSq(x, y, z, TUNING.CORRUPT_HEART_RANGESQ, true)
+	for i, v in ipairs(players) do
+		if v.components.combat:GetAttacked(inst,inst.echodamage) then
+			v:AddDebuff("exhaustion","exhaustion",{duration = 10})
+			v:AddDebuff("vulnerable","vulnerable")
+		end
+	end
 end
 
-local function World_reset_master(inst)
-	TheWorld:PushEvent("overrideambientlighting", nil)
-	inst.reset_light:push()
+local function dont_leave(inst)
+	local x,y,z = inst.Transform:GetWorldPosition()
+	local players = FindPlayersInRange(x,y,z,50,true)
+	for i,v in ipairs(players) do
+		if v:IsValid() and not v:IsNear(inst, 26) then
+			local px,py,pz = v.Transform:GetWorldPosition()
+			SpawnPrefab("stalker_shield").Transform:SetPosition(1.02*(px-x)+x,0,1.02*(pz-z)+z)
+			--v.Physics:Teleport(x,y,z)
+		end
+	end
+	local ents = TheSim:FindEntities(x, y, z, 60, {"lightsource"},{"player","blocker","shadowheart"})
+	for k,v in ipairs(ents) do
+		if v:HasTag("starlight") then
+			v.components.hauntable:DoHaunt(inst)
+		else
+			v:ForceDarkness(inst)
+		end		
+	end
+	if inst.components.leader.numfollowers == 0 then
+		inst:StartBattle()
+	end
 end
 
-local function World_reset(inst)
-	TheWorld:PushEvent("overrideambientlighting", nil)
-	--inst.reset_light:push()
+local function StartField(inst)
+	--TheWorld:ForceDarkWorld(true)
+	--inst.reset_light:set(true)
+	TheWorld:PushEvent("ms_setclocksegs", {day = 0, dusk = 0, night = 16})
+	TheWorld:PushEvent("ms_setmoonphase", {moonphase = "new", iswaxing = false})
+	TheWorld:PushEvent("ms_lockmoonphase", {lock = true})
+	inst.fieldtask = inst:DoPeriodicTask(8*FRAMES, dont_leave)
 end
+
+
+local function KillField(inst)
+	--inst.reset_light:set(false)
+	--TheWorld:PushEvent("ms_setclocksegs", {day = 0, dusk = 0, night = 16})
+	TheWorld:PushEvent("ms_setmoonphase", {moonphase = "full", iswaxing = false})
+	TheWorld:PushEvent("ms_lockmoonphase", {lock = false})
+	--TheWorld:ForceDarkWorld(false)
+	if inst.fieldtask~=nil then
+		inst.fieldtask:Cancel()
+	end
+end
+
+local function TryForceDark(inst)
+	if not inst.components.health:IsDead() then
+		TheWorld:PushEvent("ms_setclocksegs", {day = 0, dusk = 0, night = 16})
+	end		
+	
+end
+
+
+local function OnLoadPostPass(inst)
+	if not inst.components.health:IsDead() then
+        local healthpct = inst.components.health:GetPercent()
+	        for i = #PHASES, 1, -1 do
+		    local v = PHASES[i]
+		    if healthpct <= v.hp then
+			    v.fn(inst)
+			    break
+		    end
+	    end
+    end
+end
+
+
+local function KillFollower(inst,chess)
+	chess.persists = false
+	chess.components.health:SetVal(0)
+end
+
+local function OnSave(inst,data)
+	data.power = inst.power
+end
+
+local function OnLoad(inst,data)
+	if data~=nil then
+		inst.power = data.power or 1
+		if inst.power>1 then
+			DoPowerUp(inst)
+		end
+	end
+end
+
 
 local function fn()
     local inst = CreateEntity()
@@ -288,94 +218,118 @@ local function fn()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
-	inst.entity:AddLight()
+	
 
-    MakeObstaclePhysics(inst, 1)
-    inst.Transform:SetScale(5,5,5)
+    MakeObstaclePhysics(inst, 2)
+    --inst.Transform:SetScale(5,5,5)
 
     inst.AnimState:SetBank("shadowheart")
     inst.AnimState:SetBuild("shadowheart")
     inst.AnimState:PlayAnimation("idle")
+	inst.AnimState:SetScale(5,5,5)
     inst.AnimState:SetMultColour(1, 1, 1, 0.5)
 
-	inst.Light:SetRadius(25)
-    inst.Light:SetIntensity(0.9)
-    inst.Light:SetFalloff(0.8)
-    inst.Light:SetColour(1, 1, 1)
-    inst.Light:Enable(true)
-	inst.Light:EnableClientModulation(true)
 	
-	inst.triggerfx = net_event(inst.GUID, "voidcloth_umbrella.triggerfx")
-	inst.reset_light = net_event(inst.GUID, "reset_light")
+	
+	inst.reset_light = net_bool(inst.GUID, "corruptheart.reset_light","corruptheart_darkdirty")
 
     inst:AddTag("epic")
+	inst:AddTag("nosinglefight_l")
     inst:AddTag("hostile")
     inst:AddTag("notraptrigger")
     inst:AddTag("shadow_aligned")
     inst:AddTag("shadowheart")
-	inst:AddTag("shadowthrall")
-
-
+	inst:AddTag("lightcontroller")
+	inst:AddTag("ignorewalkableplatformdrowning")
 	
-	TheWorld:PushEvent("overrideambientlighting", Point(0, 0, 0))
+	inst.entity:AddLight()
+	inst.Light:SetRadius(22)
+    inst.Light:SetIntensity(0.9)
+    inst.Light:SetFalloff(0.9)
+    inst.Light:SetColour(1, 1, 1)
+    inst.Light:Enable(true)
+	inst.Light:EnableClientModulation(true)
+	
+	
 	
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
-		inst:DoTaskInTime(0, inst.ListenForEvent, "voidcloth_umbrella.triggerfx", CLIENT_TriggerFX)
-		inst:DoTaskInTime(0, inst.ListenForEvent, "reset_light", World_reset)
+		--inst:DoTaskInTime(0, inst.ListenForEvent, "corruptheart_darkdirty", World_reset)
         return inst
     end
 
     inst.level = 4
-	inst.phase2 = false
+	inst.power = 1
 
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(10000)
-	inst.components.health:SetMaxDamageTakenPerHit(120)
+    inst.components.health:SetMaxHealth(TUNING.CORRUPT_HEART_HEALTH)
+	
 
     inst:AddComponent("combat")
 	inst.components.combat:SetDefaultDamage(75)
 	inst.components.combat:SetRetargetFunction(3, retargetfn)
 	inst.components.combat:SetAttackPeriod(6)
-	inst.components.combat.ignorehitrange=true
+	inst.components.combat:SetRange(TUNING.CORRUPT_HEART_ATTACKRANGE)
+	--inst.components.combat.ignorehitrange = true
+
+	inst.echodamage = 40
 
 	inst:AddComponent("timer")
 
 	inst:AddComponent("drownable")
 
+	local loots = {}
+	for i = 1,10 do
+		table.insert(loots,"armor_sanity")
+		table.insert(loots,"nightsword")
+	end
     inst:AddComponent("lootdropper")
-    inst.components.lootdropper:SetLoot({"shadowheart","armor_sanity","armor_sanity"})
+    inst.components.lootdropper:SetLoot(loots)
 
 	inst:AddComponent("leader")
+	inst.components.leader.onremovefollower = KillFollower
 
     inst:AddComponent("sanityaura")
-    inst.components.sanityaura.aura = -TUNING.SANITYAURA_HUGE
+    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
+
+	inst:AddComponent("resistance")
+	inst.components.resistance:AddResistance("shadowchesspiece")
 
     inst.beattask = inst:DoTaskInTime(.75 + math.random() * .75, beat)    
 
     --inst.beattask2 = inst:DoTaskInTime(1, beat2)
-	inst.DoEcho=do_echo
-	inst.DoSpawnChess=DoSpawnChess
-
-	inst:ListenForEvent("summon",start_the_battle)
-	inst:ListenForEvent("onhitother",do_corrupt)
-	inst:ListenForEvent("death",World_reset_master)
-	--inst:ListenForEvent("attacked", OnAttacked)
+	inst.OnLoadPostPass = OnLoadPostPass
+	inst.DoEcho = do_echo
+	inst.DoSpawnChess = DoSpawnChess
+	inst.StartBattle = startbattle
+	
 
 	inst:AddComponent("healthtrigger")
     for i, v in pairs(PHASES) do
 		inst.components.healthtrigger:AddTrigger(v.hp, v.fn)
 	end
 
-
-	inst:DoPeriodicTask(0.3,dont_leave)
+	
 	inst:SetBrain(brain)
 	inst:SetStateGraph("SGcorrupt_heart")
-	inst:WatchWorldState("isalterawake", inst.Remove)
+
+	inst:WatchWorldState("isalterawake", function (inst)
+		KillField(inst)
+		inst:Remove()
+	end)
+	inst:WatchWorldState("cycles", TryForceDark)
+	inst:ListenForEvent("death",KillField)
+	--inst:ListenForEvent("attacked", OnAttacked)
+	inst.components.timer:StartTimer("echo_cd",20)
+
+	inst:DoTaskInTime(0,StartField)
+
+	inst.OnSave = OnSave
+	inst.OnLoad = OnLoad
 
     return inst
 end
 
 
-return Prefab("corrupt_heart", fn, assets)
+return Prefab("corrupt_heart", fn, assets, prefabs)

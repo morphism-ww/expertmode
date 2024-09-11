@@ -1,6 +1,3 @@
-
-
-
 local function SpawnQueen()
     local self = TheWorld.components.lunarthrall_queen_spawner
     --print("self.waves_to_release",self.waves_to_release)
@@ -12,7 +9,7 @@ local function SpawnQueen()
         -- find herd to infest
         local plants = {}
 
-            -- MAYBE FIND SOME WILD PLANTS?
+
         local patch = self:FindWildPatch()
         if patch and #patch > 0 then
             for i,member in ipairs(patch)do
@@ -23,7 +20,7 @@ local function SpawnQueen()
         end
 
 
-        local target=plants[math.random(1,#plants)]
+        local target = plants[math.random(1,#plants)]
         self:InvadeTarget(target)
     end)
 end
@@ -38,7 +35,7 @@ local function OnLunarRiftReachedMaxSize(source, rift)
     end
 
     if not self.attack then
-        self.attack=true
+        self.attack = true
         if not self:HasQueen() then
             
             SpawnQueen()
@@ -89,7 +86,7 @@ function Queen_spawner:InvadeTarget(target)
     local moonplant = SpawnPrefab("lunarthrall_plant_queen")
     moonplant:infest(target)
     moonplant:playSpawnAnimation()
-    self.queen=moonplant
+    self.queen = moonplant
     self.inst:ListenForEvent("onremove", OnQueenRemoval, self.queen)
 	self.inst:ListenForEvent("death", OnQueenDeath, self.queen)
 end
@@ -98,25 +95,31 @@ end
 
 
 local PLANTS_MUST = {"plant","tree"}
+local BLOCKERS_MUST_TAGS = {"no_queen"}
 function Queen_spawner:FindWildPatch()
     local tries = {}
     local candidtate_nodes={}
     for i,v in ipairs(TheWorld.topology.ids) do
-		if string.find(v,"DeepForest") then
+		if string.find(v,"Forest") then
 			table.insert(candidtate_nodes, TheWorld.topology.nodes[i])
 		end
+	end
+
+    if #candidtate_nodes == 0 then
+		print("Failed to find any Forest nodes!")
+		return false
 	end
 
     while #tries < 20 do
 		local area = candidtate_nodes[math.random(#candidtate_nodes)]
 		local points_x, points_y = TheWorld.Map:GetRandomPointsForSite(area.x, area.y, area.poly, 1)
-		if #points_x == 1 and #points_y == 1 then
+		if #points_x >= 1 and #points_y >= 1 then
             
 			local x = points_x[1]
 			local z = points_y[1]
-            local noqueen=TheSim:FindEntities(x, 0, z, 40, {"no_queen"})
+            local noqueen = TheSim:FindEntities(x, 0, z, 30, BLOCKERS_MUST_TAGS)
             local ents = TheSim:FindEntities(x, 0, z, 14, PLANTS_MUST)
-            if #ents >7 and #noqueen<=0 then
+            if #ents >6 and next(noqueen)==nil then
                 table.insert(tries,ents)
             end
         end   

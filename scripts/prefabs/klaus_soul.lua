@@ -13,24 +13,19 @@ local SCALE = .8
 
 local function DoHeal(inst)
     local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x,y,z,16)
+    local ents = TheSim:FindEntities(x,y,z,16,{"deergemresistance"})
     for i, v in ipairs(ents) do
-        if  v.prefab=="klaus" and
-            not (v.components.health~=nil and v.components.health:IsDead()) then
+        if  v.prefab=="klaus" and v.components.health~=nil and not (v.components.health:IsDead()) then
             -- NOTES(JBK): If the target is hurt put them on the list to do heals.
-            if v.components.health:IsHurt() then -- Wanda tag.
-                v.components.health:DoDelta(80, nil, inst.prefab)
-                local fx = SpawnPrefab("wortox_soul_heal_fx")
-                fx.entity:AddFollower():FollowSymbol(v.GUID, v.components.combat.hiteffectsymbol, 0, -50, 0)
-                fx:Setup(v)
-                v.soulcount=v.soulcount+1
-            end
+            v.components.health:DoDelta(80, nil, inst.prefab)
+            local fx = SpawnPrefab("wortox_soul_heal_fx")
+            fx.entity:AddFollower():FollowSymbol(v.GUID, v.components.combat.hiteffectsymbol, 0, -50, 0)
+            fx:Setup(v)
+            v.soulcount = v.soulcount + 1
         end
     end
 end
-local function Maxhealer(inst,target)
-    target.components.health:DeltaPenalty(-0.75)
-end
+
 
 local function demonfn()
     local inst = CreateEntity()
@@ -49,8 +44,7 @@ local function demonfn()
     inst.AnimState:SetScale(SCALE, SCALE)
 
     inst:AddTag("nosteal")
-
-
+    inst:AddTag("potion")
 
     inst.entity:SetPristine()
 
@@ -60,15 +54,16 @@ local function demonfn()
     inst:AddComponent("stackable")
     inst.components.stackable.maxsize = TUNING.STACK_SIZE_SMALLITEM
 
-	inst:AddComponent("waterproofer")
-	inst.components.waterproofer:SetEffectiveness(0)
-
-
     inst:AddComponent("inventoryitem")
     
-    inst:AddComponent("healer")
+    --[[inst:AddComponent("healer")
     inst.components.healer:SetHealthAmount(150)
-    inst.components.healer.onhealfn=Maxhealer
+    inst.components.healer.onhealfn=Maxhealer]]
+    inst:AddComponent("edible")
+    inst.components.edible.foodtype = FOODTYPE.GOODIES
+    inst.components.edible.healthvalue = 80
+    inst.components.edible.hungervalue = 0
+    inst.components.edible.sanityvalue = -30
 
     return inst
 end

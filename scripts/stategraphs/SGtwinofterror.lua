@@ -30,7 +30,6 @@ local events =
     CommonHandlers.OnLocomote(false, true),
     CommonHandlers.OnSleepEx(),
     CommonHandlers.OnWakeEx(),
-    CommonHandlers.OnFreeze(),
     CommonHandlers.OnAttacked(),
     CommonHandlers.OnDeath(),
 
@@ -38,7 +37,7 @@ local events =
         if inst.components.health ~= nil and not inst.components.health:IsDead()
                 and (not inst.sg:HasStateTag("busy") ) then---or inst.sg:HasStateTag("hit"))
             local target=inst.components.combat.target
-            if not inst.sg.mem.transformed then
+            if not inst.sg.mem.transformed and not inst.forcequickshoot then
                 inst.sg:GoToState("atk_shoot", target)
             elseif inst.twin1 then
                 inst.sg:GoToState("quickshoot", target)
@@ -50,9 +49,10 @@ local events =
 
     EventHandler("charge", function(inst)
         if not inst.components.health:IsDead()---main ai
-                and not inst.components.freezable:IsFrozen()
                 and not inst.components.sleeper:IsAsleep()
                 and not inst.sg:HasStateTag("busy") then
+
+            inst.cycle = not inst.cycle        
             local target=inst.components.combat.target
             if inst.sg.mem.transformed and inst.twin2 and not inst.components.timer:TimerExists("flame_cd") then
                 inst.sg:GoToState("chargeflame_pre", target)
@@ -89,6 +89,21 @@ local events =
         inst.sg:GoToState("flyback")
     end),
 }
+
+local function launchlaser(inst,target)
+    if not target or not target:IsValid() then return end
+
+
+    local laser = SpawnPrefab(inst.twin2 and "cursefire_projectile" or "twin_laser")
+    
+    --laser.components.projectile.owner=inst
+
+    local x, y, z = inst.Transform:GetWorldPosition()
+    laser.Transform:SetPosition(x,y,z)
+    laser.components.projectile:Throw(inst, target, inst)
+end
+
+
 
 local function go_to_idle(inst)
     inst.sg:GoToState("idle")
@@ -141,27 +156,17 @@ end
 
 
 
-local function shoot(inst,target)
-    if not target or not target:IsValid() then return end
-    local laser=SpawnPrefab("twin_laser")
-    if inst.twin2 then laser=SpawnPrefab("twin_flame_projectile") end
-    --laser.components.projectile.owner=inst
 
-    local x, y, z = inst.Transform:GetWorldPosition()
-    laser.Transform:SetPosition(x,y,z)
-    laser.components.projectile:Throw(inst, target, inst)
-end
 
 local function TrytwinFire(inst)
+    if inst.twinflame~=nil then
+        inst.twinflame:KillFX()
+        
+    end
     local fx = SpawnPrefab("twin_flamethrower_fx")
     fx.entity:SetParent(inst.entity)
     fx:SetFlamethrowerAttacker(inst)
-    fx:DoTaskInTime(2.5, function()
-        if fx then
-            fx:KillFX()
-            fx = nil
-        end
-    end)
+    inst.twinflame = fx
 end
 
 local COLLIDE_TIME = 3*FRAMES
@@ -272,7 +277,7 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                if inst.sg.mem.transformed then
+                if inst.sg.mem.transformed and inst.twin2 then
                     inst.sg.mem.mouthcharge_count =math.random(6,8)
                     inst.sg:GoToState("mouthcharge_loop", inst.sg.statemem.target)
                 else
@@ -434,8 +439,8 @@ local states =
             if target ~= nil and target:IsValid() then
                 inst:ForceFacePoint(target.Transform:GetWorldPosition())
             end
-            inst.Physics:SetMotorVelOverride(26, 0, 0)
-            inst.sg:SetTimeout(0.7)
+            inst.Physics:SetMotorVelOverride(inst._chargedata.mouthchargespeed, 0, 0)
+            inst.sg:SetTimeout(inst._chargedata.mouthchargetimeout)
 
 
             inst.sg.statemem.collisiontime = 0
@@ -524,7 +529,7 @@ local states =
         events =
         {
             EventHandler("animover", function(inst)
-                inst.sg.mem.mouthcharge_count=math.random(10,14)
+                inst.sg.mem.mouthcharge_count = math.random(10,14)
                 inst.sg:GoToState("mouthshoot_loop", inst.sg.statemem.target)
             end),
         },
@@ -550,7 +555,7 @@ local states =
         {
 			TimeEvent(FRAMES, function(inst)
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
-                shoot(inst,inst.sg.statemem.target)
+                launchlaser(inst,inst.sg.statemem.target)
 			end),
         },
 
@@ -589,22 +594,26 @@ local states =
                 target = inst.components.combat.target
             end
             inst.Physics:SetMotorVel(8,0,0)
-            inst.sg.statemem.target=target
+            inst.sg.statemem.target = target
             inst.sg:SetTimeout(0.5)
         end,
 
         timeline = {
-            TimeEvent(0, function(inst)
+            TimeEvent(1*FRAMES, function(inst)
                 inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
-                shoot(inst, inst.sg.statemem.target)
+                launchlaser(inst, inst.sg.statemem.target)
             end),
             TimeEvent(4*FRAMES, function(inst)
                 --inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
-                shoot(inst, inst.sg.statemem.target)
+                launchlaser(inst, inst.sg.statemem.target)
             end),
             TimeEvent(8*FRAMES, function(inst)
-                --inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
-                shoot(inst, inst.sg.statemem.target)
+                inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
+                launchlaser(inst, inst.sg.statemem.target)
+            end),
+            TimeEvent(12*FRAMES, function(inst)
+                
+                launchlaser(inst, inst.sg.statemem.target)
             end),
         },
         onupdate = function(inst)
@@ -615,7 +624,6 @@ local states =
         end,
         ontimeout = function(inst)
             inst.sg:GoToState("mouthshoot_pst")
-            --inst.sg:GoToState("mouthshoot_pst")
         end,
     },
     State {
@@ -629,20 +637,12 @@ local states =
             -- All users of this SG share this sound.
             inst.SoundEmitter:PlaySound("terraria1/eyeofterror/charge_pst_sfx")
 
-            inst.sg.statemem.target = target
+            
         end,
 
         events = {
             EventHandler("animover", function(inst)
-                if math.random() < inst._chargedata.tauntchance then
-                    inst.components.timer:StopTimer("runaway_blocker")
-                    inst.components.timer:StartTimer("runaway_blocker", 1)
-                    -- Try a target switch after finishing a charge move
-
-                    inst.sg:GoToState("taunt")
-                else
-                    inst.sg:GoToState("idle")
-                end
+                inst.sg:GoToState("idle")
             end),
         }
     },
@@ -651,30 +651,22 @@ local states =
         tags = {"busy", "canrotate"},
 
         onenter = function(inst, target)
+            inst.components.combat:StartAttack()
             inst.components.locomotor:Stop()
             inst.AnimState:PlayAnimation("spawn")
 
-            -- All users of this SG share this sound.
-            inst.SoundEmitter:PlaySound(inst._soundpath .. "charge_eye")
+
+            --inst.SoundEmitter:PlaySound(inst._soundpath .. "charge_eye")
             inst.sg.statemem.target = target
 
+            if inst.twin1 then
+                inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
+            else
+                inst.SoundEmitter:PlaySound("dontstarve/common/fireAddFuel")
+            end    
+            launchlaser(inst,inst.sg.statemem.target)
         end,
 
-        timeline =
-        {
-			TimeEvent(0, function(inst)
-				if inst.twin1 then
-					inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
-                end
-                shoot(inst,inst.sg.statemem.target)
-			end),
-        },
-        onupdate = function(inst)
-            local target = inst.sg.statemem.target
-            if target and target:IsValid() then
-                inst:ForceFacePoint(target.Transform:GetWorldPosition())
-            end
-        end,
         events =
         {
             EventHandler("animover", function(inst)
@@ -747,7 +739,7 @@ local states =
 
             inst.AnimState:PlayAnimation("charge_loop", true)
 
-            inst.Physics:SetMotorVelOverride(13, 0, 0)
+            inst.Physics:SetMotorVelOverride(TUNING.TWIN_CHARGE_FLAME_SPEED, 0, 0)
 
             inst.sg:SetTimeout(0.8)
 
@@ -760,12 +752,10 @@ local states =
             end
 
             inst.sg.statemem.target = target
+
+            TrytwinFire(inst)
         end,
-        timeline={
-            TimeEvent(1*FRAMES,function(inst)
-                TrytwinFire(inst)
-            end),
-        },
+
 
         onexit = function(inst)
             inst.components.locomotor:EnableGroundSpeedMultiplier(true)
@@ -783,6 +773,10 @@ local states =
             if inst.sg.mem.mouthcharge_count ~= nil and inst.sg.mem.mouthcharge_count > 0 then
                 inst.sg:GoToState("chargeflame_loop",inst.sg.statemem.target)
             else
+                if inst.twinflame~=nil then
+                    inst.twinflame:KillFX()
+                    inst.twinflame = nil
+                end
                 inst.sg:GoToState("charge_pst")
             end
         end,
@@ -796,6 +790,7 @@ local states =
             inst.AnimState:PlayAnimation("transform")
             inst.AnimState:Show("mouth")
             inst.AnimState:Show("ball_mouth")
+            inst.components.health:SetInvincible(true)
         end,
 
         timeline =
@@ -814,6 +809,7 @@ local states =
         },
 
         onexit = function(inst)
+            inst.components.health:SetInvincible(false)
             inst.sg.mem.transformed = true
             inst.sg.mem.wantstotransform = false
             inst.AnimState:Hide("eye")
@@ -1047,8 +1043,39 @@ local states =
 
 CommonStates.AddHitState(states)
 
-CommonStates.AddWalkStates(states)
-CommonStates.AddFrozenStates(states, lower_flying_creature, raise_flying_creature)
+CommonStates.AddWalkStates(states,
+nil,nil,nil,nil,
+{
+    startonenter = function (inst)
+        if inst.sg.mem.shoottime==nil or inst.sg.mem.shoottime<=0 then
+            inst.sg.mem.shoottime = 1.5
+        end
+
+    end,
+    endonenter = function (inst)
+        if inst.sg.mem.transformed then
+            launchlaser(inst,inst.components.combat.target)
+        end
+    end,
+    walkonupdate = function (inst,dt)
+        
+        if inst:IsStalking() then
+            inst.sg.mem.shoottime = inst.sg.mem.shoottime - dt
+
+            if inst.sg.mem.shoottime<=0 then
+                if inst.twin1 then
+                    inst.SoundEmitter:PlaySound("dontstarve/creatures/deerclops/laser")
+                else
+                    inst.SoundEmitter:PlaySound("dontstarve/common/fireAddFuel")
+                end 
+                launchlaser(inst,inst.components.combat.target)
+                inst.sg.mem.shoottime = 1.5
+            end
+        end    
+    end
+})
+CommonStates.AddRunStates(states,nil,{startrun = "charge_loop",run = "charge_loop",stoprun = "charge_pst"})
+
 CommonStates.AddSleepExStates(states,
 {
     starttimeline =

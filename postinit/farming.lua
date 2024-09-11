@@ -1,13 +1,11 @@
 
 local function farm_expert(inst,data)
     if data.owner:HasTag("player") then
-        data.owner:AddTag("farmplantfastpicker")
         data.owner:AddTag("quagmire_fasthands")
     end
 end
 local function not_farm_expert(inst,data)
     if data.owner~=nil then
-        data.owner:RemoveTag("farmplantfastpicker")
         data.owner:RemoveTag("quagmire_fasthands")
     end
 end

@@ -135,6 +135,108 @@ local function settarget(inst,target,life,source)
     end
 end
 
+local function settargetdread(inst,target,life,source)
+    local maxdeflect = 50
+
+    if life > 0 then
+
+        inst.shadowfire_task = inst:DoTaskInTime(0.2,function()
+
+            local theta = inst.Transform:GetRotation() * DEGREES
+            local radius = 1.5--CLOSERANGE
+
+            if not (source and source.components.combat and source:IsValid()) then
+                target = nil
+                inst.shadow_ember_target = nil
+            elseif target == nil or not source.components.combat:CanTarget(target) then
+                target = nil
+                inst.shadow_ember_target = nil
+
+                local x, y, z = inst.Transform:GetWorldPosition()
+                local ents = TheSim:FindEntities(x, y, z, 30, TARGETS_MUST, TARGETS_CANT,{"character","monster"})
+                if #ents > 0 then
+                    local targets = {}
+                    local flameents = TheSim:FindEntities(x, y, z, 20, FLAME_MUST)
+                    for i, flame in ipairs(flameents) do
+                        if flame.shadow_ember_target then
+                            targets[flame.shadow_ember_target] = true
+                        end
+                    end
+
+                    for i, ent in ipairs(ents) do
+                        if not targets[ent] and
+                                ent.components.combat~=nil and
+                                source.components.combat:CanTarget(ent)
+                        then
+                            target = ent
+                            inst.shadow_ember_target = target
+                            break
+                        end
+                    end
+                end
+            end
+
+            if target then
+                local dist = inst:GetDistanceSqToInst(target)
+
+                if dist<CLOSERANGE*CLOSERANGE then
+
+                    local blast = SpawnPrefab("willow_shadow_fire_explode")
+                    local pos = Vector3(target.Transform:GetWorldPosition())
+                    blast.Transform:SetPosition(pos.x,pos.y,pos.z)
+
+                    local weapon = inst
+
+                    source.components.combat.ignorehitrange = true
+                    source.components.combat.ignoredamagereflect = true
+
+                    source.components.combat:DoAttack(target, weapon)
+
+                    source.components.combat.ignorehitrange = false
+                    source.components.combat.ignoredamagereflect = false
+
+                    theta = nil
+                else
+                    local pt = Vector3(target.Transform:GetWorldPosition())
+                    local angle = inst:GetAngleToPoint(pt.x,pt.y,pt.z)
+                    local anglediff = angle - inst.Transform:GetRotation()
+                    if anglediff > 180 then
+                        anglediff = anglediff - 360
+                    elseif anglediff < -180 then
+                        anglediff = anglediff + 360
+                    end
+                    if math.abs(anglediff) > maxdeflect then
+                        anglediff = math.clamp(anglediff, -maxdeflect, maxdeflect)
+                    end
+
+                    theta = (inst.Transform:GetRotation() + anglediff) * DEGREES
+                end
+            else
+                if not inst.currentdeflection then
+                    inst.currentdeflection = {time = math.random(1,10), deflection = maxdeflect * ((math.random() *2)-1) }
+                end
+                inst.currentdeflection.time = inst.currentdeflection.time -1
+                if inst.currentdeflection.time then
+                    inst.currentdeflection = {time = math.random(1,10), deflection = maxdeflect * ((math.random() *2)-1) }
+                end
+
+                theta =  (inst.Transform:GetRotation() + inst.currentdeflection.deflection) * DEGREES
+            end
+
+            if theta  then
+                local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
+                local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
+                local newangle = inst:GetAngleToPoint(newpos.x,newpos.y,newpos.z)
+
+                local fire = SpawnPrefab("shadow_flame")
+                fire.Transform:SetRotation(newangle)
+                fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
+                fire:settargetdread(target,life-1, source)
+            end
+        end)
+    end
+end
+
 local function shadowfn()
     local inst = CreateEntity()
 
@@ -162,10 +264,11 @@ local function shadowfn()
 
     inst.persists = false
 
-    inst:AddComponent("firefx")
-    inst.components.firefx.levels = shadowfirelevels
+    --inst.dt2 = 0.2
+    --inst:AddComponent("firefx")
+    --inst.components.firefx.levels = shadowfirelevels
 
-    inst.components.firefx:SetLevel(math.random(1,4))
+    --inst.components.firefx:SetLevel(math.random(1,4))
 
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(75)
@@ -179,6 +282,7 @@ local function shadowfn()
     end)
 
     inst.settarget = settarget
+    inst.settargetdread = settargetdread
 
     return inst
 end

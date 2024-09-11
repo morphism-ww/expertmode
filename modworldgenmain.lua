@@ -1,257 +1,109 @@
-GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
+if not GetModConfigData("ruins") then
+    return
+end
 
-require("map/tasks")
-require("map/lockandkey")
 
 local Layouts = require("map/layouts").Layouts
 local StaticLayout = require("map/static_layout")
 
+AddClassPostConstruct("map/storygen", function(self)
+    self.map_tags.Tag["Abyss"] = function(tagdata) return "TAG", "Abyss" end
+    self.map_tags.Tag["DarkLand"] = function(tagdata) return "TAG", "DarkLand" end
+end)
 
+---为何如此愚蠢
+
+env.PLACE_MASK = GLOBAL.PLACE_MASK
+env.LAYOUT_ROTATION = GLOBAL.LAYOUT_ROTATION
+env.LAYOUT_POSITION = GLOBAL.LAYOUT_POSITION
+env.LAYOUT = GLOBAL.LAYOUT
+env.NODE_INTERNAL_CONNECTION_TYPE = GLOBAL.NODE_INTERNAL_CONNECTION_TYPE
+env.NODE_TYPE = GLOBAL.NODE_TYPE
+
+
+modimport("postinit/map/new_bunches")
+modimport("postinit/map/rooms/room_changes")
+modimport("postinit/map/rooms/abyss_room")
+modimport("postinit/map/tasks/task_changes")
+modimport("postinit/map/tasksets/cs_cave")
+modimport("postinit/map/new_map")
 
 
 Layouts["WalledGarden2"]= StaticLayout.Get("map/static_layouts/walledgarden2",
 		{
 			areas =
 			{
-				plants = function(area) return PickSomeWithDups(0.3 * area, {"cave_fern", "lichen", "flower_cave", "flower_cave_double", "flower_cave_triple"}) end,
+				plants = function(area) return GLOBAL.PickSomeWithDups(0.3 * area, {"chessjunk_spawner","wall_ruins"}) end,
 			},
 			start_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
 			fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
 			layout_position = LAYOUT_POSITION.CENTER
 		})
-Layouts["Barracks3"] = StaticLayout.Get("map/static_layouts/barracks_three",{
-			start_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
-			fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
-			layout_position = LAYOUT_POSITION.CENTER})
+Layouts["Barracks3"] = StaticLayout.Get("map/static_layouts/barracks_three")
             
 Layouts["Void_Land"] = StaticLayout.Get("map/static_layouts/void_land",{
                 start_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
                 fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
-                layout_position = LAYOUT_POSITION.CENTER})            
-
-if GetModConfigData("ancient") then
-
-    AddRoom("Metal_Labyrinth", {-- Not a real Labyrinth.. more of a maze really.
-        colour={r=.25,g=.28,b=.25,a=.50},
-        value = WORLD_TILES.BRICK,
-        tags = {"Labyrinth", "Nightmare"},
-        --internal_type = NODE_INTERNAL_CONNECTION_TYPE.EdgeCentroid,
-        contents =  {
-            distributepercent = 0.15,
-            distributeprefabs = {
-
-
-                chessjunk_spawner = 0.1,
-
-                shadoweyeturret_spawner=0.05,
-                scanner_spawn=0.05,
-                bishop_nightmare_spawner = 0.1,
-                knight_nightmare_spawner = 0.1,
+                layout_position = LAYOUT_POSITION.CENTER})      
                 
-                thulecite_pieces = 0.1,
-            },
-        }
-    })
+                
+Layouts["ChessBlockerAB"] = StaticLayout.Get("map/static_layouts/chess_blocker_ab", {
+    start_mask = PLACE_MASK.NORMAL,
+    fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
+    layout_position = LAYOUT_POSITION.CENTER,            
+})
 
-    AddRoom("HulkGuarden", {
-        colour={r=0.3,g=0.2,b=0.1,a=0.3},
-        value = WORLD_TILES.BRICK,
-        tags = {"Nightmare"},
-        required_prefabs = {},
-        type = NODE_TYPE.Room,
-        internal_type = NODE_INTERNAL_CONNECTION_TYPE.EdgeSite,
-        contents =  {
-            countstaticlayouts = {
-                ["WalledGarden2"] = 1,
-            },
-            countprefabs= {
-                chessjunk_spawner = function () return 4 + math.random(4) end
-            }
-        }
-    })
-    --[[locks={LOCKS.TIER4, LOCKS.RUINS,LOCKS.Sacred},
-        keys_given= {KEYS.TIER5, KEYS.RUINS},]]
-
-    AddTask("MeTal_Labyrinth_Task", {
-        locks={ LOCKS.RUINS,LOCKS.SACRED},
-        keys_given= {KEYS.RUINS},
-        room_tags = {"Nightmare"},
-        entrance_room="LabyrinthEntrance",
-        room_choices={
-            ["Metal_Labyrinth"] = function() return 3+math.random(1) end,
-            ["HulkGuarden"] = 1,
+Layouts["Abyss_Blocker"] = {
+    type = LAYOUT.CIRCLE_EDGE,
+    start_mask = PLACE_MASK.NORMAL,
+    fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
+    layout_position = LAYOUT_POSITION.CENTER,
+    ground_types = {WORLD_TILES.ROCKY},
+    defs =
+        {
+            rocks = { "nightmaregrowth_abyss_spawner"},
         },
-        room_bg=WORLD_TILES.IMPASSABLE,
-        background_room="Metal_Labyrinth",
-        colour={r=0.4,g=0.4,b=0.0,a=1},
-    })
-    AddRoom("BGMilitaryRoom",  {
-        colour={r=0.3,g=0.2,b=0.1,a=0.3},
-        value = WORLD_TILES.UNDERROCK,
-        tags = {"Maze","Nightmare"},
-        contents =  {
-            distributepercent = 0.1,
-            distributeprefabs= 
-            {				                    
-                nightmarelight = 0.2,
-
-                scanner_spawn=0.05,
-
-                shadoweyeturret_spawner=0.04,
-
-                ruins_statue_head_spawner = .1,
-                ruins_statue_mage_spawner=.1,
-                
-                rook_nightmare_spawner = 0.1,
-
-                bishop_nightmare_spawner = 0.1,
-            }
-        }
-        })
-    AddRoom("MilitaryMazeRoom",  {
-        colour={r=0.3,g=0.2,b=0.1,a=0.3},
-        value = WORLD_TILES.UNDERROCK,
-        tags = {"Maze", "Nightmare"},
-    })
-    AddTaskSetPreInit("cave_default", function(task)
-        task.tasks={
-            "MudWorld",
-            "MudCave",
-            "MudLights",
-            "MudPit",
-    
-            "BigBatCave",
-            "RockyLand",
-            "RedForest",
-            "GreenForest",
-            "BlueForest",
-            "SpillagmiteCaverns",
-    
-            "MoonCaveForest",
-            "ArchiveMaze",
-    
-            "CaveExitTask1",
-            "CaveExitTask2",
-            "CaveExitTask3",
-            "CaveExitTask4",
-            "CaveExitTask5",
-            "CaveExitTask6",
-            "CaveExitTask7",
-            "CaveExitTask8",
-            "CaveExitTask9",
-            "CaveExitTask10",
-    
-            "ToadStoolTask1",
-            "ToadStoolTask2",
-            "ToadStoolTask3",
-    
-            -- ruins
-            "LichenLand",
-            "CaveJungle",
-            "Residential",
-            "Military",
-            "Sacred",
-            "TheLabyrinth",
-            "AtriumMaze",
-            "MeTal_Labyrinth_Task",
-        }
-        task.numoptionaltasks = 6
-        task.optionaltasks = {
-            "SwampySinkhole",
-            "CaveSwamp",
-            "UndergroundForest",
-            "PleasantSinkhole",
-            "BatCloister",
-            "RabbitTown",
-            "RabbitCity",
-            "SpiderLand",
-            "RabbitSpiderWar"
-        }
-        task.set_pieces = { -- if you add or remove tasks, don't forget to update this list!
-        ["TentaclePillar"] = { count = 11, tasks= { -- Note: An odd number because AtriumMaze contains one
-            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
-        } },
-        ["ResurrectionStone"] = { count = 2, tasks={
-            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
-        } },
-        ["skeleton_notplayer"] = { count = 1, tasks={
-            "MudWorld", "MudCave", "MudLights", "MudPit", "BigBatCave", "RockyLand", "RedForest", "GreenForest", "BlueForest", "SpillagmiteCaverns", "SwampySinkhole", "CaveSwamp", "UndergroundForest", "PleasantSinkhole", "BatCloister", "RabbitTown", "RabbitCity", "SpiderLand", "RabbitSpiderWar",
-        } }
-
-		}
-    end)
-    
-    AddTaskPreInit("Sacred",function (task)
-        task.keys_given= { KEYS.RUINS, KEYS.SACRED}
-        task.room_choices={
-            ["SacredBarracks"] = function() return math.random(1,2) end,
-            ["Bishops"] = function() return math.random(1,2) end,
-            ["Spiral"] = function() return math.random(1,2) end,
-            ["BrokenAltar"] = function() return math.random(1,2) end,
-            ["Altar"] = 1,
-        }
-        task.room_bg=WORLD_TILES.BRICK
-        task.background_room="BGSacred"
-        end)
-
-    AddTaskPreInit("Military",function (task)
-
-        task.room_choices =
+    count =
         {
-            ["MilitaryMaze"] = 6,
-            ["Barracks"] = 1
-        }
-        task.background_room="BGMilitaryRoom"
-    end)
-    AddTaskPreInit("Residential",function(task)
-        task.room_choices =
-    {
-        ["CaveJungle"] = 1,
-        ["Vacant"] = 3,
-    }
-    end)
-    AddTaskPreInit("CaveJungle",function(task)
-        task.room_choices={
-            ["LichenMeadow"] = 1,
-            ["CaveJungle"] = 1,
-            ["Vacant"] = 1,
-            ["MonkeyMeadow"] = 1,
-        }
-    end)
-    AddRoomPreInit("RuinedCity",function (room)
-        room.value = WORLD_TILES.MUD
-    end)
-    AddRoomPreInit("Barracks",function (room)
-        room.contents.distributepercent=0.06
-    end)
-    AddRoomPreInit("BGSacred",function (room)
-        room.contents.distributepercent = 0.1
-        room.value = WORLD_TILES.TILES
-        room.contents.distributeprefabs=
+            rocks = 10,
+        },
+    scale = 2,
+}
+
+Layouts["AltarRoom_ab"] = StaticLayout.Get("map/static_layouts/altar")
+Layouts["BrokenAltar_ab"] = StaticLayout.Get("map/static_layouts/brokenaltar")
+Layouts["SacredBarracks_ab"] = StaticLayout.Get("map/static_layouts/sacred_barracks")
+Layouts["Barracks_ab"] = StaticLayout.Get("map/static_layouts/barracks")
+Layouts["Blocker_Sab"] = StaticLayout.Get("map/static_layouts/blocker_sab")
+Layouts["EndsWell"] = StaticLayout.Get("map/static_layouts/endswell")
+Layouts["DarkGarden"] = {
+    type = LAYOUT.CIRCLE_EDGE,
+    start_mask = PLACE_MASK.NORMAL,
+    fill_mask = PLACE_MASK.IGNORE_IMPASSABLE_BARREN_RESERVED,
+    layout_position = LAYOUT_POSITION.CENTER,
+    ground_types = {WORLD_TILES.CARPET2},
+    ground =
         {
-            chessjunk_spawner = .2,
-
-            nightmarelight = 0.25,
-
-            ruins_statue_head_spawner = .1,
-
-            shadowdragon_spawner=.05,
-
-            rook_nightmare_spawner = .05,
-
-            ruins_statue_mage_spawner = .1,
-
-        }
-    end)
-    AddRoomPreInit("Bishops",function(room)
-        room.internal_type=nil
-        room.contents.countstaticlayouts={
-            ["Barracks3"] = 1,
-        }
-    end)
-    Layouts["MilitaryEntrance"].layout["shadowdragon_spawner"]={{x=-4,y=4}}
-    Layouts["BrokenAltar"].layout["shadowdragon_spawner"]={{x=1,y=-4}}
-    Layouts["SacredBarracks"].layout["scanner_spawn"]={{x=-3,y=0},{x=0,y=0}}
-    Layouts["Barracks"].layout["scanner_spawn"]={{x=0,y=0}}
-    Layouts["AltarRoom"].layout["shadoweyeturret_spawner"]={{x=0,y=3}}
-end
+            {1, 1, 1, 1, 1},
+            {1, 1, 1, 1, 1},
+            {1, 1, 1, 1, 1},
+            {1, 1, 1, 1, 1},
+            {1, 1, 1, 1, 1},
+        },
+    layout =
+        {
+            cs_shadowthrone = 	{ {x=  0, y=  0} },
+            sanityrock = {{x=1,y=1},{x=1,y=-1},{x=-1,y=1},{x=-1,y=-1}}
+                        
+        }, 
+    count = {
+            flower_rose = 15,
+        },
+    scale = 1, -- scale must be 1 if we set grount tiles
+    --layout_position = LAYOUT_POSITION.CENTER
+}
+Layouts["MilitaryEntrance"].layout["shadowdragon_spawner"]={{x=-4,y=4}}
+Layouts["BrokenAltar"].layout["shadowdragon_spawner"]={{x=1,y=-4}}
+Layouts["SacredBarracks"].layout["scanner_spawn"]={{x=-3,y=0},{x=0,y=0}}
+Layouts["Barracks"].layout["scanner_spawn"]={{x=0,y=0}}
+Layouts["AltarRoom"].layout["shadoweyeturret_spawner"]={{x=0,y=3}}

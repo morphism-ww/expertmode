@@ -5,16 +5,12 @@ local actionhandlers =
     ActionHandler(ACTIONS.GOHOME, "action"),
 }
 
-local function canteleport(inst)
-    return not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("hit")
-        or inst.sg:HasStateTag("teleporting") or inst.sg:HasStateTag("noattack")
-        or inst.components.health:IsDead())
-end
 
 local events =
 {
     EventHandler("attacked", function(inst)
-        if not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("hit") or inst.sg:HasStateTag("noattack") or inst.components.health:IsDead()) then
+        if not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("hit") or inst.sg:HasStateTag("noattack") or inst.components.health:IsDead())
+            and not CommonHandlers.HitRecoveryDelay(inst,4,1) then
             inst.sg:GoToState("hit")
         end
     end),
@@ -27,12 +23,22 @@ local events =
     end),
     EventHandler("wave_atk",function(inst)
         if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
-            inst.sg:GoToState("wave_attack")
+            if inst.dread then
+                inst.sg:GoToState("wave_attack2")
+            else
+                inst.sg:GoToState("wave_attack")
+            end    
+            
         end
     end),
     EventHandler("fire_atk",function(inst)
         if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
             inst.sg:GoToState("shadowfire")
+        end
+    end),
+    EventHandler("teleport_atk",function (inst)
+        if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
+            inst.sg:GoToState("teleport_attack",inst.components.combat.target)
         end
     end),
     CommonHandlers.OnLocomote(false, true),
@@ -78,24 +84,33 @@ local function TryShadowFire(inst,target,pos)
     else
         startangle=0
     end
-    local burst=3
+    local burst = 3
     --[[local pct=doer.components.health:GetPercent()
     if pct<0.1 then
         burst=8
     elseif pct<0.2 then
         burst=6
     end]]
+    local radius = 2
+    local lifetime = inst.dread and 25 or 15
     local anglelist={startangle-PI/2,startangle,startangle+PI/2}
     for i=1,burst do
-        local radius = 2
+        
         local theta = anglelist[i]
         local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
 
         local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
+        
         local fire = SpawnPrefab("shadow_flame")
         fire.Transform:SetRotation(theta/DEGREES)
         fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
-        fire:settarget(target,15,inst)
+        
+        if inst.dread then
+            fire:settargetdread(target,lifetime,inst)
+            fire.components.weapon:SetDamage(120)
+        else
+            fire:settarget(target,lifetime,inst)
+        end    
     end
 end
 local function TryShadowWave(inst,target)
@@ -115,6 +130,22 @@ local function TryShadowWave(inst,target)
     end
 end
 
+
+local function TryWave2(inst,angle)
+    local position=inst:GetPosition()
+    --totalangle=360
+    local anglePerWave = 360/8
+    local rot = angle
+    for i = 1, 8 do
+        local offset_direction = Vector3(math.cos(rot*DEGREES), 0, -math.sin(rot*DEGREES)):Normalize()
+        local wavepos = position + (offset_direction * 2)
+        local wave = SpawnPrefab("shadowwave")
+        wave.Transform:SetPosition(wavepos:Get())
+        wave.Transform:SetRotation(rot)
+        rot = rot + anglePerWave
+        wave.Physics:SetMotorVel(14, 0, 0)
+    end
+end
 local states =
 {
     State{
@@ -183,6 +214,46 @@ local states =
         },
     },
     State{
+        name = "teleport_attack",
+        tags = { "attack", "busy" },
+
+        onenter = function(inst, target)
+            inst.sg.statemem.target = target
+            inst.Physics:Stop()
+            inst.components.combat:StartAttack()
+            inst.AnimState:PlayAnimation("disappear")
+            inst.AnimState:PushAnimation("atk",false)
+            PlayExtendedSound(inst, "attack_grunt")
+        end,
+
+        timeline =
+        {
+            FrameEvent(20, function(inst) 
+                PlayExtendedSound(inst, "attack") 
+                if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then
+                    inst:ForceFacePoint(inst.sg.statemem.target:GetPosition())
+                    inst.sg.statemem.targetpos = inst.sg.statemem.target:GetPosition()
+                end
+            end),
+            FrameEvent(25,function (inst)
+                if inst.sg.statemem.targetpos then
+                    inst.Physics:Teleport(inst.sg.statemem.targetpos:Get())
+                end
+            end),
+			FrameEvent(45, function(inst)
+				inst.components.combat:DoAttack(inst.sg.statemem.target)
+			end),
+
+        },
+
+        events =
+        {
+            EventHandler("animqueueover", function(inst)
+                inst.sg:GoToState("idle")
+            end),
+        },
+    },
+    State{
         name = "shadowfire",
         tags = {"attack", "busy"},
 
@@ -206,7 +277,7 @@ local states =
         events=
         {
             EventHandler("animover", function(inst)
-                inst.components.timer:StartTimer("fire_cd",14)
+                inst.components.timer:StartTimer("fire_cd",TUNING.SHAODWDRAGON_FIRECD)
                 if math.random() < .333 then
                     inst.sg:GoToState("taunt")
                 else
@@ -239,7 +310,7 @@ local states =
         events=
         {
             EventHandler("animover", function(inst)
-                inst.components.timer:StartTimer("wave_cd",11)
+                inst.components.timer:StartTimer("wave_cd",TUNING.SHAODWDRAGON_WAVECD)
                 if math.random() < .333 then
                     --inst.components.combat:SetTarget(nil)
                     inst.sg:GoToState("taunt")
@@ -250,12 +321,54 @@ local states =
         },
     },
     State{
+        name = "wave_attack2",
+        tags = {"attack", "busy"},
+
+        onenter = function(inst)
+            inst.Physics:Stop()
+            inst.components.combat:StartAttack()
+            inst.AnimState:PlayAnimation("taunt")
+            inst.SoundEmitter:PlaySound(inst.sounds.attack_grunt)
+            local target = inst.components.combat.target
+            if target and target:IsValid() then
+                inst.sg.statemem.rot = inst:GetAngleToPoint(target.Transform:GetWorldPosition())
+            end
+        end,
+
+        timeline=
+        {
+            TimeEvent(20*FRAMES,function (inst)
+                if inst.sg.statemem.rot then
+                    TryWave2(inst,inst.sg.statemem.rot)
+                end 
+            end),
+            TimeEvent(40*FRAMES,function (inst)
+                if inst.sg.statemem.rot then
+                    TryWave2(inst,inst.sg.statemem.rot+360/16)
+                end 
+            end)
+        },
+        events=
+        {
+            EventHandler("animover", function(inst)
+                inst.components.timer:StartTimer("wave_cd",11)
+                if math.random() < .333 then
+                    --inst.components.combat:SetTarget(nil)
+                    inst.sg:GoToState("taunt")
+                else
+                    inst.sg:GoToState("idle")
+                end
+            end),
+        },
+    },    
+    State{
         name = "hit",
         tags = { "busy", "hit" },
 
         onenter = function(inst)
             inst.Physics:Stop()
             inst.AnimState:PlayAnimation("disappear")
+            CommonHandlers.UpdateHitRecoveryDelay(inst)
         end,
 
         events =

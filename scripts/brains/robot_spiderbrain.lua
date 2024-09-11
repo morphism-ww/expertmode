@@ -5,7 +5,7 @@ require "behaviours/follow"
 
 local KEEP_FACE_DIST = 20
 
-local MAX_CHASE_TIME = 15
+local MAX_CHASE_TIME = 20
 
 local MAX_BEAM_ATTACK_RANGE = 10
 
@@ -31,9 +31,7 @@ end
 end]]
 
 local function GetWanderPos(inst)
-	if inst.components.knownlocations:GetLocation("home") then
-		return inst.components.knownlocations:GetLocation("home")
-    end     
+	return inst.components.knownlocations:GetLocation("home") 
 end
 
 local AncientRobotBrain = Class(Brain, function(self, inst)
@@ -50,7 +48,7 @@ function AncientRobotBrain:OnStart()
                 ChaseAndAttack(self.inst, MAX_CHASE_TIME),
                 FaceEntity(self.inst, GetFaceTargetFn, KeepFaceTargetFn),
                 Wander(self.inst,GetWanderPos,30)
-            }, .25)
+            }, .5)
         )
 
     }, .25)

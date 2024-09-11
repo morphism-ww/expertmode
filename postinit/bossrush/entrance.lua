@@ -1,13 +1,8 @@
 require("worldsettingsutil")
-local function Enable_gate(inst,ispowered)
-	if ispowered and not TheWorld.components.voidland_manager.bossrush_on and inst.components.charliecutscene:IsGateRepaired()  then
-        inst:AddTag("planar_portal")
-    else
-        inst:RemoveTag("planar_portal")
-    end      
-end
 
 
+
+--------------------------------------------------------------
 local function ShowFx(inst, state)
     if inst._gatefx == nil then
         inst._gatefx = SpawnPrefab("atrium_gate_activatedfx")
@@ -23,43 +18,26 @@ local function HideFx(inst)
         inst._gatefx = nil
     end
 end
+---------------------------------------------------------------
 
-local function end_portal(inst)
-    inst._powered = false
-    if TheWorld.components.voidland_manager:HasPlayer() then
-        TheWorld.components.voidland_manager:StartBossRush()
-        TheWorld:PushEvent("bossrush")
-    end
+local function OpenPortal(inst)
+    inst._isopen = true
+    inst:RemoveTag("klaussacklock")
+    ShowFx(inst, "overload")
+    inst.AnimState:PlayAnimation("overload_pulse")
+    inst.AnimState:PushAnimation("overload_loop")
+    inst.SoundEmitter:PlaySound("dontstarve/common/together/atrium_gate/destabilize_LP", "loop")
+    inst.components.teleporter:SetEnabled(true)
+    
+end
+
+local function ClosePortal(inst)
+    inst._isopen = false
+    inst:AddTag("klaussacklock")
     HideFx(inst)
     inst.AnimState:PlayAnimation("idle")
     inst.SoundEmitter:KillSound("loop")
     inst.components.teleporter:SetEnabled(false)    
-    inst.components.pickable.caninteractwith = true
-end
-
-local function OpenPortal(inst)
-    inst._powered = true
-    inst:RemoveTag("planar_portal")
-    inst.components.pickable.caninteractwith = false
-    ShowFx(inst, "overload")
-
-    inst.components.teleporter:SetEnabled(true)
-    inst.AnimState:PlayAnimation("overload_pulse")
-    inst.AnimState:PushAnimation("overload_loop")
-    --[[if not inst.components.worldsettingstimer:ActiveTimerExists("bossrush") then
-        --inst.components.worldsettingstimer:StartTimer("bossrush", 240)
-    end]]
-    if not inst.components.timer:TimerExists("bossrush") then
-        inst.components.timer:StartTimer("bossrush", 30)
-    end
-    inst.SoundEmitter:PlaySound("dontstarve/common/together/atrium_gate/destabilize_LP", "loop")
-end
-
-local function SpawnLand(inst)
-    local voidland_manager =TheWorld.components.voidland_manager
-    if voidland_manager~=nil and not voidland_manager:HasLand() then
-        voidland_manager:GenerateLand(inst)
-    end  
 end
 
 local function BossrushFilter(inst, action)
@@ -67,57 +45,108 @@ local function BossrushFilter(inst, action)
 end
 
 local function OnActivate(inst, doer)
-    if doer.components.talker ~= nil then
-        doer.components.talker:ShutUp()
+    if doer:HasTag("player") then
+        if doer.components.talker ~= nil then
+            doer.components.talker:ShutUp()
+        end
+        if doer.player_classified~=nil then
+			doer.player_classified.MapExplorer:EnableUpdate(true)
+		end
+		if doer.components.playercontroller ~= nil then
+			doer.components.playercontroller:EnableMapControls(true)
+		end
+        
+        TheWorld.components.voidland_manager:UnregisterPlayer(doer)
     end
-    if doer.components.playercontroller == nil then
-        inst.components.playeractionpicker:PushActionFilter(BossrushFilter, 20)
+end
+
+local function ForbiddenPortal(inst)
+    inst._islocked = true
+    inst:RemoveTag("klaussacklock")
+    inst.components.teleporter:SetEnabled(false)    
+    HideFx(inst)
+
+    inst.AnimState:PlayAnimation("idle_active")
+    inst.SoundEmitter:KillSound("loop")
+end
+
+local function RestartPortal(inst)
+    inst._islocked = false
+    inst:AddTag("klaussacklock")
+end
+
+local function OnUseKey(inst, key, doer)
+	if not key:IsValid() or key.components.klaussackkey == nil or inst._islocked or inst._isopen then
+		return false, nil, false
+    elseif inst.components.trader.enabled then
+        return false, "NOPOWER" , false
+	elseif key.components.klaussackkey.keytype ~= inst.keyid then
+		return false, "QUAGMIRE_WRONGKEY", false
+	end
+
+    OpenPortal(inst)
+	return true, nil, false
+end
+
+local function OnPoweredFn(inst,ispowered)
+    if not ispowered then
+        ClosePortal(inst)
     end
-    doer.player_classified.MapExplorer:EnableUpdate(false)
-    if doer.components.playercontroller ~= nil then
-        doer.components.playercontroller:EnableMapControls(false)
+end    
+
+local function OnBossrushEnd(inst)
+    local key = SpawnPrefab("atrium_key")
+    LaunchAt(key, inst, nil, 1.5, 1, 1)
+    RestartPortal(inst) 
+    inst:OnKeyTaken() 
+end
+
+local function OnSave(inst,data)
+    --data._isopen = inst._isopen
+    data._islocked = inst._islocked
+end
+
+local function OnLoad(inst,data)
+    if data~=nil then
+        --inst._isopen = data._isopen
+        inst._islocked = data._islocked
     end
-    if doer.components.maprevealable~=nil then
-        doer.components.maprevealable:Stop()
-    end
-    TheWorld.components.voidland_manager:RegisterPlayer(doer)
 end
 
 AddPrefabPostInit("atrium_gate",function(inst)
+    inst:AddTag("klaussacklock")
     if not TheWorld.ismastersim then return end
 
-    
-   
     inst:AddComponent("teleporter")
-    inst.components.teleporter.onActivate = OnActivate
-    inst.components.teleporter.offset = 0
+    inst.components.teleporter.OnDoneTeleporting = OnActivate
+    inst.components.teleporter.offset = 4
     inst.components.teleporter:SetEnabled(false)
-    
 
-    
-    inst:AddComponent("timer")
+    inst.keyid = "planar_key"
+    inst:AddComponent("klaussacklock")
+	inst.components.klaussacklock:SetOnUseKey(OnUseKey)
 
     inst.OpenPortal = OpenPortal
-    inst:ListenForEvent("timerdone",end_portal)
-    inst:ListenForEvent("atriumpowered",function (world,ispowered)
-        Enable_gate(inst,ispowered)
-    end,  TheWorld)
-    inst:ListenForEvent("bossrush_end",function (world)
-		inst:StartCooldown(true)
-        TheWorld:PushEvent("atriumpowered", false)
-        TheWorld:PushEvent("ms_locknightmarephase", nil)
-        TheWorld:PushEvent("unpausequakes", { source = inst })
-        TheWorld:PushEvent("unpausehounded", { source = inst })
-	end,TheWorld)
-    inst:DoTaskInTime(0,SpawnLand)
+    inst.OnKeyTaken = inst.components.pickable.onpickedfn
+    local oldOnEntitySleep = inst.OnEntitySleep
+    inst.OnEntitySleep = function (inst)
+        if not inst._islocked and not inst._isopen then
+            oldOnEntitySleep(inst)
+        end
+    end
+    inst.OnSave = OnSave
+    inst.OnLoad = OnLoad
+
+    inst.ForbiddenPortal = ForbiddenPortal
+    
+    inst:ListenForEvent("atriumpowered", function(_, ispowered) OnPoweredFn(inst, ispowered) end, TheWorld)
+    inst:ListenForEvent("bossrush_start",function(_)    ForbiddenPortal(inst)   end,TheWorld)
+    inst:ListenForEvent("bossrush_end",function (_)  OnBossrushEnd(inst) end,TheWorld)
+
+    inst:DoTaskInTime(0,function ()
+        local land_manager = TheWorld.components.voidland_manager
+        if land_manager~=nil and not land_manager.has_land then
+            land_manager:GenerateLand(inst)
+        end
+    end)
 end)
-
-
-AddPrefabPostInit("alterguardianhatshard",function (inst)
-    inst:AddTag("portal_key")
-    if not TheWorld.ismastersim then return end
-
-    inst:AddComponent("portal_key")
-end)
-
-

@@ -32,18 +32,11 @@ local function DisableLight(inst)
     inst.Light:Enable(false)
 end
 
-local DAMAGE_CANT_TAGS = { "laser_immune", "playerghost", "INLIMBO", "DECOR", "FX","shadow" }
+local DAMAGE_CANT_TAGS = { "laser_immune", "playerghost", "INLIMBO", "DECOR", "FX","shadow","shadowthrall" }
 local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
 local LAUNCH_MUST_TAGS = { "_inventoryitem" }
 local LAUNCH_CANT_TAGS = { "locomotor", "INLIMBO" }
 
-local function setfires(x,y,z)
-    for i, v in ipairs(TheSim:FindEntities(x, 0, z, RADIUS, nil, { "laser", "DECOR", "INLIMBO" })) do 
-        if v.components.burnable then
-            v.components.burnable:Ignite()
-        end
-    end
-end
 local function DoDamage(inst, targets, skiptoss, skipscorch, scale, scorchscale, hitscale, heavymult, mult, forcelanded)
     inst.task = nil
 
@@ -75,6 +68,11 @@ local function DoDamage(inst, targets, skiptoss, skipscorch, scale, scorchscale,
         inst:DoTaskInTime(2 * FRAMES, inst.Remove)
     end
     local disttocaster = mult and inst.caster and inst.caster:IsValid() and math.sqrt(inst.caster:GetDistanceSqToPoint(x, y, z)) or nil
+
+    if inst.caster and inst.caster:IsValid() then
+        
+		inst.caster.components.combat.ignorehitrange = true
+	end
     inst.components.combat.ignorehitrange = true
     local hitradius = RADIUS * (hitscale or 1)
     for _, v in ipairs(TheSim:FindEntities(x, 0, z, hitradius + 3, nil, DAMAGE_CANT_TAGS, DAMAGE_ONEOF_TAGS)) do
@@ -132,7 +130,7 @@ local function DoDamage(inst, targets, skiptoss, skipscorch, scale, scorchscale,
                 local strengthmult = mult and ((v.components.inventory and v.components.inventory:ArmorHasTag("heavyarmor") or v:HasTag("heavybody")) and heavymult or mult) or nil
 
                 if inst.caster ~= nil and inst.caster:IsValid() then
-                    inst.caster.components.combat.ignorehitrange = true
+                    
                     inst.caster.components.combat:DoAttack(v)
                     if strengthmult and v:HasTag("player")  then
                         v:PushEvent("knockback", { knocker = inst.caster, radius = disttocaster + hitradius, strengthmult = strengthmult, forcelanded = forcelanded })
@@ -172,7 +170,10 @@ local function DoDamage(inst, targets, skiptoss, skipscorch, scale, scorchscale,
         end
     end
     inst.components.combat.ignorehitrange = false
-
+    
+	if inst.caster and inst.caster:IsValid() then
+		inst.caster.components.combat.ignorehitrange = false
+	end
     for i, v in ipairs(TheSim:FindEntities(x, 0, z, hitradius + 3,  LAUNCH_MUST_TAGS, LAUNCH_CANT_TAGS)) do
         if not skiptoss[v] then
 			local range = hitradius + v:GetPhysicsRadius(.5)

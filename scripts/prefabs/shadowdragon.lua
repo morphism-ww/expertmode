@@ -1,20 +1,27 @@
 local brain = require( "brains/shadowdragonbrain")
+local brain2 = require( "brains/dreaddragonbrain")
 local RuinsRespawner = require "prefabs/ruinsrespawner"
+
+local assets=
+    {
+	    Asset("ANIM", "anim/shadow_insanity_water1.zip"),
+    }
 
 local prefabs =
 {
     "nightmarefuel",
 }
 
-local loots={}
-for i=1,10 do
-    loots[i]='nightmarefuel'
-end
-
-
+SetSharedLootTable("shadow_dragon",
+{
+    { "nightmarefuel",  1.0 },
+    { "nightmarefuel",  1.0 },
+    { "nightmarefuel",  1.0 },
+    { "nightmarefuel",  0.5 },
+})
 
 local function retargetfn(inst)
-    local maxrangesq = 576
+    local maxrangesq = 20*20
     local rangesq, rangesq1, rangesq2 = maxrangesq, math.huge, math.huge
     local target1, target2 = nil, nil
     for i, v in ipairs(AllPlayers) do
@@ -45,6 +52,23 @@ local function retargetfn(inst)
 end
 
 
+local function retargetfn2(inst)
+	local x, y, z = inst.Transform:GetWorldPosition()
+	local target = inst.components.combat.target
+	if target ~= nil then
+		local range = 24 + target:GetPhysicsRadius(0)
+		if target:HasTag("player") and target:GetDistanceSqToPoint(x, y, z) < range * range then
+			--Keep target
+			return
+		end
+	end
+
+
+	--V2C: WARNING: FindClosestPlayerInRange returns 2 values, which
+	--              we don't want to return as our 2nd return value.  
+	local player--[[, rangesq]] = FindClosestPlayerInRange(x, y, z, 30, true)
+	return player
+end
 
 local function canbeattackedfn(inst, attacker)
 	return inst.components.combat.target ~= nil or
@@ -75,142 +99,218 @@ local function CLIENT_ShadowSubmissive_HostileToPlayerTest(inst, player)
 	return false
 end
 
-local function steallife(inst,data)
-    local victim = (data~=nil and data.target) or nil
-    if victim~=nil and victim.components.sanity~=nil then
-        inst.components.health:DoDelta(100)
+
+local function StealLife2(inst,victim,damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+    --local victim = (data~=nil and data.target) or nil
+    if damageredirecttarget==nil and victim and victim.components.sanity~=nil then
+        inst.components.health:DoDelta(200)
         victim.components.sanity:DoDelta(-15)
+        victim:AddDebuff("exhaustion","exhaustion",{duration=10})
     end
 end
-local function onkilledbyother(inst, attacker)
-    if attacker ~= nil and attacker.components.sanity ~= nil then
+local function onkilledbyother(inst, attacker,damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
+    if damageredirecttarget==nil and attacker ~= nil and attacker.components.sanity ~= nil then
         attacker.components.sanity:DoDelta(inst.sanityreward)
     end
 end
 
-
-local function MakeShadowCreature(data)
-
-    local bank = data.bank 
-    local build = data.build 
-    
-    local assets=
-    {
-	    Asset("ANIM", "anim/"..data.build..".zip"),
-    }
-    
-    local sounds = 
-    {
-        attack = "dontstarve/sanity/creature"..data.num.."/attack",
-        attack_grunt = "dontstarve/sanity/creature"..data.num.."/attack_grunt",
-        death = "dontstarve/sanity/creature"..data.num.."/die",
-        idle = "dontstarve/sanity/creature"..data.num.."/idle",
-        taunt = "dontstarve/sanity/creature"..data.num.."/taunt",
-        appear = "dontstarve/sanity/creature"..data.num.."/appear",
-        disappear = "dontstarve/sanity/creature"..data.num.."/dissappear",
-    }
-
-    local function fn()
-	    local inst = CreateEntity()
-
-        inst.entity:AddTransform()
-        inst.entity:AddAnimState()
-        inst.entity:AddSoundEmitter()
-        inst.entity:AddNetwork()
-
-        inst.Transform:SetSixFaced()
-
-    	
-        MakeCharacterPhysics(inst, 10, 1.5)
-        RemovePhysicsColliders(inst)
-
-	    inst.Physics:SetCollisionGroup(COLLISION.SANITY)
-	    inst.Physics:CollidesWith(COLLISION.SANITY)
-
-        inst.AnimState:SetBank(bank)
-        inst.AnimState:SetBuild(build)
-        inst.AnimState:PlayAnimation("idle_loop")
-        inst.AnimState:SetMultColour(1, 1, 1, 0.5)
-        --inst.AnimState:OverrideSymbol("seashadow_head",           "shadow_knight_upg_build", "face2")
-        --inst.AnimState:OverrideSymbol("seashadow_spine",           "shadow_bishop_upg_build", "wing2")
-
-        inst.Transform:SetScale(1.4,1.4,1.4)
-
-        inst:AddTag("nightmarecreature")
-	    inst:AddTag("hostile")
-        inst:AddTag("shadow")
-        inst:AddTag("notraptrigger")
-        inst:AddTag("shadow_aligned")
-        inst:AddTag("shadowsubmissive")
-
-        inst.HostileToPlayerTest = CLIENT_ShadowSubmissive_HostileToPlayerTest
-
-        inst.entity:SetPristine()
-
-        if not TheWorld.ismastersim then
-            return inst
-        end
-
-        inst:AddComponent("shadowsubmissive")
-        inst:AddComponent("timer")
-        inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
-	    inst.components.locomotor:SetTriggersCreep(false)
-        inst.components.locomotor.pathcaps = { ignorecreep = true }
-        inst.components.locomotor.walkspeed = data.speed
-        inst.sounds = sounds
-
-        inst:SetStateGraph("SGshadowdragon")
-        inst:SetBrain(brain)
-        
-	    inst:AddComponent("sanityaura")
-	    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
-        
-
-        inst:AddComponent("health")
-        inst.components.health:SetMaxHealth(data.health)
-        
-		inst.sanityreward = data.sanityreward
-		
-        inst:AddComponent("combat")
-        inst.components.combat:SetRange(5)
-        inst.components.combat:SetDefaultDamage(data.damage)
-        inst.components.combat:SetAttackPeriod(data.attackperiod)
-        inst.components.combat:SetRetargetFunction(2, retargetfn)
-        inst.components.combat.canbeattackedfn = canbeattackedfn
-        inst.components.combat.onkilledbyother = onkilledbyother
-
-        inst:AddComponent("lootdropper")
-        inst.components.lootdropper:SetLoot(loots)
-        
-        inst:ListenForEvent("attacked", OnAttacked)
-        inst:ListenForEvent("onhitother", steallife)
-        inst:AddComponent("knownlocations")
-
-
-        return inst
-    end
-        
-    return Prefab(data.name, fn, assets, prefabs)
-end
-
-local data = {
-    {
-        name="shadowdragon",
-        build = "shadow_insanity_water1",
-        bank = "shadowseacreature",
-        num = 2,
-        speed = 7,
-        health=1000,
-        damage= 50 ,
-        attackperiod = 4,
-        sanityreward = TUNING.SANITY_LARGE
-    }
+local num = 2
+local sounds = 
+{
+    attack = "dontstarve/sanity/creature"..num.."/attack",
+    attack_grunt = "dontstarve/sanity/creature"..num.."/attack_grunt",
+    death = "dontstarve/sanity/creature"..num.."/die",
+    idle = "dontstarve/sanity/creature"..num.."/idle",
+    taunt = "dontstarve/sanity/creature"..num.."/taunt",
+    appear = "dontstarve/sanity/creature"..num.."/appear",
+    disappear = "dontstarve/sanity/creature"..num.."/dissappear",
 }
 
-local ret = {}
-for k,v in pairs(data) do
-	table.insert(ret, MakeShadowCreature(v))
+
+local function CreateCommon(common_init)
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
+    inst.entity:AddNetwork()
+
+    inst.Transform:SetSixFaced()
+
+    MakeCharacterPhysics(inst, 10, 1.5)
+    RemovePhysicsColliders(inst)
+
+    inst.Physics:SetCollisionGroup(COLLISION.SANITY)
+    inst.Physics:CollidesWith(COLLISION.SANITY)
+    inst.AnimState:SetBank("shadowseacreature")
+    inst.AnimState:SetBuild("shadow_insanity_water1")
+    inst.AnimState:PlayAnimation("idle_loop")
+    
+
+    inst:AddTag("hostile")
+    inst:AddTag("shadow")
+    inst:AddTag("notraptrigger")
+    inst:AddTag("shadow_aligned")
+    
+
+    common_init(inst)
+
+    inst.HostileToPlayerTest = CLIENT_ShadowSubmissive_HostileToPlayerTest
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst:AddComponent("timer")
+    inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
+    inst.components.locomotor:SetTriggersCreep(false)
+    inst.components.locomotor.pathcaps = { ignorecreep = true }
+    inst.sounds = sounds
+    inst.sanityreward = TUNING.SANITY_LARGE
+
+    inst:AddComponent("sanityaura")
+	inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
+
+    inst:AddComponent("lootdropper")
+
+    inst:AddComponent("health")
+
+    inst:AddComponent("combat")
+    inst.components.combat:SetRange(6,5)
+    inst.components.combat:SetAttackPeriod(4)
+    inst.components.combat.canbeattackedfn = canbeattackedfn
+    inst.components.combat.onkilledbyother = onkilledbyother
+
+    inst:ListenForEvent("attacked", OnAttacked)
+    --inst:ListenForEvent("onhitother", steallife)
+
+    inst:SetStateGraph("SGshadowdragon")
+    
+    return inst
 end
 
-return unpack(ret) ,
+local function RegularCommongPostInit(inst)
+    inst:AddTag("nightmarecreature")
+    inst:AddTag("shadowsubmissive")
+    inst.AnimState:SetMultColour(1, 1, 1, 0.5)
+    --inst.Transform:SetScale(1.4,1.4,1.4)
+    inst.HostileToPlayerTest = CLIENT_ShadowSubmissive_HostileToPlayerTest
+end
+
+local function RegularFn()
+    local inst = CreateCommon(RegularCommongPostInit)
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst.canwave = true
+    
+
+    inst:AddComponent("shadowsubmissive")
+
+    inst.components.health:SetMaxHealth(TUNING.SHAODWDRAGON_HEALTH)
+    inst.components.combat:SetDefaultDamage(TUNING.SHAODWDRAGON_DAMAGE)
+    inst.components.combat:SetRetargetFunction(1.5,retargetfn)
+    --inst.components.combat.onhitotherfn = steallife
+    inst.components.locomotor.walkspeed = 7
+
+    
+    inst.components.lootdropper:SetChanceLootTable('shadow_dragon')
+    --inst:ListenForEvent("onhitother", steallife)
+    inst:SetBrain(brain)
+
+    return inst
+end
+
+local function CreateFlameFx()
+    local inst = CreateEntity()
+
+    inst:AddTag("FX")
+    --[[Non-networked entity]]
+    if not TheWorld.ismastersim then
+        inst.entity:SetCanSleep(false)
+    end
+    inst.persists = false
+
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddFollower()
+
+    inst.AnimState:SetMultColour(1,1,1,0.5)
+    inst.AnimState:SetScale(1.3,1.3,1.3)
+
+    inst.AnimState:SetBank("pigman")
+    inst.AnimState:SetBuild("merm_actions_skills")
+
+    local anim = "alternateeyes"
+
+    inst.AnimState:PlayAnimation(anim, true)
+
+    --inst.AnimState:SetSymbolLightOverride("fx_flame_red", 1)
+    --inst.AnimState:SetSymbolLightOverride("fx_red", 1)
+
+    inst.AnimState:SetFrame(math.random(inst.AnimState:GetCurrentAnimationNumFrames()))
+
+    return inst
+end
+
+local function AbyssCommongPostInit(inst)
+
+    local flames = CreateFlameFx()
+    flames.entity:SetParent(inst.entity)
+    flames.Follower:FollowSymbol(inst.GUID, "seashadow_head", 20, 30, 0, true)  --head
+
+    inst.AnimState:SetSymbolMultColour("seashadow_spine", 1, 1, 1, 1)
+    inst.AnimState:SetSymbolAddColour("seashadow_spine", 169/255, 36/255, 30/255, 1)
+    --inst.AnimState:SetSymbolAddColour("seashadow_spine", 169/255, 36/255, 30/255, 1)
+    inst.AnimState:SetSymbolLightOverride("seashadow_bit", 0.1)
+    inst.Transform:SetScale(1.7,1.7,1.7)
+end    
+
+local function AbyssFn()
+    local inst = CreateCommon(AbyssCommongPostInit)
+
+    inst:AddTag("notaunt")
+    inst:AddTag("shadowthrall")
+    inst:AddTag("abysscreature")
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst.dread = true
+
+    inst.canwave = true
+
+    inst:AddComponent("planarentity")
+
+    inst:AddComponent("planardamage")
+	inst.components.planardamage:SetBaseDamage(30)
+
+    inst.components.health:SetMaxHealth(2000)
+    --inst.components.combat:SetRange(12,5)
+    inst.components.combat:SetAreaDamage(5, 1)
+    inst.components.combat:SetDefaultDamage(100)
+    inst.components.combat.onhitotherfn = StealLife2
+
+    inst.components.combat:SetRetargetFunction(1.5,retargetfn2)
+    
+    inst.components.locomotor.walkspeed = 8
+
+    local loots={}
+    for i=1,8 do
+        loots[i]="horrorfuel"
+    end
+    inst.components.lootdropper:SetLoot(loots)
+
+    inst:SetBrain(brain2)
+    --inst:ListenForEvent("onhitother", StealLife2)
+    return inst
+end
+
+return Prefab("shadowdragon",RegularFn,assets,prefabs),
+    Prefab("dreaddragon",AbyssFn,assets,prefabs),
 RuinsRespawner.Inst("shadowdragon"), RuinsRespawner.WorldGen("shadowdragon")

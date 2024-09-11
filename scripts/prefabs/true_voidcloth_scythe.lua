@@ -1,16 +1,15 @@
 local assets =
 {
-    Asset("ANIM", "anim/scythe_voidcloth.zip"),
+    Asset("ANIM", "anim/true_scythe_voidcloth.zip"),
 }
 
 local prefabs =
 {
-    "voidcloth_scythe_fx",
+    "true_voidcloth_scythe_fx",
     "hitsparks_fx",
-
     "voidcloth_scythe_classified",
 }
-
+local VOIDCLOTH_SCYTHE_DAMAGE = 51
 local function AttachClassified(inst, classified)
     inst._classified = classified
     inst.ondetachclassified = function() inst:DetachClassified() end
@@ -56,14 +55,14 @@ local function SetBuffEnabled(inst, enabled)
 		if not inst._bonusenabled then
 			inst._bonusenabled = true
 			if inst.components.weapon ~= nil then
-				inst.components.weapon:SetDamage(TUNING.VOIDCLOTH_SCYTHE_DAMAGE * TUNING.WEAPONS_VOIDCLOTH_SETBONUS_DAMAGE_MULT)
+				inst.components.weapon:SetDamage(VOIDCLOTH_SCYTHE_DAMAGE * TUNING.WEAPONS_VOIDCLOTH_SETBONUS_DAMAGE_MULT)
 			end
-			inst.components.planardamage:AddBonus(inst, 20, "setbonus")
+			inst.components.planardamage:AddBonus(inst, 10, "setbonus")
 		end
 	elseif inst._bonusenabled then
 		inst._bonusenabled = nil
 		if inst.components.weapon ~= nil then
-			inst.components.weapon:SetDamage(TUNING.VOIDCLOTH_SCYTHE_DAMAGE)
+			inst.components.weapon:SetDamage(VOIDCLOTH_SCYTHE_DAMAGE)
 		end
 		inst.components.planardamage:RemoveBonus(inst, "setbonus")
 	end
@@ -168,23 +167,24 @@ local function ToggleTalking(inst, turnon, owner)
     end
 end
 
-local function  DoAOEAttack(attacker,data)
-    local weapon = data.weapon
+local function  DoAOEAttack(attacker,weapon)
+
     if weapon==nil then return end
     local doer_pos = attacker:GetPosition()
     local x, y, z = doer_pos:Get()
     local doer_rotation = attacker.Transform:GetRotation()
     local doer_combat = attacker.components.combat
 
-    local fx = SpawnPrefab("scythe_fx")
+    local fx = SpawnPrefab("scythe_shadow_fx")
     fx.entity:SetParent(attacker.entity)
-    fx.Follower:FollowSymbol(attacker.GUID, "swap_object", nil,nil,nil,true)
+    fx.Follower:FollowSymbol(attacker.GUID, "swap_object",0,0,0,true,nil,1,7)
     --fx.components.highlightchild:SetOwner(owner)
-    local ents = TheSim:FindEntities(x, y, z, 10, {"_combat"}, { "INLIMBO", "invisible", "player", "wall" })
+    local ents = TheSim:FindEntities(x, y, z, 7, {"_combat"}, { "INLIMBO", "invisible", "player", "wall" })
     for _, ent in pairs(ents) do
-        if ent:IsValid() and ent.components.health ~= nil and not ent.components.health:IsDead() then
+        if ent:IsValid() and ent.components.health ~= nil and not ent.components.health:IsDead() 
+            and doer_combat:CanTarget(ent) and not doer_combat:IsAlly(ent)  then
             if weapon:IsEntityInFront(ent, doer_rotation, doer_pos) then
-                local dmg, spdmg =doer_combat :CalcDamage(ent, weapon,2.5)
+                local dmg, spdmg = doer_combat :CalcDamage(ent, weapon)
                 ent.components.combat:GetAttacked(attacker, dmg, weapon, nil, spdmg)
                 local fx = SpawnPrefab("wanda_attack_pocketwatch_old_fx")
 
@@ -198,34 +198,25 @@ local function  DoAOEAttack(attacker,data)
 end
 
 local function OnEquip(inst, owner)
-    local skin_build = inst:GetSkinBuild()
-    if skin_build ~= nil then
-        owner:PushEvent("equipskinneditem", inst:GetSkinName())
-        owner.AnimState:OverrideItemSkinSymbol("swap_object", skin_build, "swap_scythe", inst.GUID, "scythe_voidcloth")
-    else
-        owner.AnimState:OverrideSymbol("swap_object", "scythe_voidcloth", "swap_scythe")
-    end
+    owner.AnimState:ClearOverrideSymbol("swap_object")
     owner.AnimState:Show("ARM_carry")
     owner.AnimState:Hide("ARM_normal")
     SetFxOwner(inst, owner)
 	SetBuffOwner(inst, owner)
 
     inst:ToggleTalking(true, owner)
-    inst:ListenForEvent("onattackother",DoAOEAttack,owner)
+    --inst:ListenForEvent("onattackother",function(owner) DoAOEAttack(owner,inst) end,owner)
 end
 
 local function OnUnequip(inst, owner)
     owner.AnimState:Hide("ARM_carry")
     owner.AnimState:Show("ARM_normal")
-    local skin_build = inst:GetSkinBuild()
-    if skin_build ~= nil then
-        owner:PushEvent("unequipskinneditem", inst:GetSkinName())
-    end
+ 
     SetFxOwner(inst, nil)
 	SetBuffOwner(inst, nil)
 
     inst:ToggleTalking(false, owner)
-    inst:RemoveEventCallback("onattackother",DoAOEAttack,owner)
+    --inst:RemoveEventCallback("onattackother",function(owner) DoAOEAttack(owner,inst) end,owner)
 end
 
 local function HarvestPickable(inst, ent, doer)
@@ -277,8 +268,9 @@ end
 
 local function OnAttack(inst, attacker, target)
     if attacker.components.health ~= nil and attacker.components.health:GetPercent() < 1 and not (target:HasTag("wall") or target:HasTag("engineering")) then
-        attacker.components.health:DoDelta(8)
+        attacker.components.health:DoDelta(6)
     end
+    DoAOEAttack(attacker,inst)
 end
 
 local function SetupComponents(inst)
@@ -289,8 +281,8 @@ local function SetupComponents(inst)
 	inst.components.equippable:SetOnUnequip(OnUnequip)
 
 	inst:AddComponent("weapon")
-    inst.components.weapon:SetRange(5)
-	inst.components.weapon:SetDamage(inst._bonusenabled and TUNING.VOIDCLOTH_SCYTHE_DAMAGE * TUNING.WEAPONS_VOIDCLOTH_SETBONUS_DAMAGE_MULT or TUNING.VOIDCLOTH_SCYTHE_DAMAGE)
+    inst.components.weapon:SetRange(4)
+	inst.components.weapon:SetDamage(inst._bonusenabled and VOIDCLOTH_SCYTHE_DAMAGE * TUNING.WEAPONS_VOIDCLOTH_SETBONUS_DAMAGE_MULT or VOIDCLOTH_SCYTHE_DAMAGE)
 	inst.components.weapon:SetOnAttack(OnAttack)
 
 	inst:AddComponent("tool")
@@ -367,8 +359,8 @@ local function ScytheFn()
 
     MakeInventoryPhysics(inst)
 
-    inst.AnimState:SetBank("scythe_voidcloth")
-    inst.AnimState:SetBuild("scythe_voidcloth")
+    inst.AnimState:SetBank("true_scythe_voidcloth")
+    inst.AnimState:SetBuild("true_scythe_voidcloth")
     inst.AnimState:PlayAnimation("idle", true)
 
     inst.AttachClassified = AttachClassified
@@ -390,7 +382,7 @@ local function ScytheFn()
     inst:AddTag("scythe_attack")
 
 	inst:AddComponent("floater")
-	inst.isbroken = net_bool(inst.GUID, "voidcloth_scythe.isbroken", "isbrokendirty")
+	inst.isbroken = net_bool(inst.GUID, "true_voidcloth_scythe.isbroken", "isbrokendirty")
 	SetIsBroken(inst, false)
 
     local talker = inst:AddComponent("talker")
@@ -434,25 +426,27 @@ local function ScytheFn()
     inst.AnimState:SetFrame(frame)
     --V2C: one networked fx for frame 3 (needed for floating)
     --     all other frames will be spawned locally client-side by this fx
-    inst.fx = SpawnPrefab("voidcloth_scythe_fx")
+    inst.fx = SpawnPrefab("true_voidcloth_scythe_fx")
     inst.fx.AnimState:SetFrame(frame)
+
+
     SetFxOwner(inst, nil)
     inst:ListenForEvent("floater_stopfloating", OnStopFloating)
 
     inst:AddComponent("inspectable")
     inst:AddComponent("inventoryitem")
-    inst.components.inventoryitem.imagename = "voidcloth_scythe"
+
 
     local finiteuses = inst:AddComponent("finiteuses")
-    finiteuses:SetMaxUses(300)
-    finiteuses:SetUses(300)
+    finiteuses:SetMaxUses(TUNING.TRUE_WEAPON_USES)
+    finiteuses:SetUses(TUNING.TRUE_WEAPON_USES)
     finiteuses:SetConsumption(ACTIONS.SCYTHE, 1)
 
     local planardamage = inst:AddComponent("planardamage")
-    planardamage:SetBaseDamage(30)
+    planardamage:SetBaseDamage(25)
 
     local damagetypebonus = inst:AddComponent("damagetypebonus")
-    damagetypebonus:AddBonus("lunar_aligned", inst, 1.2)
+    damagetypebonus:AddBonus("lunar_aligned", inst, 1.1)
 
 	SetupComponents(inst)
 
@@ -471,29 +465,29 @@ local function ScytheFn()
     return inst
 end
 
-local fxassets ={Asset("ANIM","anim/scythe_fx.zip")}
+
 
 local function fxfn()
     local inst = CreateEntity()
     inst.entity:AddTransform()
-    inst.entity:AddAnimState()
     inst.entity:AddNetwork()
+    inst.entity:AddAnimState()
     inst.entity:AddFollower()
 
     inst:AddTag("FX")
 
-    inst.AnimState:SetBank("scythe_fx")
-    inst.AnimState:SetBuild("scythe_fx")
-    --inst.AnimState:SetScale(2,2,2)
+    inst.AnimState:SetBank("true_scythe_voidcloth")
+    inst.AnimState:SetBuild("true_scythe_voidcloth")
+   --inst.AnimState:SetAddColour(220/255,20/255,60/255,1)
+    --inst.AnimState:SetSymbolBloom("scythe_base")
+    --inst.AnimState:SetLightOverride(0.1)
     
-    inst.AnimState:PlayAnimation("idle")
+    inst.AnimState:PlayAnimation("scythe_shadow")
     --inst:AddComponent("highlightchild")
 
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
-		inst:ListenForEvent("isbrokendirty", OnIsBrokenDirty)
-
         return inst
     end
     
@@ -503,7 +497,118 @@ local function fxfn()
     return inst
 end
 
+local FX_DEFS =
+{
+    { anim = "swap_loop_1", frame_begin = 0, frame_end = 2 },
+    --{ anim = "swap_loop_3", frame_begin = 2 },
+    { anim = "swap_loop_6", frame_begin = 5 },
+    { anim = "swap_loop_7", frame_begin = 6 },
+    { anim = "swap_loop_8", frame_begin = 7 },
+}
 
+local function CreateFxFollowFrame()
+    local inst = CreateEntity()
+
+    --[[Non-networked entity]]
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddFollower()
+
+    inst:AddTag("FX")
+
+    inst.AnimState:SetBank("true_scythe_voidcloth")
+    inst.AnimState:SetBuild("true_scythe_voidcloth")
+
+    inst:AddComponent("highlightchild")
+
+    inst.persists = false
+
+    return inst
+end
+
+local function FxRemoveAll(inst)
+    for i = 1, #inst.fx do
+        inst.fx[i]:Remove()
+        inst.fx[i] = nil
+    end
+end
+
+local function FxColourChanged(inst, r, g, b, a)
+	for i = 1, #inst.fx do
+		inst.fx[i].AnimState:SetAddColour(r, g, b, a)
+	end
+end
+
+local function FxOnEquipToggle(inst)
+    local owner = inst.equiptoggle:value() and inst.entity:GetParent() or nil
+    if owner ~= nil then
+        if inst.fx == nil then
+            inst.fx = {}
+        end
+        local frame = inst.AnimState:GetCurrentAnimationFrame()
+        for i, v in ipairs(FX_DEFS) do
+            local fx = inst.fx[i]
+            if fx == nil then
+                fx = CreateFxFollowFrame()
+                fx.AnimState:PlayAnimation(v.anim, true)
+                inst.fx[i] = fx
+            end
+            fx.entity:SetParent(owner.entity)
+            fx.Follower:FollowSymbol(owner.GUID, "swap_object", nil, nil, nil, true, nil, v.frame_begin, v.frame_end)
+            fx.AnimState:SetFrame(frame)
+            fx.components.highlightchild:SetOwner(owner)
+        end
+        inst.components.colouraddersync:SetColourChangedFn(FxColourChanged)
+        inst.OnRemoveEntity = FxRemoveAll
+    elseif inst.OnRemoveEntity ~= nil then
+        inst.OnRemoveEntity = nil
+		inst.components.colouraddersync:SetColourChangedFn(nil)
+        FxRemoveAll(inst)
+    end
+end
+
+local function FxToggleEquipped(inst, equipped)
+    if equipped ~= inst.equiptoggle:value() then
+        inst.equiptoggle:set(equipped)
+        --Dedicated server does not need to spawn the local fx
+        if not TheNet:IsDedicated() then
+            FxOnEquipToggle(inst)
+        end
+    end
+end
+
+local function FollowSymbolFxFn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddFollower()
+    inst.entity:AddNetwork()
+
+    inst:AddTag("FX")
+
+    inst.AnimState:SetBank("true_scythe_voidcloth")
+    inst.AnimState:SetBuild("true_scythe_voidcloth")
+    inst.AnimState:PlayAnimation("swap_loop_3", true) --frame 3 is used for floating
+
+    inst:AddComponent("highlightchild")
+	inst:AddComponent("colouraddersync")
+
+    inst.equiptoggle = net_bool(inst.GUID, "true_voidcloth_scythe_fx.equiptoggle", "equiptoggledirty")
+
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        inst:ListenForEvent("equiptoggledirty", FxOnEquipToggle)
+        return inst
+    end
+
+    inst.ToggleEquipped = FxToggleEquipped
+    inst.persists = false
+
+    return inst
+end
 
 return  Prefab("true_voidcloth_scythe",    ScytheFn,  assets, prefabs),
-    Prefab("scythe_fx",     fxfn,    fxassets)
+    Prefab("scythe_shadow_fx",     fxfn,    assets),
+    Prefab("true_voidcloth_scythe_fx", FollowSymbolFxFn, assets)

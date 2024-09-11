@@ -21,6 +21,21 @@ local function extinguish(inst)
     end
 end
 
+local function CreateTerraformBlocker(parent)
+    local inst = CreateEntity()
+
+    inst:AddTag("FX")
+    --[[Non-networked entity]]
+    inst.entity:SetCanSleep(false)
+    inst.persists = false
+
+    inst.entity:AddTransform()
+
+    inst:SetTerraformExtraSpacing(16)
+
+    inst.entity:SetParent(parent.entity)
+end
+
 local function fn()
 	local inst = CreateEntity()
 	inst.entity:AddTransform()
@@ -32,7 +47,11 @@ local function fn()
     inst.AnimState:SetBuild("maxwell_torch")
     inst.AnimState:PlayAnimation("idle")
     
-    MakePondPhysics(inst, 0.2)
+    --MakePondPhysics(inst, 0.4)
+
+    CreateTerraformBlocker(inst)
+
+    inst:AddTag("irreplaceable")
 
     inst.entity:SetPristine()
 
@@ -44,16 +63,16 @@ local function fn()
     -----------------------
     inst:AddComponent("burnable")
     inst.components.burnable:SetFXLevel(3)
-    inst.components.burnable:AddBurnFX("campfirefire", Vector3(0,0,0), "fire_marker")
+    inst.components.burnable:AddBurnFX("nightlight_flame", Vector3(0,0,0), "fire_marker")
     inst.components.burnable.canlight = false
 
 
     inst:AddComponent("playerprox")
-    inst.components.playerprox:SetDist(10, 20 )
+    inst.components.playerprox:SetDist(12,26)
     inst.components.playerprox:SetOnPlayerNear(onnear)
     inst.components.playerprox:SetOnPlayerFar(extinguish)
     
-
+    inst:AddComponent("inspectable")
 
     return inst
 end

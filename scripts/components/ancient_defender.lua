@@ -20,7 +20,7 @@ local NON_INSANITY_MODE_DESPAWN_VARIANCE = 0.1
 
 --Public
 self.inst = inst
-self.defender_count =0
+
 --Private
 
 local _players = {}
@@ -68,8 +68,8 @@ local function StartTracking(player, params, ent)
 end
 
 
-local function SpawnLandShadowCreature(player)
-    return SpawnPrefab("shadowdragon")
+local function SpawnLandShadowCreature(player,abyss)
+    return SpawnPrefab(abyss and "dreaddragon" or "shadowdragon")
 end
 
 
@@ -77,12 +77,12 @@ function self:SpawnShadowCreature(player, params)
     params = params or _players[player]
 
     local x, y, z = player.Transform:GetWorldPosition()
-    local boat = player:GetCurrentPlatform()
+    --local boat = player:GetCurrentPlatform()
     if player.components.sanity:GetPercent() < .2  then
         local angle = math.random() * 2 * PI
         x = x + 10 * math.cos(angle)
         z = z - 10 * math.sin(angle)
-        local ent = SpawnLandShadowCreature(player)
+        local ent = SpawnLandShadowCreature(player,params.abyss)
         ent.Transform:SetPosition(x, 0, z)
         StartTracking(player, params, ent)
     end
@@ -139,10 +139,31 @@ end
     return node~=nil and node.tags~=nil and table.contains(node.tags, "Nightmare")
 end]]
 
+local function ShouldSpawn(params,tags)
+    if tags~=nil then
+        for k,v in pairs(tags) do
+            if v=="Abyss" then
+                params.abyss = true
+                return true   
+            elseif v=="Atrium" then
+                return false
+            elseif v=="Nightmare" then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+
+
 local function UpdatePopulation(player, params)
 	local is_insanity_mode = player.components.sanity:IsInsanityMode()
 
-    local canspawn= is_insanity_mode and not player.components.sanity.inducedinsanity and player.components.areaaware:CurrentlyInTag("Nightmare")
+    params.areadata = player.components.areaaware.current_area_data
+    local canspawn= is_insanity_mode and not player.components.sanity.inducedinsanity 
+    and params.areadata and ShouldSpawn(params,params.areadata.tags)
+   
     local maxpop = 0
     local inc_chance = 0
     local dec_chance = 0
@@ -171,7 +192,7 @@ local function UpdatePopulation(player, params)
             dec_chance = 0.4
         end
     elseif canspawn then
-        maxpop = 3
+        maxpop = 2
         if targetpop >= maxpop then
             dec_chance = 0
         elseif targetpop <= 0 then
@@ -200,13 +221,12 @@ local function UpdatePopulation(player, params)
         params.targetpop = targetpop
         StartSpawn(player, params)
     end
-
     --Reschedule population update
-    params.poptask = player:DoTaskInTime(30+10*math.random(), UpdatePopulation, params)
+    params.poptask = player:DoTaskInTime(30+20*math.random(), UpdatePopulation, params)
 end
 
 local function Start(player, params)
-    if params.poptask == nil and TUNING.NEW_CONSTANT_SHADOWDRAGON then
+    if params.poptask == nil then
         params.poptask = player:DoTaskInTime(0, UpdatePopulation, params)
     end
 end
@@ -253,13 +273,6 @@ local function OnPlayerLeft(inst, player)
 end
 
 
-function self:AllowSpawn()
-    if self.defender_count<=1 then
-        self.defender_count=self.defender_count+1
-        return true
-    end
-    return false
-end
 --------------------------------------------------------------------------
 --[[ Initialization ]]
 --------------------------------------------------------------------------
@@ -287,16 +300,8 @@ function self:GetDebugString()
     end
 end
 
-function self:OnSave()
-    return
-    {
-        defender_count = self.defender_count,
-    }
-end
 
-function self:OnLoad(data)
-    self.defender_count = data.defender_count or 0
-end
+
 --------------------------------------------------------------------------
 --[[ End ]]
 --------------------------------------------------------------------------

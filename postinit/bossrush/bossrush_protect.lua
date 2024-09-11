@@ -1,9 +1,12 @@
+local function DelayedMarkTalker(player)
+	-- if the player starts moving right away then we can skip this
+	if player.sg == nil or player.sg:HasStateTag("idle") then 
+		player.components.talker:Say(GetString(player, "ANNOUNCE_POCKETWATCH_MARK"))
+	end 
+end
 local function Recall_DoCastSpell(inst, doer, target, pos)
 	local recallmark = inst.components.recallmark
 
-    if TheWorld.components.voidland_manager~=nil and TheWorld.components.voidland_manager.bossrush_on then
-        return false, "SHARD_UNAVAILABLE"
-    end
 
 	if recallmark:IsMarked() then
 		if Shard_IsWorldAvailable(recallmark.recall_worldid) then
@@ -16,6 +19,9 @@ local function Recall_DoCastSpell(inst, doer, target, pos)
 		end
 	else
 		local x, y, z = doer.Transform:GetWorldPosition()
+		if doer.components.areaaware:CurrentlyInTag("Abyss") then
+			return false, "SHARD_UNAVAILABLE"
+		end
 		inst.components.recallmark:MarkPosition(x, y, z)
 		inst.SoundEmitter:PlaySound("wanda2/characters/wanda/watch/MarkPosition")
 
@@ -28,3 +34,5 @@ AddPrefabPostInit("pocketwatch_recall",function (inst)
     if not TheWorld.ismastersim then return end
     inst.components.pocketwatch.DoCastSpell = Recall_DoCastSpell
 end)
+
+

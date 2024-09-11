@@ -1,6 +1,3 @@
-TUNING.BLUEAMULET_FUEL=TUNING.TOTAL_DAY_TIME
-
-
 local function onequip_blue(inst, owner)
     owner.AnimState:OverrideSymbol("swap_body", "torso_amulets", "blueamulet")
 

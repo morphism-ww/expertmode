@@ -1,12 +1,3 @@
-TUNING.ARMOR_LUNARPLANT_REFLECT_PLANAR_DMG_VS_SHADOW=42.5
-TUNING.ARMOR_LUNARPLANT_REFLECT_PLANAR_DMG=22.6
-TUNING.ARMOR_LUNARPLANT = 1785
-TUNING.ARMOR_LUNARPLANT_ABSORPTION=0.85
-TUNING.ARMOR_VOIDCLOTH = 1785
-TUNING.ARMOR_VOIDCLOTH_HAT=1260
-TUNING.ARMOR_LUNARPLANT_HAT=1260
-
-
 local function DoRegen(inst, owner)
 	local fx = SpawnPrefab("ghostlyelixir_shield_fx")
 	fx.entity:SetParent(owner.entity)
@@ -70,38 +61,40 @@ AddPrefabPostInit("armor_lunarplant",function(inst)
 
 end)
 
+AddPrefabPostInit("armor_lunarplant_husk",function(inst)
+    if not TheWorld.ismastersim then return end
+
+	inst:ListenForEvent("equipped",onequip_2)
+    inst:ListenForEvent("unequipped",onunequip_2)
+
+	inst.procfn = function(owner) OnBlocked(inst, owner) end
+
+end)
+
+
 ----------------------------------------------------------------------
 
-TUNING.ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_MAX = 64
-TUNING.ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_MAX_HITS = 6
-TUNING.ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_DECAY_TIME = 5
+
 
 
 local function OnEnabledSetBonus2(inst)
+	
 	inst.components.damagetyperesist:AddResist("shadow_aligned", inst, TUNING.ARMOR_VOIDCLOTH_SETBONUS_SHADOW_RESIST, "setbonus")
 	inst.components.equippable.walkspeedmult = 1.3
 	inst.components.armor:SetAbsorption(0.85)
 end
 
 local function OnDisabledSetBonus2(inst)
+	
 	inst.components.damagetyperesist:RemoveResist("shadow_aligned", inst, "setbonus")
 	inst.components.equippable.walkspeedmult = 1.2
 	inst.components.armor:SetAbsorption(0.8)
 end
 
-local function onequip_void(inst,data)
-	if data.owner~=nil then
-		data.owner:AddTag("playercharge")
-	end
-end
 
-local function onunequip_void(inst,data)
-	if data.owner~=nil then
-		data.owner:RemoveTag("playercharge")
-	end		
-end
 
 AddPrefabPostInit("armor_voidcloth",function(inst)
+	
     if not TheWorld.ismastersim then return end
 
 	
@@ -109,7 +102,26 @@ AddPrefabPostInit("armor_voidcloth",function(inst)
 	inst.components.setbonus:SetOnDisabledFn(OnDisabledSetBonus2)
 
 	inst.components.equippable.walkspeedmult = 1.2
+end)
 
-	inst:ListenForEvent("equipped",onequip_void)
-    inst:ListenForEvent("unequipped",onunequip_void)
+local function OnEnabledSetBonus3(inst)
+	inst:AddTag("shadowdodge")
+	inst.components.damagetyperesist:AddResist("shadow_aligned", inst, TUNING.ARMOR_VOIDCLOTH_SETBONUS_SHADOW_RESIST, "setbonus")
+
+end
+
+local function OnDisabledSetBonus3(inst)
+	inst:RemoveTag("shadowdodge")
+	inst.components.damagetyperesist:RemoveResist("shadow_aligned", inst, "setbonus")
+end
+
+AddPrefabPostInit("voidclothhat",function(inst)
+	
+    if not TheWorld.ismastersim then return end
+
+	
+	inst.components.setbonus:SetOnEnabledFn(OnEnabledSetBonus3)
+	inst.components.setbonus:SetOnDisabledFn(OnDisabledSetBonus3)
+
+	
 end)

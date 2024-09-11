@@ -8,22 +8,36 @@ local function OnStartTeleporting(inst, doer)
             doer.components.sanity:DoDelta(-20)
         end
     end
+    inst.components.stackable:Get():Remove()
 end    
+
+
+
+
 AddPrefabPostInit("townportaltalisman",function(inst)
-    inst:AddTag("action_pulls_up_map")
+    --inst:AddTag("action_pulls_up_map")
     if not TheWorld.ismastersim then
         return inst
     end
 
     inst.components.teleporter.onActivate = OnStartTeleporting
-
+    
+end)
+local function CreateHiddenGlobalIcon(inst)
+    if inst.icon ~= nil then
+        inst.icon:AddTag("townportaltrackericon")
+    end
+end
+AddPrefabPostInit("townportal",function (inst)
+    if not TheWorld.ismastersim then
+        return inst
+    end
+    inst:DoTaskInTime(1, CreateHiddenGlobalIcon)
 end)
 --------------------------------------------------------------
 
-AddPrefabPostInit("townportal",function(inst)
-    inst.entity:SetCanSleep(false)
-end)
 
+if not GetModConfigData("antlion_trade") then return end
 
 local function AcceptGift(self,giver, item, count)
     if not self:AbleToAccept(item, giver, count) then

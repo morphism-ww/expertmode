@@ -1,13 +1,3 @@
-TUNING.EYEOFTERROR_MINGUARDS_PERSPAWN=4
-TUNING.EYEOFTERROR_AOE_DAMAGE= 200
-TUNING.EYEOFTERROR_AOERANGE = 4
-TUNING.EYEOFTERROR_CHARGESPEED=17
-TUNING.EYEOFTERROR_MOUTHCHARGECD=0.25*15
-TUNING.EYEOFTERROR_CHARGECD=0.5*7
-TUNING.EYEOFTERROR_SPAWNCD = 12
-TUNING.EYEOFTERROR_DAMAGE=180
-TUNING.EYEOFTERROR_MOUTH_MINGUARDS=8
------------------------------------------------------------------
 local function eyeofterror_should_crazy(inst, health_data)
     if health_data and health_data.newpercent < 0.35 then
         inst.crazy=true
@@ -17,15 +7,17 @@ end
 
 
 AddPrefabPostInit("eyeofterror",function(inst)
+
     if not TheWorld.ismastersim then return end
+
     inst._chargedata.mouthchargetimeout = 0.7
     inst.components.lootdropper:SetLoot({ "shieldofterror" })
 
     inst.components.sleeper:SetResistance(12)
 
-    inst.components.locomotor.walkspeed=9
-    inst:ListenForEvent("healthdelta", eyeofterror_should_crazy)
+    inst.components.locomotor.walkspeed = 9
 
+    inst:ListenForEvent("healthdelta", eyeofterror_should_crazy)
 end)
 
 --------------------------------------------------------------
@@ -49,6 +41,7 @@ local FX_TIME = 5*FRAMES
 local function get_rng_cooldown(cooldown)
     return GetRandomWithVariance(cooldown, cooldown/3)
 end
+
 AddStategraphState("eyeofterror",
 State {
         name = "crazycharge_loop",
@@ -275,6 +268,8 @@ local function TryFocusMiniEyesOnTarget(inst)
     return (num_soldiers >= TUNING.EYEOFTERROR_MINGUARDS_PERSPAWN and "focustarget")
         or false
 end
+
+
 AddBrainPostInit("eyeofterrorbrain",function(self)
     function self:ShouldUseSpecialMove()
     self._special_move = TrySpawnMiniEyes(self.inst)

@@ -7,8 +7,24 @@ local assets=
     Asset("ANIM", "anim/metal_head.zip"),
 }
 
+
+local prefabs = {
+    "gears",
+    "thulecite",
+    "cs_iron"
+}
+
+SetSharedLootTable("spider_robot",{
+    {"gears",            1.00},
+    {"gears",            0.50},
+    {"thulecite", 		 1.00},
+    {"thulecite", 		 0.50},
+    {"cs_iron",          1.00},
+})
+
+
 local RETARGET_MUST_TAGS = { "_combat" ,"_health"}
-local RETARGET_CANT_TAGS = { "INLIMBO" ,"chess"}
+local RETARGET_CANT_TAGS = { "INLIMBO" ,"chess","shadowthrall","shadow"}
 local RETARGET_ONEOF_TAGS = { "character", "monster" }
 
 local function Retarget(inst)
@@ -16,7 +32,7 @@ local function Retarget(inst)
     return not (homePos ~= nil and
     inst:GetDistanceSqToPoint(homePos:Get()) >= 900)
     and FindEntity(inst, 22, function(guy)
-            return inst.components.combat:CanTarget(guy) and not guy.components.health:IsDead()
+            return inst.components.combat:CanTarget(guy)
         end, RETARGET_MUST_TAGS,
             RETARGET_CANT_TAGS,
             RETARGET_ONEOF_TAGS
@@ -44,6 +60,7 @@ end
 
 local function revive(inst,data)
     if data~=nil and data.name=="revive" then
+        inst:RemoveEventCallback("timerdone",revive)
         inst.components.health:SetPercent(1)
         inst.sg:GoToState("activate")
     end
@@ -53,7 +70,7 @@ end
 local function Ondeath(inst)
     inst:ListenForEvent("timerdone",revive)
     if not inst.components.timer:TimerExists("revive") then
-        inst.components.timer:StartTimer("revive", 60)
+        inst.components.timer:StartTimer("revive", TUNING.TOTAL_DAY_TIME*10)
     end
 end
 
@@ -75,7 +92,7 @@ local function fn()
 
     inst.DynamicShadow:SetSize(6, 2)
 
-    MakeGiantCharacterPhysics(inst, 2000, 1)
+    MakeGiantCharacterPhysics(inst, 3000, 1)
 
 
     inst.AnimState:SetBank("metal_spider")
@@ -88,7 +105,7 @@ local function fn()
     inst.entity:AddLight()
 
     inst.Light:SetIntensity(.6)
-    inst.Light:SetRadius(5)
+    inst.Light:SetRadius(3)
     inst.Light:SetFalloff(3)
     inst.Light:SetColour(1, 0, 0)
     inst.Light:Enable(false)
@@ -96,6 +113,7 @@ local function fn()
     inst:AddTag("chess")
     inst:AddTag("hostile")
     inst:AddTag("mech")
+    inst:AddTag("shadow_aligned")
     inst:AddTag("laser_immune")
    
 
@@ -105,33 +123,33 @@ local function fn()
     end
 
     inst:AddComponent("health")
-    inst.components.health:SetMaxHealth(2500)
+    inst.components.health:SetMaxHealth(1500)
     inst.components.health.nofadeout = true
 
 
     inst:AddComponent("combat")
     inst.components.combat.hiteffectsymbol = "body01"
-    inst.components.combat:SetDefaultDamage(180)
-    inst.components.combat.playerdamagepercent = 0.5
+    inst.components.combat:SetDefaultDamage(300)
+    --inst.components.combat.playerdamagepercent = 0.5
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0.5, "ancient_armor")
-    --inst.components.combat:SetAttackPeriod(5)
+    inst.components.combat:SetAttackPeriod(5)
     inst.components.combat:SetRetargetFunction(2, Retarget)
     inst.components.combat:SetRange(9,12)
     inst.components.combat:SetKeepTargetFunction(KeepTarget)
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
     inst.components.locomotor.walkspeed = 3
-    inst.components.locomotor.runspeed = 3
+    inst.components.locomotor.runspeed = 4
 
     inst:AddComponent("lootdropper")
-    inst.components.lootdropper:SetLoot({"gears","thulecite"})
+    inst.components.lootdropper:SetChanceLootTable("spider_robot")
 
     inst:AddComponent("timer")
 
     inst:AddComponent("knownlocations")
 
-    inst:AddComponent("stuckdetection")
-	inst.components.stuckdetection:SetTimeToStuck(4)
+    --inst:AddComponent("stuckdetection")
+	--inst.components.stuckdetection:SetTimeToStuck(4)
 
     inst:SetBrain(brain)
     inst:SetStateGraph("SGspider_robot")
@@ -144,4 +162,4 @@ local function fn()
     return inst
 end
 
-return  Prefab("spider_robot",fn,assets)
+return  Prefab("spider_robot",fn,assets,prefabs)

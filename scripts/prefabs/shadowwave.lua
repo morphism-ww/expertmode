@@ -7,62 +7,52 @@ local SPLASH_WETNESS = 30
 
 local function DoSplash(inst)
     local pos = inst:GetPosition()
-    local players = FindPlayersInRange(pos.x, pos.y, pos.z, 4, true)
-    for i, v in ipairs(players) do
-        if v:IsValid() then
-            local moisture = v.components.moisture
-            if moisture ~= nil then
-                local waterproofness = moisture:GetWaterproofness()
-                moisture:DoDelta(SPLASH_WETNESS * (1 - waterproofness))
+    if not inst.hit then
+        local players = FindPlayersInRange(pos.x, pos.y, pos.z, 2, true)
+        if #players>0 then
+            inst.hit = true
+            inst.components.updatelooper:RemoveOnUpdateFn(DoSplash)
+            for i, v in ipairs(players) do
+                if v:IsValid() then
+                    local moisture = v.components.moisture
+                    if moisture ~= nil then
+                        local waterproofness = moisture:GetWaterproofness()
+                        moisture:DoDelta(SPLASH_WETNESS * (1 - waterproofness))
 
-                local entity_splash = SpawnPrefab("splash")
-                entity_splash.Transform:SetPosition(v:GetPosition():Get())
+                        local entity_splash = SpawnPrefab("splash")
+                        entity_splash.Transform:SetPosition(v:GetPosition():Get())
+                    end
+                    v:PushEvent("knockback", { knocker = inst, radius =1,strengthmult=1.5,propsmashed=true})
+                end
             end
-            v:PushEvent("knockback", { knocker = inst, radius =1,strengthmult=1.5,propsmashed=true})
         end
     end
-    inst.Physics:Stop()
-    inst.Physics:SetActive(false)
-    inst:DoTaskInTime(0.3,inst.Remove)
+    --inst:DoTaskInTime(0.3,inst.Remove)
 end
 
 local function DoSplash2(inst)
-    local wave_splash = SpawnPrefab("wave_splash")
     local pos = inst:GetPosition()
-    wave_splash.Transform:SetPosition(pos.x, pos.y, pos.z)
-    wave_splash.Transform:SetRotation(inst.Transform:GetRotation())
-    local players = FindPlayersInRange(pos.x, pos.y, pos.z, 4, true)
-    for i, v in ipairs(players) do
-        if v:IsValid() then
-            local moisture = v.components.moisture
-            if moisture ~= nil then
-                local waterproofness = moisture:GetWaterproofness()
-                moisture:DoDelta(50 - 40*waterproofness)
+    if not inst.hit then
+        local players = FindPlayersInRange(pos.x, pos.y, pos.z, 2.2, true)
+        if #players>0 then
+            inst.components.updatelooper:RemoveOnUpdateFn(DoSplash2)
+            inst.hit = true
 
-                local entity_splash = SpawnPrefab("splash")
-                entity_splash.Transform:SetPosition(v:GetPosition():Get())
+            for i, v in ipairs(players) do
+                local moisture = v.components.moisture
+                if moisture ~= nil then
+                    local waterproofness = moisture:GetWaterproofness()
+                    moisture:DoDelta(40 * (1 - 0.5*waterproofness))
+
+                    local entity_splash = SpawnPrefab("splash")
+                    entity_splash.Transform:SetPosition(v:GetPosition():Get())
+                end
+
+                v:PushEvent("knockback", { knocker = inst, radius =1,   strengthmult=2,   propsmashed=true})
             end
-            inst.components.thief:StealItem(v)
-            inst.components.thief:StealItem(v)
-            inst.components.combat:DoAttack(v)
-            v:PushEvent("knockback", { knocker = inst, radius = 1,strengthmult=2,propsmashed=true})
         end
     end
-    inst.Physics:ClearCollisionMask()
-    inst:DoTaskInTime(0.1,inst.Remove)
-end
-
-
-local function oncollidewave_shadow(inst, other)
-    if other and other:HasTag("player") then
-        DoSplash(inst)
-    end
-end
-
-local function oncollidewave_lunar(inst, other)
-    if other and other:HasTag("player") then
-        DoSplash2(inst)
-    end
+    --inst:DoTaskInTime(0.3,inst.Remove)
 end
 
 local function commonfn()
@@ -80,12 +70,22 @@ local function commonfn()
 
 
     local phys = inst.entity:AddPhysics()
-    phys:SetSphere(1.2)
-    phys:SetCollisionGroup(COLLISION.OBSTACLES)
-    phys:ClearCollisionMask()
-    phys:CollidesWith(COLLISION.CHARACTERS)
+    inst.Physics:SetFriction(0)
+    inst.Physics:SetDamping(0)
+    inst.Physics:SetRestitution(0)
+    inst.Physics:ClearCollisionMask()
+    inst.Physics:CollidesWith(COLLISION.GROUND)
+    inst.Physics:SetSphere(1.2)
     phys:SetCollides(false)
 
+	return inst
+end
+
+
+local function shadowfn()
+    local inst=commonfn()
+
+    inst.AnimState:SetMultColour(0,0,0,0.5)
 
     inst.entity:SetPristine()
 
@@ -95,40 +95,36 @@ local function commonfn()
 
     inst.persists = false
 
+    inst:AddComponent("updatelooper")
+    inst.components.updatelooper:AddOnUpdateFn(DoSplash)
 
-    inst.OnEntitySleep = inst.Remove
-
+    inst.checkhittask = inst:DoPeriodicTask(0.1, DoSplash)
     inst:DoTaskInTime(3,inst.Remove)
 
-	return inst
-end
 
 
-local function shadowfn()
-    local inst=commonfn()
-    inst.AnimState:SetMultColour(0,0,0,0.5)
-    if not TheWorld.ismastersim then
-        return inst
-    end
-    inst.Physics:SetCollisionCallback(oncollidewave_shadow)
     return inst
 end
 
 local function lunarfn()
     local inst=commonfn()
     inst.AnimState:SetMultColour(0,1,1,1)
-    inst.Transform:SetScale(1.4,1.4,1.4)
+    inst.Transform:SetScale(1.2,1.2,1.2)
     
+    inst.entity:SetPristine()
     if not TheWorld.ismastersim then
         return inst
     end
 
-    inst:AddComponent("combat")
-    inst.components.combat:SetDefaultDamage(100)
-    inst.components.combat:SetRange(5)
+    inst.persists = false
 
-    inst:AddComponent("thief")
-    inst.Physics:SetCollisionCallback(oncollidewave_lunar)
+    --inst:AddComponent("thief")
+
+    inst:AddComponent("updatelooper")
+    inst.components.updatelooper:AddOnUpdateFn(DoSplash2)
+
+    inst:DoTaskInTime(2.5,inst.Remove)
+
     return inst
 end
 

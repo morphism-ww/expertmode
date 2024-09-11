@@ -132,28 +132,29 @@ end
 
 local function fire_onhit(inst,owner,target)
     local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO" ,"FX" ,"player"})
+    local ents = TheSim:FindEntities(x, y, z, 5, {"_combat"}, { "INLIMBO" ,"FX" ,"player","wall"})
     for i, ent in ipairs(ents) do
-        if ent ~= owner then
-			ent.components.combat:GetAttacked(owner, 100, nil, nil,{["planar"] = 100})
-            ent:AddDebuff("constant_fire","constantfire_buff")
+        if ent ~= owner and ent:IsValid() and ent.components.health~=nil and not ent.components.health:IsDead() then
+			ent:AddDebuff("solar_fire","solar_fire")
+            ent.components.combat:GetAttacked(owner, 100, nil, nil,{["planar"] = 100})
         end
     end
     SpawnPrefab("bomb_lunarplant_explode_fx").Transform:SetPosition(x, y, z)
-    inst:DoTaskInTime(0.1,inst.Remove)
+    inst:Remove()
+    
 end
 
 local function cold_onhit(inst,owner,target)
     local health = target.components.health
-    if health~=nil and not health:IsDead() then
+    if target:IsValid() and health~=nil and not health:IsDead() then
         health:DoDelta(-0.02*health.maxhealth, nil, nil, nil, nil, true)
-        target.components.combat:GetAttacked(owner,0,nil,nil,{["planar"] = 500})
-        target:AddDebuff("constant_freeze","weak",{speed = 0.5,duration = 15})
+        target:AddDebuff("constant_freeze","weak",{duration = 15})
+        target.components.combat:GetAttacked(owner,0,nil,nil,{["planar"] = 200})
         if owner~=nil and owner.components.health~=nil and not owner.components.health:IsDead() then
             owner.components.health:DoDelta(10)
         end
     end
-    inst:DoTaskInTime(0.1,inst.Remove)
+    inst:Remove()
 end
 
 

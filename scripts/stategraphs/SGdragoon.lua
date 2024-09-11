@@ -9,25 +9,19 @@ end]]
 local actionhandlers =
 {
 	ActionHandler(ACTIONS.LAVASPIT, "spit"),
+	ActionHandler(ACTIONS.EAT, "eat"),
 }
 
 local events=
 {
-	EventHandler("attacked", 
-		function(inst)
-			if not inst.components.health:IsDead() and not inst.sg:HasStateTag("attack") then
-				inst.sg:GoToState("hit")
-			end
-		end),
-
-	EventHandler("death",
-		function(inst)
-			inst.sg:GoToState("death")
-		end),
-
+	CommonHandlers.OnDeath(),
+	CommonHandlers.OnSleep(),
+	CommonHandlers.OnFreeze(),
+    CommonHandlers.OnHop(),	
+	CommonHandlers.OnAttacked(3),
 	EventHandler("doattack",
 		function(inst, data)
-			if not inst.components.health:IsDead() and (inst.sg:HasStateTag("hit") or not inst.sg:HasStateTag("busy")) then
+			if not inst.components.health:IsDead() and not (inst.sg:HasStateTag("hit") or inst.sg:HasStateTag("busy")) then
 				inst.sg:GoToState("attack", data.target)
 			end
 		end),
@@ -51,10 +45,12 @@ local events=
 			end
 		end),
 
-	CommonHandlers.OnSleep(),
-	CommonHandlers.OnFreeze(),
-    CommonHandlers.OnHop(),		
+		
 }
+
+local function canshare(dude)
+	return dude:HasTag("dragoon")
+end
 
 local states=
 {
@@ -71,7 +67,6 @@ local states=
 			else
 				inst.AnimState:PlayAnimation("idle_loop", true)
 			end
-			inst.sg:SetTimeout(2*math.random()+.5)
 		end,
 
 	},
@@ -79,7 +74,7 @@ local states=
 	
 	State{
 		name = "attack",
-		tags = {"attack", "busy"},
+		tags = {"attack","busy"},
 
 		onenter = function(inst, target)
 			inst.sg.statemem.target = target
@@ -95,26 +90,20 @@ local states=
 			--.inst:ForceFacePoint(self.target:GetPosition())
 			
 			TimeEvent(8*FRAMES, function(inst) 
-				if inst.components.combat.target then 
-					inst:ForceFacePoint(inst.components.combat.target:GetPosition()) 
+				if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then 
+					inst:ForceFacePoint(inst.sg.statemem.target:GetPosition()) 
 				end 
 			end),
 
 			TimeEvent(15*FRAMES, function(inst)
 				local target=inst.sg.statemem.target
 				inst.components.combat:DoAttack(target)
-				inst:ForceFacePoint(target:GetPosition())
+				
 				inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/attack_strike")
 			end),
 
 			TimeEvent(20*FRAMES, function(inst) 
-				if inst.sg.statemem.target then
-					inst:ForceFacePoint(inst.sg.statemem.target:GetPosition())
-				end 
-			end),
-
-			TimeEvent(27*FRAMES, function(inst) 
-				if inst.sg.statemem.target then
+				if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then
 					inst:ForceFacePoint(inst.sg.statemem.target:GetPosition())
 				end 
 			end),
@@ -131,15 +120,17 @@ local states=
 		tags = {"busy"},
 
 		onenter = function(inst)
-			inst.Physics:Stop()
-			-- inst.components.combat:StartAttack()
-			inst.AnimState:PlayAnimation("atk")
+			inst.components.locomotor:StopMoving()
+			inst.AnimState:PlayAnimation("spit")
+			inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/hork")
 		end,
 
 		timeline=
 		{
-			TimeEvent(14*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/attack_strike") end),
-			TimeEvent(24*FRAMES, function(inst) if inst:PerformBufferedAction() then inst.components.combat:SetTarget(nil) end end),
+			TimeEvent(14*FRAMES, function(inst) 
+				inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/attack_strike") 
+			end),
+			TimeEvent(26*FRAMES, function(inst) inst:PerformBufferedAction() end),
 		},
 
 		events=
@@ -155,13 +146,8 @@ local states=
 		onenter = function(inst)
 			-- print("snake spit")
 			if ((inst.target ~= inst and not inst.target:HasTag("fire")) or inst.target == inst) and not (inst.recently_frozen) then
-				if inst.components.locomotor then
-					inst.components.locomotor:StopMoving()
-				end
+				inst.components.locomotor:StopMoving()
 				inst.AnimState:PlayAnimation("spit")
-				-- inst.vomitfx = SpawnPrefab("vomitfire_fx")
-				-- inst.vomitfx.Transform:SetPosition(inst.Transform:GetWorldPosition())
-				-- inst.vomitfx.Transform:SetRotation(inst.Transform:GetRotation())
 				inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/hork")
 			else
 				-- print("no spit")
@@ -170,27 +156,7 @@ local states=
 			end
 		end,
 
-		onexit = function(inst)
-			-- print("spit onexit")
-
-			if inst.last_target and inst.last_target ~= inst then
-				inst.num_targets_vomited = inst.last_target.components.stackable and inst.num_targets_vomited + inst.last_target.components.stackable:StackSize() or inst.num_targets_vomited + 1
-				inst.last_target_spit_time = GetTime()
-			end
-			--inst.Transform:SetFourFaced()
-			if inst.vomitfx then 
-				inst.vomitfx:Remove() 
-			end
-			inst.vomitfx = nil
-		end,
 		
-		events=
-		{
-			EventHandler("animqueueover", function(inst) 
-				-- print("spit animqueueover")
-				inst.sg:GoToState("idle")
-			end),
-		},
 
 		timeline=
 		{
@@ -211,6 +177,23 @@ local states=
 				inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/fireball")
 			end),
 		},
+
+		events=
+		{
+			EventHandler("animqueueover", function(inst) 
+				inst.sg:GoToState("idle")
+			end),
+		},
+
+		onexit = function(inst)
+
+
+			if inst.last_target and inst.last_target ~= inst then
+				inst.num_targets_vomited = inst.last_target.components.stackable and inst.num_targets_vomited + inst.last_target.components.stackable:StackSize() or inst.num_targets_vomited + 1
+				inst.last_target_spit_time = GetTime()
+			end
+
+		end,
 	},
 	
 	State{
@@ -219,7 +202,7 @@ local states=
 
 		onenter = function(inst)
 			inst.AnimState:PlayAnimation("hit")
-			inst.Physics:Stop()
+			inst.components.locomotor:StopMoving()
 			inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/hit")
 		end,
 
@@ -239,6 +222,14 @@ local states=
 			inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/taunt")
 		end,
 
+		timeline = {
+			TimeEvent(5*FRAMES,function (inst)
+				if inst.components.combat.target~=nil then
+					inst.components.combat:ShareTarget(inst.components.combat.target, 30, canshare, 8)
+				end
+				
+			end)
+		},
 
 		events=
 		{
@@ -331,11 +322,13 @@ local states=
 CommonStates.AddSleepStates(states,
 {
 	sleeptimeline = {
-		TimeEvent(30*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/sleep") end),
+		TimeEvent(30*FRAMES, function(inst) 
+			inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/sleep") 
+		end),
 	},
 })
 
 CommonStates.AddFrozenStates(states)
---CommonStates.AddHopStates(states, true, { pre = "walk_pre", loop = "walk_loop", pst = "walk_pst"})
+CommonStates.AddHopStates(states, true, { pre = "walk_pre", loop = "walk_loop", pst = "walk_pst"})
 
 return StateGraph("dragoon", states, events, "taunt", actionhandlers)

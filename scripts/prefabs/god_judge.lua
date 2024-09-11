@@ -43,7 +43,8 @@ local function fn()
 
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(100)
-    inst.components.weapon:SetRange(20, 20)
+    inst.components.weapon:SetRange(20)
+    
     inst:AddComponent("aoeweapon_leap")
     inst.components.aoeweapon_leap:SetDamage(100)
     inst.components.aoeweapon_leap:SetWorkActions()

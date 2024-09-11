@@ -21,9 +21,7 @@ local states=
         events=
         {
             EventHandler("animover", function(inst)
-                if inst.components.combat.target and inst.components.combat:TryAttack() then
-                    inst.sg:GoToState("attack")
-                else
+                if not(inst.components.combat.target and inst.components.combat:TryAttack()) then
                     inst.sg:GoToState("idle")
                 end
             end),
@@ -67,6 +65,12 @@ local states=
             inst:AddTag("NOCLICK")
             inst.persists = false
         end,
+        events =
+        {
+            EventHandler("animover", function(inst)
+                inst:Remove()
+            end),
+        },
     },
 
 }

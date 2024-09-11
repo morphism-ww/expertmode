@@ -104,6 +104,7 @@ local function fn()
 
     inst:AddTag("structure")
     inst:AddTag("wildfireprotected")
+    inst:AddTag("burnt")
     --inst:AddTag("lunarthrall_plant")
 
     inst.entity:SetPristine()
@@ -114,7 +115,7 @@ local function fn()
 
     -----------------------
     inst:AddComponent("burnable")
-    inst.components.burnable:AddBurnFX("lunarlight_flame", Vector3(0, 2, 0))
+    inst.components.burnable:AddBurnFX("lunarlight_flame", Vector3(0, 0, 0),"fire_marker")
     inst.components.burnable.canlight = false
 
     inst:ListenForEvent("onextinguish", onextinguish)
@@ -135,9 +136,8 @@ local function fn()
     inst:AddComponent("fueled")
     inst.components.fueled.maxfuel = TUNING.NIGHTLIGHT_FUEL_MAX
     inst.components.fueled.accepting = true
-    inst.components.fueled.rate=0.1
-    inst.components.fueled.bonusmult=5
-    inst.components.fueled.fueltype = "moon_pure"
+    inst.components.fueled.rate = 0.1
+    inst.components.fueled.fueltype = FUELTYPE.PURE
     inst.components.fueled:SetSections(4)
     inst.components.fueled:SetTakeFuelFn(ontakefuel)
     inst.components.fueled:SetUpdateFn(onupdatefueled)

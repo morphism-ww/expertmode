@@ -3,11 +3,13 @@ local assets =
     Asset("ANIM", "anim/poison_antidote.zip"),
 }
 
+local CAN_HEAL = {poison = true,poison_2 = true,exhaustion = true,food_sick = true}
+
 local function Resolve_poison(inst, target)
-    local debuffable=target.components.debuffable
+    local debuffable = target.components.debuffable
     if debuffable~=nil then
         for k, v in pairs(debuffable.debuffs) do
-            if inst.canheal[v.inst.prefab] then
+            if CAN_HEAL[v.inst.prefab] then
                 debuffable:RemoveDebuff(k)
             end
         end
@@ -39,7 +41,6 @@ local function fn()
     MakeSmallBurnable(inst, TUNING.TINY_BURNTIME)
 
     ---------------------
-    inst.canheal={poison=true,poison_2=true,exhaustion=true,food_sick=true}
 
     inst:AddComponent("inspectable")
 
