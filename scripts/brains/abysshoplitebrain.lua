@@ -23,7 +23,7 @@ function AbyssHopLiteBrain:OnStart()
 
     local root =  
         PriorityNode({
-            ChaseAndAttack(self.inst,MAX_CHASE_TIME, CHASE_GIVEUP_DIST),
+            ChaseAndAttack(self.inst,MAX_CHASE_TIME),
             Wander(self.inst, GetHome, WANDER_DIST),
 
         },0.5)

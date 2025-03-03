@@ -1,6 +1,6 @@
 local easing = require("easing")
 
-AddComponentPostInit("meteorshower", function(self)
+newcs_env.AddComponentPostInit("meteorshower", function(self)
     local function OnUpdate(inst, self)
         if inst:IsNearPlayer(30) then
             self:SpawnCrazyMeteor()

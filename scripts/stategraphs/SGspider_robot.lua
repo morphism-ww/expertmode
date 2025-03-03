@@ -34,13 +34,15 @@ local events=
                 end     
         end            
 	end),
-    EventHandler("death", function(inst) inst.sg:GoToState("death") end),
+    EventHandler("death", function(inst,data) 
+        inst.sg:GoToState("death")
+    end),
 }
 
 local function SpawnLaserHitOnly(inst, dist, scale, targets)
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local rot = inst.Transform:GetRotation() * DEGREES
-	local fx = SpawnPrefab("laserempty")
+	local fx = SpawnPrefab("deerclops_laserempty")
 	fx.caster = inst
 	fx.Transform:SetPosition(x + dist * math.cos(rot), 0, z - dist * math.sin(rot))
 
@@ -52,7 +54,7 @@ end
 local function SpawnLaser(inst, dist, angle_offset, scale, scorchscale, targets)
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local rot = (inst.Transform:GetRotation() + angle_offset) * DEGREES
-	local fx = SpawnPrefab("laser")
+	local fx = SpawnPrefab("deerclops_laser")
 	fx.caster = inst
 	fx.Transform:SetPosition(x + dist * math.cos(rot), 0, z - dist * math.sin(rot))
 
@@ -63,7 +65,7 @@ local function SpawnLaser(inst, dist, angle_offset, scale, scorchscale, targets)
 	local heavymult, mult =  scale, scale * 1.3
 
 	fx:Trigger(0, targets, nil, scorchscale < 0.2, animscale, scorchscale, hitscale, heavymult, mult, true)
-	return dist + 0.5
+	return dist + 0.6
 end
 
 local states=
@@ -96,7 +98,7 @@ local states=
             inst.SoundEmitter:SetParameter("gears", "intensity", .5)
 
         end,
-        timeline=
+        timeline =
         {
             FrameEvent(2, function(inst) 
                 inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/ribs/active")
@@ -144,7 +146,7 @@ local states=
         events=
         {
             EventHandler("animover", function(inst)
-                --inst:RestartBrain()
+                inst:RestartBrain()
                 inst.sg:GoToState("taunt") 
             end),
         },    
@@ -197,8 +199,8 @@ local states=
                 inst.sg.statemem.target = target
                 inst.sg.statemem.targetpos =target:GetPosition()
             end
-            inst.components.timer:StopTimer("laserbeam_cd")
-            inst.components.timer:StartTimer("laserbeam_cd", 5)
+            --inst.components.timer:StopTimer("laserbeam_cd")
+            --inst.components.timer:StartTimer("laserbeam_cd", 5)
         end,
         onupdate = function(inst)
             
@@ -294,7 +296,7 @@ local states=
             FrameEvent(30 , function(inst)
                 inst.sg.statemem.targets = { [inst] = true }
                 
-                SpawnPrefab("laserhit"):SetTarget(inst)
+                SpawnPrefab("deerclops_laserhit"):SetTarget(inst)
 				inst.sg.statemem.hit = true
 
 				SpawnLaserHitOnly(inst, 1.5, 2.5, inst.sg.statemem.targets)
@@ -393,7 +395,8 @@ local states=
             inst.AnimState:PlayAnimation("death")
             inst.Physics:Stop()
             --RemovePhysicsColliders(inst)
-            inst.components.lootdropper:DropLoot(inst:GetPosition())            
+            inst.components.lootdropper:DropLoot(inst:GetPosition())
+            ReplacePrefab(inst,"spider_robot_debris")
         end,
     },    
     

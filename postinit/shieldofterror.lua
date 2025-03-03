@@ -8,7 +8,7 @@ local function onunequip(inst,owner)
 	owner:RemoveTag("stun_immune")
 end
 
-AddPrefabPostInit("shieldofterror",function(inst)
+newcs_env.AddPrefabPostInit("shieldofterror",function(inst)
     inst:AddTag("heavyarmor")
 	if not TheWorld.ismastersim then
 		return inst

@@ -38,6 +38,9 @@ local function SetTarget(inst,target)
         if target~=nil and target:IsValid() then
             local x, y, z = inst.Transform:GetWorldPosition()
             local laser = SpawnPrefab("darkball_projectile")
+            
+            target.Physics:Stop()
+            
             laser.components.projectile:SetSpeed(40)
             laser.components.projectile:SetHoming(true)
             laser.Transform:SetPosition(x,y,z)

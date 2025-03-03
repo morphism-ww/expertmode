@@ -3,7 +3,7 @@ local function OnTimerDone(inst, data)
         inst.components.explosive:OnBurnt()
     end
 end
-AddPrefabPostInit("lavae", function(inst)
+newcs_env.AddPrefabPostInit("lavae", function(inst)
 	if not TheWorld.ismastersim then
 		return
 	end
@@ -11,11 +11,10 @@ AddPrefabPostInit("lavae", function(inst)
     inst.components.explosive.explosiverange = 8
     inst.components.explosive.explosivedamage = 20
     inst.components.explosive.buildingdamage=600
-    inst.components.explosive.notags={"dragonfly","lavae"}
     inst:ListenForEvent("timerdone", OnTimerDone)
 end)
 
-AddStategraphPostInit("lavae",function(sg)
+newcs_env.AddStategraphPostInit("lavae",function(sg)
     sg.states.thaw_break.onenter=function(inst)
         if inst.components.locomotor then
             inst.components.locomotor:StopMoving()
@@ -46,10 +45,17 @@ local function StartFireEra(inst)
     TheWorld:PushEvent("FireEra")
 end
 
-AddPrefabPostInit("dragonfly", function(inst)
+newcs_env.AddPrefabPostInit("dragonfly", function(inst)
     if not TheWorld.ismastersim then return end
+
+    inst:AddComponent("resistance")
+	inst.components.resistance:AddResistance("lavae")
+
+
     inst.components.freezable:SetResistance(8)
+
     inst:DoPeriodicTask(8,Dofire)
     inst:ListenForEvent("death", StartFireEra)
-    inst.components.groundpounder.noTags[5] = "lavae"
+
+    table.insert(inst.components.groundpounder.noTags, "lavae")
 end)

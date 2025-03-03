@@ -16,7 +16,11 @@ local function onunequip(inst, owner)
     owner.AnimState:Show("ARM_normal")
 end
 
-
+local function onattack(inst,attacker,target)
+    if target and target.components.health then
+        target.components.health:Kill()
+    end
+end
 
 local function fn()
     local inst = CreateEntity()
@@ -44,6 +48,7 @@ local function fn()
     inst:AddComponent("weapon")
     inst.components.weapon:SetDamage(100)
     inst.components.weapon:SetRange(20)
+    inst.components.weapon:SetOnAttack(onattack)
     
     inst:AddComponent("aoeweapon_leap")
     inst.components.aoeweapon_leap:SetDamage(100)

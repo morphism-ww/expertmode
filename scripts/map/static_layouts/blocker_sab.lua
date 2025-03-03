@@ -87,17 +87,6 @@ return {
       objects = {
         {
           name = "",
-          type = "iron_mine",
-          shape = "rectangle",
-          x = 256,
-          y = 480,
-          width = 0,
-          height = 0,
-          visible = true,
-          properties = {}
-        },
-        {
-          name = "",
           type = "insanityrock",
           shape = "rectangle",
           x = 208,
@@ -186,7 +175,7 @@ return {
         },
         {
           name = "",
-          type = "ruins_statue_head_spawner",
+          type = "shadow_forge",
           shape = "rectangle",
           x = 352,
           y = 608,
@@ -267,17 +256,6 @@ return {
           shape = "rectangle",
           x = 528,
           y = 528,
-          width = 0,
-          height = 0,
-          visible = true,
-          properties = {}
-        },
-        {
-          name = "",
-          type = "iron_mine",
-          shape = "rectangle",
-          x = 208,
-          y = 352,
           width = 0,
           height = 0,
           visible = true,

@@ -30,7 +30,7 @@ local function onunequip_2(inst,data)
     end
     
 end
-AddPrefabPostInit("alterguardianhat",function(inst)
+newcs_env.AddPrefabPostInit("alterguardianhat",function(inst)
     if not TheWorld.ismastersim then return end
 
     inst:ListenForEvent("equipped",onequip_2)
@@ -39,7 +39,7 @@ AddPrefabPostInit("alterguardianhat",function(inst)
     inst.components.equippable.dapperness = -TUNING.CRAZINESS_MED
 end)
 
-local FREEZE_CANT_TAGS = {"shadow", "companion", "player","INLIMBO", "flight", "invisible","campion"}
+local FREEZE_CANT_TAGS = {"shadow", "companion", "player","INLIMBO", "flight", "invisible"}
 local FREEZETARGET_ONEOF_TAGS = { "freezable","fire","smolder"}
 local function NewSpell(inst, target, position,doer)
     inst.water_spell(inst, target, position)
@@ -77,7 +77,7 @@ local function NewSpell(inst, target, position,doer)
     end
 end
 
-AddPrefabPostInit("trident",function (inst)
+newcs_env.AddPrefabPostInit("trident",function (inst)
     if not TheWorld.ismastersim then return end
     inst.components.spellcaster.canuseonpoint = true
 

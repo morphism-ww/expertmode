@@ -1,8 +1,14 @@
 AddRoomPreInit("Barracks",function (room)
-    room.contents.countprefabs=
+    --[[room.contents.countprefabs=
     {
         spider_robot= 1
-    }
+    }]]
+    --room.random_node_entrance_weight = 0
+    --room.internal_type = nil
+end)
+
+AddRoomPreInit("MilitaryMaze",function (room)
+    --room.internal_type = nil
 end)
 
 AddRoomPreInit("SacredBarracks",function (room)
@@ -67,27 +73,61 @@ AddRoomPreInit("BrokenAltar",function (room)
     }
 end)
 
---[[AddRoom("LabyrinthEntrance", {
-    colour={r=0.2,g=0.0,b=0.2,a=0.3},
-    value = WORLD_TILES.MUD,
-    tags = {"ForceConnected",  "LabyrinthEntrance", "Nightmare"},--"Labyrinth",
+
+AddRoom("BrokenAltar2", {
+    colour={r=.25,g=.28,b=.25,a=.50},
+    value = WORLD_TILES.BRICK,
+    tags = {"Nightmare"},
+    --internal_type = NODE_INTERNAL_CONNECTION_TYPE.EdgeCentroid,
+    contents =  {
+        countprefabs=
+        {
+            spider_robot= function() return math.random() < 0.25 and 2 or 1 end,
+        },
+        countstaticlayouts = {
+            ["AltarRoom_ab"] = 1,
+        },
+        distributepercent = 0.2,
+        distributeprefabs=
+        {
+            chessjunk_spawner = .3,
+
+            nightmarelight = 0.5,
+
+            shadoweyeturret2_spawner = 0.05,
+
+            rook_nightmare_spawner = .03,
+            bishop_nightmare_spawner = .03,
+            knight_nightmare_spawner = .03,
+            
+        }
+    }
+})
+
+AddRoom("SacredDanger2", {
+    colour={r=.25,g=.28,b=.25,a=.50},
+    value = WORLD_TILES.BRICK,
+    tags = {"Nightmare"},
+    internal_type = NODE_INTERNAL_CONNECTION_TYPE.EdgeCentroid,
     contents =  {
         countprefabs=
         {
             spider_robot= 1
         },
-        distributepercent = .2,
+        countstaticlayouts = {
+            ["SacredBarracks_ab"] = 1,
+        },
+        distributepercent = 0.1,
         distributeprefabs=
         {
-            lichen = .8,
-            cave_fern = 1,
-            pillar_algae = .05,
+            chessjunk_spawner = .3,
 
-            flower_cave = .2,
-            flower_cave_double = .1,
-            flower_cave_triple = .05,
-        },
+            scanner_spawn = 0.05,
+
+            ruins_statue_head_spawner = .15,
+            ruins_statue_mage_spawner =.15,
+            
+            shadowdragon_spawner = 0.05,
+        }
     }
-})]]
-
-
+})

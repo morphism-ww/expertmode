@@ -50,7 +50,7 @@ local function OnUpdateHitbox(inst)
 					end
 					if target_data.tick ~= tick then
 						target_data.tick = tick
-						v:AddDebuff("curse_fire", "curse_fire")
+						v:AddDebuff("buff_cursefire", "buff_cursefire")
 						--Hit
 						if (target_data.hit_tick == nil or target_data.hit_tick + MULTIHIT_FRAMES < tick) and inst.attacker.components.combat:CanTarget(v) then
 							target_data.hit_tick = tick
@@ -310,83 +310,6 @@ local function throwerfn()
 	return inst
 end
 
-local function buff_OnTick(inst,target)
-    if target~=nil and target.components.health~=nil and not target.components.health:IsDead() then
-        target.components.health:DoDelta(-2,true,"curse_fire")	
-    end
-end
-
-local function OnAttached(inst, target, followsymbol, followoffset)
-    inst.entity:SetParent(target.entity)
-	if target.isplayer then
-		inst.Follower:FollowSymbol(target.GUID, "torso", 0, 0, 0)
-	end
-    inst:ListenForEvent("death", function()
-        inst.components.debuff:Stop()
-    end, target)
-	inst.task = inst:DoPeriodicTask(0.5, buff_OnTick, nil, target)
-end
-
-local function OnExtended(inst, target,followsymbol, followoffset, data)
-
-    inst.components.timer:StopTimer("buffover")
-    inst.components.timer:StartTimer("buffover", 15)
-    
-end
-
-local function OnTimerDone(inst, data)
-    if data.name == "buffover" then
-        inst.components.debuff:Stop()
-    end
-end
-
-local function OnDetached(inst, target)
-	if inst.task~=nil then
-		inst.task:Cancel()
-		inst.task = nil
-	end
-	inst:Remove()
-end
-
-local function bufffn()
-    local inst = CreateEntity()
-
-    inst.entity:AddTransform()
-    inst.entity:AddFollower()
-    inst.entity:AddAnimState()
-    inst.entity:AddNetwork()
-
-    inst:AddTag("FX")
-    inst:AddTag("NOCLICK")
-
-    inst.AnimState:SetBank("warg_mutated_breath_fx")
-	inst.AnimState:SetBuild("warg_mutated_breath_fx")
-	inst.AnimState:PlayAnimation("flame1_loop", true)
-	inst.AnimState:SetBloomEffectHandle("shaders/anim.ksh")
-	inst.AnimState:SetFinalOffset(2)
-	inst.AnimState:SetLightOverride(0.1)
-
-	inst.AnimState:SetMultColour(173/255,1,47/255,0.8)
-
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
-    inst:AddComponent("debuff")
-    inst.components.debuff:SetAttachedFn(OnAttached)
-    inst.components.debuff:SetExtendedFn(OnExtended)
-    inst.components.debuff:SetDetachedFn(OnDetached)
-	
-    inst:AddComponent("timer")
-    inst.components.timer:StartTimer("buffover",15)
-    inst:ListenForEvent("timerdone", OnTimerDone)
-
-
-    return inst
-end
 
 local function SpawnBreathFX2(inst, dist, targets, updateangle)
 	if updateangle then
@@ -475,5 +398,4 @@ end
 
 return Prefab("twin_flame", flamefn, assets),
 	Prefab("twin_flamethrower_fx",throwerfn,nil,prefabs),
-	Prefab("curse_fire",bufffn,assets),
 	Prefab("huge_flame_thrower",alter_throwerfn)

@@ -58,7 +58,6 @@ function DragoonBrain:OnStart()
 	
 	local root = PriorityNode(
 	{
-
 		ChaseAndAttack(self.inst, DRAGOON_CHASE_TIME),
 
 		WhileNode(function() return ShouldSpitFn(self.inst) end, "Spit",
@@ -66,7 +65,7 @@ function DragoonBrain:OnStart()
 		AttackWall(self.inst),
 		DoAction(self.inst, EatFoodAction, "eat food", true),		
 		Wander(self.inst, nil, HOUSE_MAX_DIST),
-	}, .25)
+	}, .5)
 	
 	self.bt = BT(self.inst, root)
 	

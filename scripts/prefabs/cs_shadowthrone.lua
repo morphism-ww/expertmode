@@ -74,6 +74,7 @@ local function fn()
     --inst.Transform:SetFourFaced()
     inst:AddTag("notarget")
 	inst:AddTag("structure")
+    inst:AddTag("shadow")
 
     local blocker = CreateBlocker()
     blocker.entity:SetParent(inst.entity)

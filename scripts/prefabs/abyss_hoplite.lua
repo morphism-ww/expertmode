@@ -1,3 +1,4 @@
+local RuinsRespawner = require "prefabs/ruinsrespawner"
 local prefabs = {
     "dreadstone",
     "nightmarefuel",
@@ -7,8 +8,6 @@ local prefabs = {
 }
 
 local brain = require("brains/abysshoplitebrain")
-
-
 
 
 local function fullhelm_onequip(fname, owner)
@@ -195,7 +194,7 @@ local function EnterParry(inst)
     end
     inst.components.resistance:AddResistance("explosive")
     inst.components.locomotor.walkspeed = 4
-    inst.components.debuffable:Enable(false)
+    
 end
 
 local function ExitParry(inst)
@@ -203,8 +202,23 @@ local function ExitParry(inst)
     inst.components.resistance:RemoveResistance("explosive")
     inst.components.combat.redirectdamagefn = nil
     inst.components.locomotor.walkspeed = 7
-    inst.components.debuffable:Enable(true)
+    
 end
+
+local function OnAttacked(inst, data)
+	if data.attacker ~= nil then
+		local target = inst.components.combat.target
+		if not (target ~= nil and
+				target:HasTag("player") and
+				inst:IsNear(target, 3 + target:GetPhysicsRadius(0))) then
+			--
+			inst.components.combat:SetTarget(data.attacker)
+		end
+	end
+end
+
+
+
 
 local function fn()
     local inst = CreateEntity()
@@ -216,7 +230,7 @@ local function fn()
 
     inst.Transform:SetFourFaced()
 
-    MakeCharacterPhysics(inst, 50, 1.5)
+    MakeCharacterPhysics(inst, 50, .5)
     RemovePhysicsColliders(inst)
     inst.Physics:SetCollisionGroup(COLLISION.SANITY)
     inst.Physics:CollidesWith(COLLISION.SANITY)
@@ -233,6 +247,7 @@ local function fn()
 	inst:AddTag("scarytoprey")
 	inst:AddTag("shadowthrall")
 	inst:AddTag("shadow_aligned")
+    inst:AddTag("notaunt")
 
 
     inst.entity:SetPristine()
@@ -247,11 +262,11 @@ local function fn()
     inst:AddComponent("combat")
     inst.components.combat:SetDefaultDamage(TUNING.ABYSS_HOPLITE_DAMAGE)
 	inst.components.combat:SetAttackPeriod(2)
-    inst.components.combat:SetRange(TUNING.DEFAULT_ATTACK_RANGE)
+    inst.components.combat:SetRange(2.6)
 	inst.components.combat:SetRetargetFunction(2, RetargetFn)
 	inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
-    inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0.8, "dreadarmor")
     inst.components.combat.hiteffectsymbol = "torso"
+    inst:ListenForEvent("attacked", OnAttacked)
 
     inst:AddComponent("inspectable")
 
@@ -266,7 +281,7 @@ local function fn()
     inst:AddComponent("planarentity")
 
 	inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(30)
+	inst.components.planardamage:SetBaseDamage(35)
 
     inst:AddComponent("resistance")
 
@@ -279,9 +294,6 @@ local function fn()
 
     inst:AddComponent("knownlocations")
 
-    inst:AddComponent("debuffable")
-    
-
     inst:AddComponent("inventory")
     EquipWeapon(inst)
 
@@ -290,9 +302,12 @@ local function fn()
 
     inst.EnterParry = EnterParry
     inst.ExitParry = ExitParry
+    
+    MakeHitstunAndIgnoreTrueDamageEnt(inst)
 
-
+    
     return inst
 end
 
-return Prefab("abyss_hoplite",fn,nil,prefabs)
+return Prefab("abyss_hoplite",fn,nil,prefabs),
+RuinsRespawner.Inst("abyss_hoplite"), RuinsRespawner.WorldGen("abyss_hoplite")

@@ -4,14 +4,20 @@ local assets =
 }
 
 local RETARGET_MUST_TAGS = { "_combat"}
-local RETARGET_CANT_TAGS = { "minotaur","chess" }
-local RETARGET_ONEOF_TAGS = {"character","monster","animal"}
+local RETARGET_CANT_TAGS = { "minotaur","chess","INLIMBO","playerghost","notarget","noattack"}
+local RETARGET_ONEOF_TAGS = {"character","monster"}
 local function retargetfn(inst)
+    if inst.host then
+        local target = inst.host.components.combat.target
+        if target~=nil and target:IsValid() and target:IsNear(inst,10) then
+            return target, true
+        end
+    end
     return FindEntity(
         inst,
         20,
         function(guy)
-            return  guy.entity:IsVisible()
+            return guy.entity:IsVisible()
                 and guy.components.health~=nil
                 and not guy.components.health:IsDead()
         end,
@@ -19,25 +25,24 @@ local function retargetfn(inst)
 end
 
 local function shouldKeepTarget(inst, target)
-    return target ~= nil
-        and target:IsValid()
-        and target.components.health ~= nil
+    return target.components.health ~= nil
         and not target.components.health:IsDead()
         and target:IsNear(inst, 10)
 end
 
-local function OnHitOther(inst,target,damage, stimuli, weapon, damageresolved)
-    if damageresolved>0 and target.components.sanity~=nil then
+local function OnHitOther(inst,target)
+    if target.components.sanity~=nil then
         target.components.sanity:DoDelta(-8)
     end
 end
 
 
 local function sethost(inst,host,followsymbal)
-    inst.entity:SetParent(host.entity)
-    inst.entity:AddFollower():FollowSymbol(host.GUID, followsymbal, 0, 0, 0)
+    host:AddChild(inst)
+    inst.host = host
+    inst.Follower:FollowSymbol(host.GUID, followsymbal)
     inst:ListenForEvent("death",function ()
-        inst.sg:GoToState("death")
+        inst:PushEvent("death")
     end,host)
 end
 
@@ -48,9 +53,8 @@ local function MakeLeech(name,scale)
     
         inst.entity:AddTransform()
         inst.entity:AddAnimState()
-        inst.entity:AddSoundEmitter()
         inst.entity:AddNetwork()
-    
+        inst.entity:AddFollower()
         
         inst.AnimState:SetBank("oceanhorror")
         inst.AnimState:SetBuild("shadow_oceanhorror")
@@ -69,14 +73,12 @@ local function MakeLeech(name,scale)
         if not TheWorld.ismastersim then
             return inst
         end
-        
-        inst.persists = false
     
         inst:AddComponent("combat")
         inst.components.combat:SetRange(3*scale)
         inst.components.combat:SetDefaultDamage(50*scale)
         inst.components.combat:SetAttackPeriod(4)
-        inst.components.combat:SetRetargetFunction(0.5, retargetfn)
+        inst.components.combat:SetRetargetFunction(1, retargetfn)
         inst.components.combat:SetKeepTargetFunction(shouldKeepTarget)
         inst.components.combat.onhitotherfn = OnHitOther
     

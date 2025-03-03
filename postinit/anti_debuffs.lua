@@ -4,7 +4,7 @@ local function HealSpider(inst,target)
 	target:RemoveDebuff("spider_dead_poison")
 end
 
-AddPrefabPostInit("healingsalve", function(inst)
+newcs_env.AddPrefabPostInit("healingsalve", function(inst)
 	inst:AddTag("healerbuffs")
 	if not TheWorld.ismastersim then
 		return inst
@@ -18,7 +18,7 @@ local function HealBee(inst,target)
 	target:RemoveDebuff("beequeen_poison")
 end
 
-AddPrefabPostInit("bandage", function(inst)
+newcs_env.AddPrefabPostInit("bandage", function(inst)
 	inst:AddTag("healerbuffs")
 	if not TheWorld.ismastersim then
 		return inst
@@ -26,7 +26,7 @@ AddPrefabPostInit("bandage", function(inst)
 	inst.components.healer.onhealfn = HealBee
 end)
 
-AddPrefabPostInit("durian", function(inst)
+newcs_env.AddPrefabPostInit("durian", function(inst)
 	local function oneatenfn(inst,eater)
 		eater:RemoveDebuff("bee_poison")
 		eater:RemoveDebuff("spider_poison")
@@ -53,7 +53,7 @@ local function onunequip(inst,data)
 end
 
 
-AddPrefabPostInit("trunkvest_summer",function (inst)
+newcs_env.AddPrefabPostInit("trunkvest_summer",function (inst)
 	if not TheWorld.ismastersim then
 		return inst
 	end
@@ -64,7 +64,7 @@ AddPrefabPostInit("trunkvest_summer",function (inst)
     inst:ListenForEvent("unequipped",onunequip)
 end)
 
-AddPrefabPostInit("trunkvest_winter",function (inst)
+newcs_env.AddPrefabPostInit("trunkvest_winter",function (inst)
 	if not TheWorld.ismastersim then
 		return inst
 	end
@@ -75,7 +75,7 @@ AddPrefabPostInit("trunkvest_winter",function (inst)
     inst:ListenForEvent("unequipped",onunequip)
 end)
 
-AddPrefabPostInit("beargervest",function (inst)
+newcs_env.AddPrefabPostInit("beargervest",function (inst)
 	if not TheWorld.ismastersim then
 		return inst
 	end
@@ -87,7 +87,7 @@ AddPrefabPostInit("beargervest",function (inst)
 
 end)
 
-local DebuffList = {"bee_poison","spider_poison","vulnerable","weak"}
+local DebuffList = {"bee_poison","spider_poison","buff_vulnerable","buff_weak"}
 local function SleepRemoveDebuffs(inst,doer)
     for _,k in ipairs(DebuffList) do
         doer:RemoveDebuff(k)
@@ -95,7 +95,7 @@ local function SleepRemoveDebuffs(inst,doer)
 end
 
 for k,v in ipairs({"tent","siestahut","portabletent","bedroll_furry"}) do
-	AddPrefabPostInit(v,function (inst)
+	newcs_env.AddPrefabPostInit(v,function (inst)
 		if not TheWorld.ismastersim then
 			return inst
 		end
@@ -104,3 +104,16 @@ for k,v in ipairs({"tent","siestahut","portabletent","bedroll_furry"}) do
 	
 	end)
 end
+
+-----------------------------------------------------------
+
+newcs_env.AddComponentPostInit("cursable", function(self)
+	local old_fn = self.ForceOntoOwner
+	function self:ForceOntoOwner(item)
+		if self.inst and self.inst.components.newcs_talisman and self.inst.components.newcs_talisman:TryResist() then
+			item:Remove()
+			return
+		end
+		old_fn(self,item)
+	end
+end)

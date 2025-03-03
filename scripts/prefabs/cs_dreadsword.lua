@@ -36,16 +36,16 @@ end
 
 local function GetSetBonusEquip(owner)
 	local hat = owner.components.inventory ~= nil and owner.components.inventory:GetEquippedItem(EQUIPSLOTS.HEAD) or nil
-	return hat ~= nil and (hat.prefab == "dreadstonehat" or hat.prefab == "voidclothhat") and 1.5 or 1
+	return hat ~= nil and hat.prefab == "dreadstonehat" and hat or nil
 end
 
 local function DoRegen(inst, owner)
 	if owner.components.sanity ~= nil and owner.components.sanity:IsInsanityMode() then
-		local setbonus = GetSetBonusEquip(owner)
+		local setbonus = GetSetBonusEquip(owner) and TUNING.ARMOR_DREADSTONE_REGEN_SETBONUS or 1
 		local rate = 1 / Lerp(1 / TUNING.SWORD_DREADSTONE_REGEN_MAXRATE, 1 / TUNING.SWORD_DREADSTONE_REGEN_MINRATE, owner.components.sanity:GetPercent())
 		inst.components.finiteuses:Repair(inst.components.finiteuses.total * rate * setbonus)
 	end
-	if inst.components.finiteuses:GetUses()==inst.components.finiteuses.total then
+    if inst.components.finiteuses:GetUses()>=inst.components.finiteuses.total then
 		inst.regentask:Cancel()
 		inst.regentask = nil
 	end
@@ -62,6 +62,15 @@ local function StopRegen(inst)
 		inst.regentask:Cancel()
 		inst.regentask = nil
 	end
+end
+
+local function CalcDapperness(inst, owner)
+	local insanity = owner.components.sanity ~= nil and owner.components.sanity:IsInsanityMode()
+	local other = GetSetBonusEquip(owner)
+	if other ~= nil then
+		return (insanity and (inst.regentask ~= nil or other.regentask ~= nil) and TUNING.CRAZINESS_MED or 0) * 0.5
+	end
+	return insanity and inst.regentask ~= nil and TUNING.CRAZINESS_MED or 0
 end
 
 local hitsparks_fx_colouroverride = {1, 0, 0}
@@ -183,7 +192,7 @@ local function commonfn(common_postinit, master_postinit)
     inst:AddTag("sharp")
     inst:AddTag("weapon")
     inst:AddTag("shadowlevel")
-    --inst:AddTag("shadow_item")
+    inst:AddTag("shadow_item")
 
     common_postinit(inst)
 
@@ -210,6 +219,8 @@ local function commonfn(common_postinit, master_postinit)
     inst:AddComponent("inventoryitem")
 
     inst:AddComponent("equippable")
+    inst.components.equippable.dapperfn = CalcDapperness
+	inst.components.equippable.is_magic_dapperness = true
     inst.components.equippable:SetOnEquip(OnEquip)
     inst.components.equippable:SetOnUnequip(OnUnEquip)
 
@@ -244,7 +255,7 @@ end
 local function dread_master_postinit (inst)
 	inst:AddComponent("inspectable")
 
-    inst.components.equippable.walkspeedmult = 1.1
+
     inst.components.weapon:SetDamage(TUNING.DREADSWORD.DAMAGE)
     inst.components.weapon:SetOnAttack(OnAttack)
 
@@ -313,5 +324,5 @@ local function fxfn()
     return inst
 end
 
-return Prefab("cs_dreadsword", dreadfn, assets, prefabs),
+return Prefab("dreadsword", dreadfn, assets, prefabs),
     Prefab("dreadsword_fx", fxfn, fx_assets)

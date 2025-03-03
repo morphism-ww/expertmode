@@ -59,7 +59,8 @@ local function rememberheart(inst, data)
     if data.leader ~= nil then
         inst.components.follower:StartLeashing()
         inst.components.health:SetAbsorptionAmount(1)
-        inst:AddTag("noplayertarget")
+        inst:AddTag("NOCLICK")
+        inst:AddTag("notarget")
     end
 end
 
@@ -110,21 +111,24 @@ end
 
 
 for k,v in ipairs({"shadow_bishop","shadow_knight","shadow_rook"}) do
-    AddPrefabPostInit(v,function (inst)
+    newcs_env.AddPrefabPostInit(v,function (inst)
+        inst:AddTag("ignorewalkableplatformdrowning")
+        inst.Physics:ClearCollisionMask()
+        inst.Physics:CollidesWith(COLLISION.GROUND)
         if not TheWorld.ismastersim then return end
 
         inst:AddComponent("follower")
         inst.components.combat.targetfn = RetargetFn
         inst.components.lootdropper:SetLootSetupFn(lootsetfn)
-
+        inst.components.locomotor.pathcaps.allowocean = true
         inst.OnEntitySleep = OnEntitySleep
-
+        inst.components.drownable.enabled = false
         inst:ListenForEvent("startfollowing", rememberheart)
         
         inst:WatchWorldState("isalterawake", inst.Remove)
     end)
 
-    AddBrainPostInit(v.."brain", function (self)
+    newcs_env.AddBrainPostInit(v.."brain", function (self)
         table.insert(self.bt.root.children, 1, WhileNode(function ()
             return self.inst.components.follower.leader ~= nil and self.inst.shouldprotect
         end, "Protect Heart",
@@ -135,7 +139,7 @@ for k,v in ipairs({"shadow_bishop","shadow_knight","shadow_rook"}) do
         )
     end)
 
-    AddStategraphPostInit(v,function (sg)
+    newcs_env.AddStategraphPostInit(v,function (sg)
         local deathTimeline = sg.states.death.timeline
         local evolved_deathTimeline = sg.states.evolved_death.timeline
         deathTimeline[#deathTimeline-1].fn = LevelUpNearByChess

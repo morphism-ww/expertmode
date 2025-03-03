@@ -39,6 +39,10 @@ local function onhit(inst)
     end
 end
 
+--[[local function CheckWardrobeItem(container, item, slot)
+    return item:HasTag("_equippable")
+end
+
 local containerdata = {
     widget =
     {
@@ -52,13 +56,21 @@ local containerdata = {
     itemtestfn = CheckWardrobeItem,
 }
 
+for y = 2.5, -0.5, -1 do
+    for x = -1, 3 do
+        table.insert(containerdata.widget.slotpos, Vector3(75 * x - 75 * 2 + 75, 75 * y - 75 * 2 + 75, 0))
+    end
+end]]
 
 
-AddPrefabPostInit("wardrobe",function(inst)
+newcs_env.AddPrefabPostInit("wardrobe",function(inst)
     inst:AddTag("dressable")
     
     
     if not TheWorld.ismastersim then
+        --[[inst.OnEntityReplicated = function (inst)---理论可行但兼容性差
+            inst.replica.container:WidgetSetup(nil,containerdata)
+        end]]
 		return inst
 	end
 
@@ -76,28 +88,6 @@ AddPrefabPostInit("wardrobe",function(inst)
 
 end)
 
-local function CheckWardrobeItem(container, item, slot)
-    return item:HasTag("_equippable")
-end
 
 
-local params = require("containers").params
-params["wardrobe"] =
-{
-    widget =
-    {
-        slotpos = {},
-        animbank = "ui_fish_box_5x4",
-        animbuild = "ui_fish_box_5x4",
-        pos = Vector3(0, 220, 0),
-        side_align_tip = 160,
-    },
-    type = "chest",
-    itemtestfn = CheckWardrobeItem,
-}
 
-for y = 2.5, -0.5, -1 do
-    for x = -1, 3 do
-        table.insert(params.wardrobe.widget.slotpos, Vector3(75 * x - 75 * 2 + 75, 75 * y - 75 * 2 + 75, 0))
-    end
-end

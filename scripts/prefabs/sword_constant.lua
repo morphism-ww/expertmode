@@ -105,7 +105,7 @@ local function fn()
 
     inst:AddTag("aoeweapon_leap")
     inst:AddTag("sharp")
-    inst:AddTag("pure")
+    inst:AddTag("mythical")
     inst:AddTag("pointy")
 
     local floater_swap_data = {sym_build = "swap_sword_constant"}

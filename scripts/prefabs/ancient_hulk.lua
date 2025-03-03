@@ -1,8 +1,6 @@
 local RuinsRespawner = require "prefabs/ruinsrespawner"
 local brain = require("brains/ancient_hulkbrain")
 
---local easing=require("easing")
-
 
 local assets =
 {
@@ -44,12 +42,12 @@ SetSharedLootTable('ancient_hulk',
     {"thulecite",       1.0},
     {"thulecite",       0.5},
     {"thulecite",       0.5},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         0.5},
-    {"cs_iron",         0.5},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         0.5},
+    {"aurumite",         0.5},
     {'opalpreciousgem', 1.0},
 })
 
@@ -97,6 +95,14 @@ local function SetLightValue(inst, val1, val2, time)
     end
 end
 
+local function setfires(x,y,z, rad)
+    for i, v in ipairs(TheSim:FindEntities(x, 0, z, rad, nil, { "laser", "DECOR", "INLIMBO", "burnt" })) do 
+        if v:IsValid() and v.components.fueled == nil and
+            v.components.burnable ~= nil and not v.components.burnable:IsBurning() then
+            v.components.burnable:Ignite(true)
+        end
+    end
+end
 
 local function ApplyDamageToEnt(inst,v,targets)
     local isworkable = false
@@ -118,7 +124,7 @@ local function ApplyDamageToEnt(inst,v,targets)
     end
     if isworkable then
         targets[v] = true
-        v.components.workable:Destroy(inst.caster and inst.caster:IsValid() and inst.caster or inst)
+        v.components.workable:Destroy(inst)
 
         -- Completely uproot trees.
         if v:HasTag("stump") then
@@ -134,64 +140,73 @@ local function ApplyDamageToEnt(inst,v,targets)
     elseif inst.components.combat:CanTarget(v) then
         targets[v] = true
         inst.components.combat:DoAttack(v)
-    
-        SpawnPrefab("deerclops_laserhit"):SetTarget(v)
-        if not v.components.health:IsDead() then
-            if v.components.temperature ~= nil then
-                local maxtemp = math.min(v.components.temperature:GetMax(), 10)
-                local curtemp = v.components.temperature:GetCurrent()
-                if maxtemp > curtemp then
-                    v.components.temperature:DoDelta(math.min(10, maxtemp - curtemp))
+        
+        if v:IsValid() then
+            SpawnPrefab("deerclops_laserhit"):SetTarget(v)
+            if not v.components.health:IsDead() then
+                if v.components.temperature ~= nil then
+                    local maxtemp = math.min(v.components.temperature:GetMax(), 15)
+                    local curtemp = v.components.temperature:GetCurrent()
+                    if maxtemp > curtemp then
+                        v.components.temperature:DoDelta(math.min(15, maxtemp - curtemp))
+                    end
                 end
-            end
-            if v.components.fueled == nil and
-                v.components.burnable ~= nil and not v.components.burnable:IsBurning() then
-                v.components.burnable:Ignite()
+                
             end
         end
     end
 end
 
-local DAMAGE_CANT_TAGS = { "laser_immune", "playerghost", "INLIMBO", "DECOR", "FX"}
+local DAMAGE_CANT_TAGS = { "playerghost", "INLIMBO", --[["NOCLICK",]] "DECOR", "INLIMBO", "laser_immune"}
 local DAMAGE_ONEOF_TAGS = { "_combat", "pickable", "NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable", "DIG_workable" }
 
-local function DoDamage(inst, rad, startang, endang)
-    local targets = {}
+local function DoSectorDamage(inst, rad, startang, endang)
+    
     local x, y, z = inst.Transform:GetWorldPosition()
-
+    local targets = {}
     inst.components.combat.ignorehitrange = true
-
+    local angle
+    if startang and endang then        
+        local down = TheCamera:GetDownVec()             
+        angle = math.atan2(down.z, down.x)/DEGREES
+    end
+    setfires(x,y,z, rad)
     for i, v in ipairs(TheSim:FindEntities(x, 0, z, rad + 3, nil, DAMAGE_CANT_TAGS ,DAMAGE_ONEOF_TAGS)) do
-        if not targets[v] and v:IsValid() and
-            not (v.components.health ~= nil and v.components.health:IsDead()) then
+        if  v:IsValid() then
             local range = rad + v:GetPhysicsRadius(.5)
             local dsq_to_laser = v:GetDistanceSqToPoint(x, y, z)
-            if dsq_to_laser < range * range then    
-                local dir = inst:GetAngleToPoint(v.Transform:GetWorldPosition()) + 180
-
-                if not (startang and endang and (dir<startang or dir>endang)) then
+            if dsq_to_laser < range * range then
+                local dodamage = true
+                if angle then
+                    local dir = inst:GetAngleToPoint(v.Transform:GetWorldPosition()) 
+        
+                    local dif = ReduceAngle(angle - dir)                                
+                    if dif < startang or dif > endang then                
+                        dodamage = false
+                    end
+                end    
+                if dodamage then
                     ApplyDamageToEnt(inst,v,targets)
                 end
             end    
         end        
     end
     inst.components.combat.ignorehitrange = false
-
 end
 
 
 
 local RETARGET_MUST_TAGS = { "_combat" }
-local RETARGET_CANT_TAGS = { "chess", "INLIMBO", "FX", "playerghost"}
+local RETARGET_CANT_TAGS = { "chess", "INLIMBO", "FX", "playerghost","notarget","noattack"}
 local RETARGET_ONEOF_TAGS = { "character","monster"}
 
 local function RetargetFn(inst)
     local homePos = inst.components.knownlocations:GetLocation("home")
     return not (homePos ~= nil and
-                inst:GetDistanceSqToPoint(homePos:Get()) >= 1600)
+                inst:GetDistanceSqToPoint(homePos:Get()) >= 1800)
         and FindEntity(
             inst,
-            28,
+            30,
             function(guy)
                 return inst.components.combat:CanTarget(guy)
             end,
@@ -204,7 +219,7 @@ end
 
 local function KeepTargetFn(inst, target)
     local homePos = inst.components.knownlocations:GetLocation("home")
-    return inst.components.combat:CanTarget(target) and not (homePos ~= nil and inst:GetDistanceSqToPoint(homePos:Get()) > 1600)
+    return inst.components.combat:CanTarget(target) and not (homePos ~= nil and inst:GetDistanceSqToPoint(homePos) > 2500)
 end
 
 
@@ -223,47 +238,76 @@ end
 local function OnAttacked(inst, data)
     if data.attacker then
         inst.components.combat:SetTarget(data.attacker)
-        if data.attacker:HasTag("player") then
+        if data.attacker:HasTag("player") and inst.attackerUSERIDs[data.attacker.userid]==nil then
             inst.attackerUSERIDs[data.attacker.userid] = true
         end
     end
 end
 
-local function OnCollide(inst, other)
-    if other ~= nil and other:IsValid() then
-        if other:HasTag("smashable") and other.components.health ~= nil then
-            other.components.health:Kill()
-        elseif other.components.workable ~= nil
-                and other.components.workable:CanBeWorked()
-                and other.components.workable.action ~= ACTIONS.NET then
-            SpawnPrefab("collapse_small").Transform:SetPosition(other.Transform:GetWorldPosition())
-            other.components.workable:Destroy(inst)
+local function ClearRecentlyCollided(inst, other)
+    inst.recently_collided[other] = nil
+end
 
-        elseif other.components.combat ~= nil
-                and other.components.health ~= nil and not other.components.health:IsDead()
-                and (other:HasTag("wall") or other:HasTag("structure") or other.components.locomotor == nil) then
-            other.components.health:Kill()
+local function OnDestroyOther(inst, other)
+    if other:IsValid() and
+        other.components.workable ~= nil and
+        other.components.workable:CanBeWorked() and
+        other.components.workable.action ~= ACTIONS.NET and
+        not inst.recently_collided[other] then
+        SpawnPrefab("collapse_small").Transform:SetPosition(other.Transform:GetWorldPosition())
+        other.components.workable:Destroy(inst)
+        if other:IsValid() and other.components.workable ~= nil and other.components.workable:CanBeWorked() then
+            inst.recently_collided[other] = true
+            inst:DoTaskInTime(3, ClearRecentlyCollided, other)
         end
     end
 end
 
-local function LaunchProjectile(inst, targetpos)
-    local x, y, z = inst.Transform:GetWorldPosition()
-    local projectile = SpawnPrefab("ancient_hulk_mine")
-    projectile.Transform:SetPosition(x, 0, z)
-    --projectile.components
-    projectile.components.complexprojectile:Launch(targetpos, inst, inst)
+local function OnCollide(inst, other)
+    if other ~= nil and
+        other:IsValid() and
+        other.components.workable ~= nil and
+        other.components.workable:CanBeWorked() and
+        other.components.workable.action ~= ACTIONS.NET and
+        Vector3(inst.Physics:GetVelocity()):LengthSq() >= 1 and
+        not inst.recently_collided[other] then
+        inst:DoTaskInTime(2 * FRAMES, OnDestroyOther, other)
+    end
+end
 
+
+local function LaunchMine(inst, dir)
+    local pos = inst:GetPosition()
+
+    local theta = (dir - 30 + 15*math.random())*DEGREES
+
+    local projectile = SpawnPrefab("ancient_hulk_mine")
+    projectile.Transform:SetPosition(pos.x, 0, pos.z)
+
+    local offset = FindWalkableOffset(pos, theta, 7 + math.random()*5, 8)
+    if offset~=nil then
+        pos.x = pos.x + offset.x
+        pos.z = pos.z + offset.z
+    end
+    projectile.components.complexprojectile:Launch(pos, inst)
+end
+
+local function ShouldMine(inst)
+    local x, y, z = inst.Transform:GetWorldPosition()
+    local count = 0
+    for k,v in ipairs(TheSim:FindEntities(x, y, z, 20)) do
+        if v.prefab == "ancient_hulk_mine" then
+            count = count + 1
+        end
+    end
+    return count<10 and not inst.components.timer:TimerExists("bomb_cd")
 end
 
 
 local function ShootProjectile(inst, targetpos)
-    
     local projectile = SpawnPrefab("ancient_hulk_orb")
     projectile.Transform:SetPosition(inst.AnimState:GetSymbolPosition("hand01"))
-    --projectile.Physics:Teleport(x,4,z)
     projectile.components.complexprojectile:Launch(targetpos, inst)
-    --projectile.owner = inst
 end
 
 local function spawnbarrier(inst)
@@ -271,11 +315,12 @@ local function spawnbarrier(inst)
     local radius = 10
     local number = 8
     local pt = inst:GetPosition()
+    local ground =TheWorld.Map
     for i=1,number do        
         local offset = Vector3(radius * math.cos( angle ), 0, -radius * math.sin( angle ))
         local newpt = pt + offset
         --local tile = GetWorld().Map:GetTileAtPoint(newpt.x, newpt.y, newpt.z)
-        local ground=TheWorld.Map
+        
         if ground:IsPassableAtPoint(newpt.x, 0,newpt.z) then
             inst:DoTaskInTime(0.3, function()
                 local spell = SpawnPrefab("deer_fire_circle")
@@ -295,22 +340,25 @@ local function EnterShield(inst)
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 0, "ruins_shield")
     inst.components.planardefense:SetBaseDefense(15)
     inst.components.debuffable:RemoveOnDespawn()
+
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
     end
 
     inst._shieldfx = SpawnPrefab("forcefieldfx")
     inst._shieldfx.Transform:SetScale(1.8,1.8,1.8)
-    inst._shieldfx.entity:SetParent(inst.entity)
+    inst:AddChild(inst._shieldfx)
     inst._shieldfx.Transform:SetPosition(0, 0.5, 0)
 end
 
 local function ExitShield(inst)
     inst._is_shielding = nil
+
     if inst._shieldfx ~= nil then
         inst._shieldfx:kill_fx()
         inst._shieldfx = nil
     end
+
     inst.components.combat.externaldamagetakenmultipliers:SetModifier(inst, 1, "ruins_shield")
     inst.components.planardefense:SetBaseDefense(0)
 end
@@ -322,14 +370,12 @@ local function rememberhome(inst)
     end
 end
 
-local function OnTimerDone(inst,data)
-    if data.name == "lob_cd" then
-        inst.lob_count = 5
-        inst.components.combat.attackrange = 18
-    end
+local function lootsetfn(self)
+    self.loot = {}
+    for k,v in pairs(self.inst.attackerUSERIDs) do
+        table.insert(self.loot,"iron_soul")
+    end 
 end
-
-
 
 local function OnNewTarget(inst, data)
     if data.target ~= nil then
@@ -373,8 +419,7 @@ local function fn()
     inst.AnimState:AddOverrideBuild("smoke_aoe")
     inst.AnimState:AddOverrideBuild("laser_explosion")
     inst.AnimState:AddOverrideBuild("ground_chunks_breaking")
-    --inst.Transform:SetScale(1.2,1.2,1.2)
-
+    
 
     inst:AddComponent("fader")
 
@@ -400,34 +445,28 @@ local function fn()
         return inst
     end
     
-    
+    inst.recently_collided = {}
     inst.Physics:SetCollisionCallback(OnCollide)
     ----------------------------------------
-    inst.angry=false
-    inst.cancharge=false
-    inst.canbarrier=false
-    inst.lob_count = 4
-
-    inst:AddComponent("sanityaura")
-    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
-
-    ------------------
 
     inst:AddComponent("health")
     inst.components.health:SetMaxHealth(TUNING.ANCIENT_HULK_HEALTH)
     inst.components.health.destroytime = 5
     inst.components.health.fire_damage_scale = 0
+    
 
     inst:AddComponent("combat")
     inst.components.combat:SetDefaultDamage(250)
     inst.components.combat.playerdamagepercent = .5
     inst.components.combat:SetRange(18, 6.5)
-    inst.components.combat:SetAreaDamage(6, 0.8)
     inst.components.combat.hiteffectsymbol = "segment01"
     inst.components.combat:SetAttackPeriod(3)
     inst.components.combat:SetRetargetFunction(1, RetargetFn)
     inst.components.combat:SetKeepTargetFunction(KeepTargetFn)
 
+    inst:AddComponent("locomotor")
+    inst.components.locomotor.walkspeed = 6
+    
     ----------------------
     inst:AddComponent("timer")
 
@@ -440,74 +479,72 @@ local function fn()
 		inst.components.healthtrigger:AddTrigger(v.hp, v.fn)
 	end
     
-    -----------------
+    inst:AddComponent("sanityaura")
+    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
+    -------------------------------------------------------
 
     inst:AddComponent("planarentity")
 
     inst:AddComponent("planardamage")
 	inst.components.planardamage:SetBaseDamage(30)
+
+    inst:AddComponent("planardefense")
     
-   
+    ------------------------------------------------------
+    ---限伤护盾
     local stunnable = inst:AddComponent("stunnable")
     stunnable.stun_threshold = 1200
     stunnable.stun_period = 5
     stunnable.stun_duration = 10
     stunnable.stun_resist = 0
-    stunnable.stun_cooldown = 5
-
-    --[[inst:AddComponent("periodicspawner")
-    inst.components.periodicspawner:SetPrefab("laser_spark")
-    inst.components.periodicspawner:SetRandomTimes(6, 8)
-    inst.components.periodicspawner:SetDensityInRange(10, 4)
-	inst.components.periodicspawner:SetSpawnTestFn(CanSpark)
-    inst.components.periodicspawner:SetOnSpawnFn(SparkOnSpawned)
-    inst.components.periodicspawner:Start()]]
-
+    stunnable.stun_cooldown = 15
 
     inst._shieldfx = nil
     inst._is_shielding = nil
     inst.EnterShield = EnterShield
     inst.ExitShield = ExitShield
+
+    inst:ListenForEvent("stunned",EnterShield)
+    inst:ListenForEvent("stun_finished",ExitShield)
     ------------------------------------------
 
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable("ancient_hulk")
+    inst.components.lootdropper:SetLootSetupFn(lootsetfn)
     ------------------------------------------
 
     inst:AddComponent("inspectable")
 
-    inst:AddComponent("planardefense")
-
     ------------------------------------------
 
-    local groundpounder = inst:AddComponent("groundpounder")
-    groundpounder:UseRingMode()
-    groundpounder.numRings = 3
-    groundpounder.initialRadius = 1.5
-    groundpounder.radiusStepDistance = 2
-    groundpounder.ringWidth = 2
-    groundpounder.damageRings = 2
-    groundpounder.destructionRings = 3
-    groundpounder.platformPushingRings = 3
+    inst:AddComponent("groundpounder")
+    inst.components.groundpounder.destroyer = true
+    inst.components.groundpounder.damageRings = 2
+    inst.components.groundpounder.destructionRings = 3
+    inst.components.groundpounder.numRings = 3
+    table.insert(inst.components.groundpounder.noTags, "ancient_hulk")
 
     ------------------------------------------
 
     inst.OnLoad = onload
-    inst.LaunchProjectile = LaunchProjectile
+    inst.LaunchMine = LaunchMine
+    inst.ShouldLayMine = ShouldMine
     inst.ShootProjectile = ShootProjectile
-    inst.DoDamage = DoDamage
+    inst.DoDamage = DoSectorDamage
     inst.spawnbarrier = spawnbarrier
     inst.SetLightValue = SetLightValue
     inst.SetEngaged = SetEngaged
 
+    inst.angry=false
+    inst.cancharge=false
+    inst.canbarrier=false
+    inst.lob_count = 5    
+
     inst.attackerUSERIDs = {}
 
     inst:ListenForEvent("attacked", OnAttacked)
-    inst:ListenForEvent("timerdone",OnTimerDone)
+    
     ------------------------------------------
-
-    inst:AddComponent("locomotor")
-    inst.components.locomotor.walkspeed = 6
 
     inst:AddComponent("debuffable")
  
@@ -516,7 +553,6 @@ local function fn()
     inst:DoTaskInTime(0, rememberhome)
 
     SetEngaged(inst, false)
-
 
     return inst
 end
@@ -543,9 +579,9 @@ local function minetrigger(inst)
     local x,y,z = inst.Transform:GetWorldPosition()
     inst:Hide()
 
-    SpawnPrefab("laser_ring").Transform:SetPosition(x,y,z)
-    SpawnPrefab("laser_explosion").Transform:SetPosition(x,y,z)
-    inst:DoTaskInTime(0.4,function() inst:DoDamage(5) inst:Remove() end)
+    SpawnPrefab("newcs_laser_ring").Transform:SetPosition(x,y,z)
+    SpawnPrefab("newcs_laser_explosion").Transform:SetPosition(x,y,z)
+    inst:DoTaskInTime(0.4,function() inst:DoDamage(4) inst:Remove() end)
 
 end
 
@@ -573,13 +609,6 @@ local function minefn()
 
     inst:AddTag("NOCLICK")
 
-    inst.entity:AddLight()
-    inst.Light:SetIntensity(.6)
-    inst.Light:SetRadius(2)
-    inst.Light:SetFalloff(1)
-    inst.Light:SetColour(1, 0.3, 0.3)
-    inst.Light:Enable(false)
-
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
@@ -606,9 +635,9 @@ local function minefn()
     inst.components.mine:SetOnExplodeFn(onnearmine)
     inst.components.mine:SetReusable(false)
     
-    inst.DoDamage = DoDamage
+    inst.DoDamage = DoSectorDamage
 
-    inst:DoTaskInTime(60, minetrigger)
+    inst:DoTaskInTime(40, minetrigger)
 
     return inst
 end
@@ -618,15 +647,10 @@ local function OnHitOrb(inst)
     inst.AnimState:PlayAnimation("impact")
     inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/enemy/metal_robot/smash")
 
-    inst:ListenForEvent("animover", function() 
-        inst:Remove()
-    end)
+    inst:DoTaskInTime(0.3,function() DoSectorDamage(inst, 3.5) end)
+    inst:ListenForEvent("animover", inst.Remove)
 
-
-    SpawnPrefab("laser_ring").Transform:SetPosition(inst.Transform:GetWorldPosition())     
-    inst:DoTaskInTime(0.3,function() DoDamage(inst, 3.5) end)
-    --inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/smash_2")
-    
+    SpawnPrefab("newcs_laser_ring").Transform:SetPosition(inst.Transform:GetWorldPosition())     
 end
 
 local function orbfn()
@@ -705,7 +729,7 @@ end
 
 local NON_COLLAPSIBLE_TAGS = { "FX", --[["NOCLICK",]] "DECOR", "INLIMBO", --[["structure",]] "wall", "walkableperipheral" }
 
-local function DoAOEWork(inst, x, z)
+local function DoAOEWork(inst, x, z,attacker)
 	for i, v in ipairs(TheSim:FindEntities(x, 0, z, 3 + WORK_RADIUS_PADDING, nil, NON_COLLAPSIBLE_TAGS, COLLAPSIBLE_TAGS)) do
 		if v:IsValid() and not v:IsInLimbo() then
 			if (not v:HasTag("structure") or
@@ -741,11 +765,12 @@ local function onhit(inst, attacker)
     local x,y,z = inst.Transform:GetWorldPosition()
     
     SpawnPrefab("explode_small").Transform:SetPosition(inst.Transform:GetWorldPosition())
-    SpawnPrefab("laser_ring").Transform:SetPosition(x,y,z)
-    DoAOEWork(inst,x,z)
-    local ents = TheSim:FindEntities(x, y, z, 3, {"_combat"}, { "INLIMBO", "player","flight", "invisible", "notarget", "noattack"})
+    SpawnPrefab("newcs_laser_ring").Transform:SetPosition(x,y,z)
+    DoAOEWork(inst,x,z,attacker)
+    local ents = TheSim:FindEntities(x, y, z, 3, P_AOE_TARGETS_MUST, P_AOE_TARGETS_CANT)
     for i, v in ipairs(ents) do
-        if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
+        if v:IsValid() and not (v.components.health ~= nil and v.components.health:IsDead())
+            and attacker.components.combat:CanTarget(v) then
             v.components.combat:GetAttacked(attacker,100,nil,nil,{["planar"] = 50})
         end
     end
@@ -766,9 +791,17 @@ local function smallorbfn()
     inst.AnimState:PlayAnimation("spin_loop", true)
     inst.AnimState:SetScale(0.7,0.7,0.7)
 
+    inst.entity:AddLight()
+    inst.Light:SetIntensity(.6)
+    inst.Light:SetRadius(3)
+    inst.Light:SetFalloff(1)
+    inst.Light:SetColour(1, 0.3, 0.3)
+
 
     inst:AddTag("projectile")
-
+    inst:AddTag("toughworker")
+    inst:AddTag("supertoughworker")
+    
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
@@ -778,15 +811,14 @@ local function smallorbfn()
     inst.persists = false
 
     inst:AddComponent("linearprojectile")
-    inst.components.linearprojectile:SetOnHit(OnHitOrb)
-    inst.components.linearprojectile:SetHorizontalSpeed(28)
-    inst.components.linearprojectile:SetRange(16)
+    inst.components.linearprojectile:SetHorizontalSpeed(30)
+    inst.components.linearprojectile:SetRange(22)
     inst.components.linearprojectile:SetOnHit(onhit)
     inst.components.linearprojectile:SetOnMiss(onhit)
-    inst.components.linearprojectile.musttags = nil
-    inst.components.linearprojectile.oneoftags = {"_combat","blocker"}
-    table.insert(inst.components.linearprojectile.notags,"player")
-    table.insert(inst.components.linearprojectile.notags,"structure")
+    inst.components.linearprojectile:SetWorker(true)
+    inst.components.linearprojectile.oneoftags = {"_combat","blocker","NPC_workable", "CHOP_workable", "HAMMER_workable", "MINE_workable"}
+    inst.components.linearprojectile:AddNoHitTag("player")
+    inst.components.linearprojectile:AddNoHitTag("structure")
 
     return inst
 end

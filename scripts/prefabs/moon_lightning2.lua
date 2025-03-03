@@ -68,13 +68,10 @@ local function spawnglass(inst)
                 not (v.components.health ~= nil and v.components.health:IsDead()) and
                 inst._aguard.components.combat:CanTarget(v)
             then
-                v:AddDebuff("moon_curse","moon_curse")
+                v:AddDebuff("buff_mooncurse","buff_mooncurse")
                 v.components.combat:GetAttacked(inst,TUNING.ALTERGUARDIAN_PHASE2_LIGHTNING_DAMAGE,nil,"electric")
             end
         end
-        local spark = SpawnPrefab("moonstorm_ground_lightning_fx")
-        spark.Transform:SetRotation(math.random()*360)
-        spark.Transform:SetPosition(x,y,z)
     end
 end
 

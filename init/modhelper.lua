@@ -1,3 +1,59 @@
+print(111)
+room_choices={
+    ["Guard_Abyss"] = 1,
+     ["Infusedcity_Abyss"] = 2,
+    ["shadow_wild"] = 2,
+    ["RuinedCity_Abyss"] = 1,  
+}
+for k,v in pairs(room_choices) do print(k) end
+--[[
+--TODO-list
+
+require("debugcommands")
+
+---shardindex -> shardsaveindex ->servercreationscreen:SaveChanges
+---
+---worldsettingstab
+---function WorldSettingsMenu:CollectOptions()
+--world_genmain.GenerateNew   gamelogic.DoGenerateWorld
+
+
+ServerCreationScreen:Create(!!!!)
+UI
+mainscreen->mutipleplayermainscreen->serverslotscreen
+->playerstyleselectscreen->caveselectscreen->
+servercreationscreen->serversettingstab->servercreationscreen
+
+subscreener
+WorldSettingsTab
+
+Levels = require("map/levels")
+Levels.GetDefaultData("SETTINGS","SURVIVAL","forest")
+GetDefaultSettingsData
+
+
+SERVER_LEVEL_LOCATIONS =
+    {
+        "forest",
+        "cave",
+    }
+    Shard_GetConnectedShards()
+GetOptions()
+ WorldSettingsMenu:GetOptions()
+
+ TheFrontEnd.screenstack[1].name
+]]
+
+dumptable(bs.components.xd_guaiwu_skills.skills)
+name11,v11=debug.getupvalue(SpawnPrefabFromSim,1);for k,v in pairs(v11) do if next(v)~=nil then print(k,v) end end
+removesetter(bs.components.xd_guaiwu_skills,"qx")
+removesetter(bs.components.xd_guaiwu_skills,"by")
+bs.components.xd_guaiwu_skills.qxname = "金"
+bs.components.xd_guaiwu_skills.by = 5
+v11 = bs.components.hh_monster.hh_effects;for k,v in pairs(v11) do v11[k] = 999 end;
+for k,v in pairs(TUNING.HH_FORMAT_CONFIG.MONSTER_CONFIG) do table.insert(bs.components.hh_monster.hh_buffs,{name = k, value = 100}) end
+---ThePlayer.HUD.serverpause_underlay:Hide()
+------ThePlayer.HUD:SetServerPaused(false)
 PrefabFiles	table: 00000000600F36C0	
 AddIngredientValues	function: 0000000015EC5FA0	
 tostring	function: 0000000011974680	
@@ -132,3 +188,142 @@ AddLevel	function: 000000001660D6C0
 AddPrototyperDef	function: 0000000015EC66E0	
 AddMinimapAtlas	function: 0000000015EC6120	
 AddCookerRecipe	function: 0000000015EC5DE0	
+
+
+K: 	ABYSS_NOISE	 V: 	124	
+K: 	ARCHIVE	 V: 	45	
+K: 	BEARD_RUG	 V: 	269	
+K: 	BRICK	 V: 	18	
+K: 	BRICK_GLOW	 V: 	19	
+K: 	CARPET	 V: 	11	
+K: 	CARPET2	 V: 	268	
+K: 	CAVE	 V: 	13	
+K: 	CAVE_NOISE	 V: 	126	
+K: 	CHARLIE_VINE	 V: 	262	
+K: 	CHECKER	 V: 	12	
+K: 	COTL_BRICK	 V: 	256	
+K: 	COTL_GOLD	 V: 	264	
+K: 	DECIDUOUS	 V: 	30	
+K: 	DESERT_DIRT	 V: 	31	
+K: 	DIRT	 V: 	4	
+K: 	DIRT_NOISE	 V: 	123	
+K: 	FAKE_GROUND	 V: 	200	
+K: 	FARMING_SOIL	 V: 	47	
+K: 	FOREST	 V: 	7	
+K: 	FUNGUS	 V: 	14	
+K: 	FUNGUSGREEN	 V: 	25	
+K: 	FUNGUSMOON	 V: 	46	
+K: 	FUNGUSMOON_NOISE	 V: 	120	
+K: 	FUNGUSRED	 V: 	24	
+K: 	FUNGUS_NOISE	 V: 	127	
+K: 	GRASS	 V: 	6	
+K: 	GROUND_NOISE	 V: 	125	
+K: 	IMPASSABLE	 V: 	1	
+K: 	INVALID	 V: 	65535	
+K: 	LAVAARENA_FLOOR	 V: 	33	
+K: 	LAVAARENA_TRIM	 V: 	34	
+K: 	LUNAR_MARSH	 V: 	258	
+K: 	MARSH	 V: 	8	
+K: 	METEOR	 V: 	43	
+K: 	METEORCOAST_NOISE	 V: 	122	
+K: 	METEORMINE_NOISE	 V: 	121	
+K: 	MONKEY_DOCK	 V: 	260	
+K: 	MONKEY_GROUND	 V: 	257	
+K: 	MOSAIC_BLUE	 V: 	267	
+K: 	MOSAIC_GREY	 V: 	265	
+K: 	MOSAIC_RED	 V: 	266	
+K: 	MUD	 V: 	17	
+K: 	OCEAN_BRINEPOOL	 V: 	205	
+K: 	OCEAN_BRINEPOOL_SHORE	 V: 	206	
+K: 	OCEAN_COASTAL	 V: 	201	
+K: 	OCEAN_COASTAL_SHORE	 V: 	202	
+K: 	OCEAN_HAZARDOUS	 V: 	207	
+K: 	OCEAN_ICE	 V: 	261	
+K: 	OCEAN_ROUGH	 V: 	204	
+K: 	OCEAN_SWELL	 V: 	203	
+K: 	OCEAN_WATERLOG	 V: 	208	
+K: 	PEBBLEBEACH	 V: 	42	
+K: 	QUAGMIRE_CITYSTONE	 V: 	41	
+K: 	QUAGMIRE_GATEWAY	 V: 	38	
+K: 	QUAGMIRE_PARKFIELD	 V: 	36	
+K: 	QUAGMIRE_PARKSTONE	 V: 	37	
+K: 	QUAGMIRE_PEATFOREST	 V: 	35	
+K: 	QUAGMIRE_SOIL	 V: 	39	
+K: 	RIFT_MOON	 V: 	270	
+K: 	ROAD	 V: 	2	
+K: 	ROCKY	 V: 	3	
+K: 	ROPE_BRIDGE	 V: 	263	
+K: 	SAVANNA	 V: 	5	
+K: 	SCALE	 V: 	32	
+K: 	SHADOW_MARSH	 V: 	259	
+K: 	SHELLBEACH	 V: 	44	
+K: 	SINKHOLE	 V: 	15	
+K: 	TILES	 V: 	20	
+K: 	TILES_GLOW	 V: 	21	
+K: 	TRIM	 V: 	22	
+K: 	TRIM_GLOW	 V: 	23	
+K: 	UNDERROCK	 V: 	16	
+K: 	WOODFLOOR	 V: 	10	
+
+K: 	AddChild	 V: 	function: 000000001E88E130	
+K: 	AddEdgePoints	 V: 	function: 000000001E88D730	
+K: 	AddExternalLink	 V: 	function: 000000001E88DCF0	
+K: 	AddLink	 V: 	function: 000000001E88E0F0	
+K: 	AppendSaveString	 V: 	function: 000000001E88E670	
+K: 	ClearNodeLinks	 V: 	function: 000000001E88D1B0	
+K: 	ConvertToTileMap	 V: 	function: 000000001E88DE70	
+K: 	CreateNodeIdTileMap	 V: 	function: 000000001E88D9F0	
+K: 	DetectDisconnect	 V: 	function: 000000001E88E1B0	
+K: 	DrawCellLine	 V: 	function: 000000001E88ECB0	
+K: 	DrawGroundLine	 V: 	function: 000000001E88F070	
+K: 	DrawRoads	 V: 	function: 000000001E88D9B0	
+K: 	FinalizeSaveString	 V: 	function: 000000001E88E9B0	
+K: 	ForceConnectivity	 V: 	function: 000000001E88D3B0	
+K: 	ForceDisconectedCells	 V: 	function: 000000001E88DD70	
+K: 	GenerateBlendedMap	 V: 	function: 000000001E88D4B0	
+K: 	GenerateSessionIdentifier	 V: 	function: 000000001E88E530	
+K: 	GenerateVoronoiMap	 V: 	function: 000000001E88D5B0	
+K: 	GetChildrenForSite	 V: 	function: 000000001E88E230	
+K: 	GetEncodedMap	 V: 	function: 000000001E88F0F0	
+K: 	GetPointsForMetaMaze	 V: 	function: 000000001E88E3B0	
+K: 	GetPointsForSite	 V: 	function: 000000001E88E2F0	
+K: 	GetRandomPointsForSite	 V: 	function: 000000001E88E370	
+K: 	GetRoad	 V: 	function: 000000001E88E6F0	
+K: 	GetSaveString	 V: 	function: 000000001E88ED70	
+K: 	GetSite	 V: 	function: 000000001E88EB30	
+K: 	GetSiteArea	 V: 	function: 000000001E88E1F0	
+K: 	GetSiteCentroid	 V: 	function: 000000001E88EEF0	
+K: 	GetSitePolygon	 V: 	function: 000000001E88EBF0	
+K: 	GetTile	 V: 	function: 000000001E88E730	
+K: 	GetVisualTileAtPosition	 V: 	function: 000000001E88F130	
+K: 	GetWorldSize	 V: 	function: 000000001E88DCB0	
+K: 	GetWormholes	 V: 	function: 000000001E88EC70	
+K: 	GetWormholesExtra	 V: 	function: 000000001E88F030	
+K: 	InitSaveString	 V: 	function: 000000001E88E570	
+K: 	IsTileReserved	 V: 	function: 000000001E88E4F0	
+K: 	LuaPrint	 V: 	function: 000000001E88E970	
+K: 	PointInSite	 V: 	function: 000000001E88E3F0	
+K: 	RemoveLastCommaSaveString	 V: 	function: 000000001E88EC30	
+K: 	RemoveLink	 V: 	function: 000000001E88D8F0	
+K: 	ReplaceSingleNonLandTiles	 V: 	function: 000000001E88E270	
+K: 	ReserveSpace	 V: 	function: 000000001E88E8F0	
+K: 	ReserveTile	 V: 	function: 000000001E88E170	
+K: 	ResetAll	 V: 	function: 000000001E88DC70	
+K: 	RunCA	 V: 	function: 000000001E88D4F0	
+K: 	RunMaze	 V: 	function: 000000001E88D6B0	
+K: 	SeparateIslands	 V: 	function: 000000001E88D2B0	
+K: 	SetImpassibleTileType	 V: 	function: 000000001E88D270	
+K: 	SetNodeType	 V: 	function: 000000001E88DB30	
+K: 	SetPointsBarrenOrReservedTile	 V: 	function: 000000001E88DC30	
+K: 	SetResolveNoiseFunction	 V: 	function: 000000001E88DA70	
+K: 	SetRoadParameters	 V: 	function: 000000001E88DAF0	
+K: 	SetSiteFlags	 V: 	function: 000000001E88D170	
+K: 	SetTile	 V: 	function: 000000001E88E4B0	
+K: 	SetTileNodeId	 V: 	function: 000000001E88D8B0	
+K: 	SetValidateGroundTileFunction	 V: 	function: 000000001E88DFB0	
+K: 	SetWorldSize	 V: 	function: 000000001E88D230	
+K: 	WorldGen_AddNewPositions	 V: 	function: 000000001E88D630	
+K: 	WorldGen_Commit	 V: 	function: 000000001E88D770	
+K: 	WorldGen_InitializeNodePoints	 V: 	function: 000000001E88D870	
+K: 	WorldGen_VoronoiPass	 V: 	function: 000000001E88DE30
+

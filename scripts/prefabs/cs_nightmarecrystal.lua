@@ -86,7 +86,7 @@ end
 
 local function onloadpostpass(inst, newents, data)
 	if inst.components.workable.workleft == 0 then
-		inst:MakeFinish()
+		inst:MakeFinish(true)
 	end
 end
 
@@ -104,13 +104,19 @@ end
 
 
 local function Grow(inst)
+    ChangeToObstaclePhysics(inst)
+
 	inst.components.workable:SetWorkLeft(TUNING.FISSURE_DREADSTONE_WORK)
+    inst.components.workable:SetWorkable(true)
+
+    inst.AnimState:PlayAnimation("idle_open_rift", true)
 	inst.AnimState:ShowSymbol("stack_under")
     inst.AnimState:ShowSymbol("stack_over")
     inst.AnimState:ShowSymbol("stack_red")
 	if not inst.components.inspectable then
         inst:AddComponent("inspectable")
     end
+    --inst.components.childspawner:StartRegen()
 	inst:DoTaskInTime(FRAMES,CreateMiasma)
 end
 
@@ -121,19 +127,68 @@ local function ontimerdonefn(inst, data)
 	end
 end
 
+local function returnchildren(inst)
+    for k, child in pairs(inst.components.childspawner.childrenoutside) do
+        if child._on_portal_removed~=nil then
+            child._on_portal_removed()
+        end
+    end
+end
 
-local function MakeFinish(inst)
+local function killchildren(inst)
+    if inst.components.childspawner ~= nil then
+        inst.components.childspawner:StopSpawning()
+        returnchildren(inst)
+    end
+end
+
+local function MakeFinish(inst,onload)
+    RemovePhysicsColliders(inst)
+
+    inst.components.workable:SetWorkable(false)
+
+    inst.SoundEmitter:KillSound("loop")
+
 	if inst.components.inspectable then
         inst:RemoveComponent("inspectable")
+    end
+
+    if onload then
+        inst.AnimState:PlayAnimation("idle_closed")
+        inst.fx.AnimState:PlayAnimation("idle_closed")
+    else
+        inst.AnimState:PushAnimation("close_1")
+        inst.fx.AnimState:PushAnimation("close_1")
+        -- calm
+        inst.AnimState:PushAnimation("close_2")
+        inst.AnimState:PushAnimation("idle_closed", false)
+        inst.fx.AnimState:PushAnimation("close_2")
+        inst.fx.AnimState:PushAnimation("idle_closed", false)
     end
     --inst:SetPrefabNameOverride(nil)
     inst.AnimState:HideSymbol("stack_under")
     inst.AnimState:HideSymbol("stack_over")
     inst.AnimState:HideSymbol("stack_red")
+
+    killchildren(inst)
+    --inst.components.childspawner:StopRegen()
 end
 
+local function ShouldRecoil(inst,worker, tool, numworks)
+    if not (worker ~= nil and worker:HasTag("toughworker")) and
+		not (tool ~= nil and tool.components.tool ~= nil and tool.components.tool:CanDoToughWork())
+		then
+		return true, 0
+	end
+    if worker.isplayer and worker.sg and worker.sg.statemem.action==nil then
+        return true, 0
+    end
+	return false, numworks
+end
+
+
 local function OnFissureMinedFinished(inst, worker)
-	MakeFinish(inst)
+	inst:MakeFinish()
     local pt = inst:GetPosition()
     for i = 1, 2 do
         inst.components.lootdropper:SpawnLootPrefab("dreadstone", pt)
@@ -159,6 +214,7 @@ local function CreateTerraformBlocker(parent)
 
     return inst
 end
+
 
 local function fn()
 	local inst = CreateEntity()
@@ -219,15 +275,9 @@ local function fn()
 	inst.components.childspawner:SetSpawnedFn(OnChildSpawned)
 	WorldSettings_ChildSpawner_SpawnPeriod(inst, TUNING.ABYSS_FISSURE.SPAWN_TIME, true)
 	WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.ABYSS_FISSURE.REGEN_TIME, true)
-	inst.components.childspawner.childname = "shadow_leech"
-    --inst.components.childspawner:SetOnTakeOwnershipFn(changetoabyss)
+	inst.components.childspawner.childname = "abyss_leech"
 	inst.components.childspawner:SetRareChild("fused_shadeling", .4)
 
-	--[[inst.components.childspawner:SetMaxEmergencyChildren(1)
-	inst.components.childspawner.emergencychildname = "fused_shadeling"
-	inst.components.childspawner.emergencychildrenperplayer = 1
-	inst.components.childspawner.canemergencyspawn = true
-	inst.components.childspawner:SetEmergencyRadius(6)]]
 
 	inst.components.childspawner:StartSpawning()
     inst.components.childspawner:StartRegen()
@@ -242,7 +292,7 @@ local function fn()
 	workable:SetMaxWork(TUNING.FISSURE_DREADSTONE_WORK)
 	workable:SetWorkLeft(TUNING.FISSURE_DREADSTONE_WORK)
 	workable:SetRequiresToughWork(true)
-	workable:SetWorkable(true)
+    workable:SetShouldRecoilFn(ShouldRecoil)
 	workable.savestate = true
 	
 	--inst:AddComponent("worldsettingstimer")  --already in worldsettings_childspawner
@@ -321,10 +371,13 @@ local function grow(inst)
 end
 
 local function AlwaysRecoil(inst,worker, tool, numworks)
-	if (TheWorld.components.riftspawner and TheWorld.components.riftspawner:GetShadowRiftsEnabled()) and 
-        (worker ~= nil and worker:HasTag("supertoughworker")) or (tool~=nil and tool:HasTag("supertoughworker")) then
-		return false
+	if worker ~= nil and worker:HasTag("supertoughworker") or (tool~=nil and tool:HasTag("supertoughworker")) then
+        if worker.isplayer and worker.sg and worker.sg.statemem.action==nil then
+            return true, 0
+        end
+        return false
 	end
+    
 	return true,0
 end
 
@@ -337,7 +390,10 @@ local function OnNightmaregrowthMinedFinished(inst)
     inst.SoundEmitter:PlaySound("dontstarve/impacts/lava_arena/fossilized_break")
 	local fx = SpawnPrefab("collapse_big")
 	fx.Transform:SetPosition(pt.x, pt.y, pt.z)
-	SpawnAt(math.random() < .4 and "nightmarebeak", inst)
+    if math.random()<0.7 then
+        SpawnAt(math.random() < .6 and "nightmarebeak" or "ruinsnightmare", inst)
+    end
+	
 	inst:Remove()
 end
 
@@ -365,20 +421,20 @@ local function fn2()
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddSoundEmitter()
-    inst.entity:AddMiniMapEntity()
+    --inst.entity:AddMiniMapEntity()
     inst.entity:AddNetwork()
 
     inst.AnimState:SetBuild("nightmaregrowth")
     inst.AnimState:SetBank("nightmaregrowth")
     inst.AnimState:PlayAnimation("idle")
 
-    inst.MiniMapEntity:SetIcon("nightmaregrowth.png")
+    --inst.MiniMapEntity:SetIcon("nightmaregrowth.png")
 
     MakeObstaclePhysics(inst, 1.1, 4)
 
     --inst.Transform:SetScale(1.5,1.5,1.5)
-
-    inst:SetGroundTargetBlockerRadius(14)
+    inst:AddTag("magic_blocker")
+    --inst:SetGroundTargetBlockerRadius(14)
 
 	inst:SetPrefabNameOverride("nightmaregrowth")
 
@@ -425,7 +481,16 @@ local function spawnerfn()
     inst.entity:AddTransform()
     --[[Non-networked entity]]
 
-    inst:AddTag("CLASSIFIED")
+    
+    inst.entity:SetPristine()
+
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst.persists = false
+
+    inst:DoTaskInTime(0, inst.Remove)
 
     return inst
 end

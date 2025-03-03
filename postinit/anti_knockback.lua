@@ -1,4 +1,4 @@
-AddComponentPostInit("saddler",function (self)
+newcs_env.AddComponentPostInit("saddler",function (self)
     function self:SetKnockbackResistCooldown(cd)
         self.inst:AddTag("knockback_resist")
         self.resist_cd = cd
@@ -17,7 +17,7 @@ end)
 
 
 
-AddComponentPostInit("rider",function (self)
+newcs_env.AddComponentPostInit("rider",function (self)
     function self:TryResist()
         if self.saddle and self.saddle:HasTag("knockback_resist") then
             if self:CanResist() then
@@ -34,28 +34,20 @@ AddComponentPostInit("rider",function (self)
 end)
 
 
-AddPrefabPostInit("saddle_war",function (inst)
-    inst:AddTag("knockback_resist")
-    if not TheWorld.ismastersim then
-        return inst
-    end
+newcs_env.AddPrefabPostInit("saddle_war",function (inst)
     inst.components.saddler:SetAbsorption(0.3)
     inst.components.saddler:SetKnockbackResistCooldown(5)
 end)
 
-AddPrefabPostInit("saddle_race",function (inst)
-    inst:AddTag("knockback_resist")
-    if not TheWorld.ismastersim then
-        return inst
-    end
+newcs_env.AddPrefabPostInit("saddle_race",function (inst)
     inst.components.saddler:SetAbsorption(0.2)
     inst.components.saddler:SetKnockbackResistCooldown(10)
 end)
 
-AddPrefabPostInit("saddle_wathgrithr",function (inst)
-    inst:AddTag("knockback_resist")
-    if not TheWorld.ismastersim then
-        return inst
-    end
+newcs_env.AddPrefabPostInit("saddle_wathgrithr",function (inst)
     inst.components.saddler:SetKnockbackResistCooldown(5)
+end)
+
+newcs_env.AddPrefabPostInit("saddle_shadow",function (inst)
+    inst.components.saddler:SetKnockbackResistCooldown(3)
 end)

@@ -11,165 +11,141 @@ local prefabs = {
     "orangegem",
     "purplegem",
     "fused_shadeling",
-    "dreadstone",
-    "dreaddragon",
-    "shadow_soul"
+    "abyss_leech",
+    "shadow_soul",
+    "odd_mushroom"
 }
 
-local function ShouldAcceptItem1(inst,item)
-    return item.components.currency or item.prefab == "goldnugget" or item.prefab == "dubloon" or item.prefab == "oinc" or item.prefab == "oinc10" or item.prefab == "oinc100"
-end
 
-local function ShouldAcceptItem2()
+local gems_weights = {
+    redgem = 4,
+    bluegem = 4,
+    purplegem = 3,
+    yellowgem = 2,
+    orangegem = 2,
+    greengem = 1,
+}
+
+local function ShouldAcceptItem()
     return true
 end
 
-local function OnGetItemFromPlayer1(inst,giver,item)
-    local value = 0
-    if item.prefab == "oinc" then
-        value = 1
-    elseif item.prefab == "oinc10" then
-        value = 10
-    elseif item.prefab == "oinc100" then
-        value = 100        
-    elseif item.prefab == "goldnugget" then
-        value = 20
-    elseif item.prefab == "dubloon" then
-        value = 5
-    end
-
-    inst.AnimState:PlayAnimation("splash")
-    inst.AnimState:PushAnimation("idle_full",true)   
+local function give_reward(inst,gems,special_gift)
+    inst.AnimState:PlayAnimation("vortex_splash")
+    inst.AnimState:PushAnimation("vortex_idle_full")   
     inst.SoundEmitter:PlaySound("turnoftides/common/together/water/splash/small") 
 
-    inst:DoTaskInTime(1, function()
-        if math.random() * 25 < value then
-            if giver.components.poisonable ~= nil then
-                giver.components.poisonable:WearOff()
-            end
-            if giver.components.health and  giver.components.health:GetPercent() < 1 then
-                giver.components.health:DoDelta( value*5 ,false,inst.prefab)
-                giver:PushEvent("celebrate")
-            end           
+    local pt = inst:GetPosition()
+    if gems > 0 then
+        local loots = weighted_random_choices(gems_weights, gems)
+        for i ,v in ipairs(loots) do
+            inst.components.lootdropper:SpawnLootPrefab(v,pt)
         end
-    end)
+    end
+
+    if special_gift~=nil then
+        inst.components.lootdropper:SpawnLootPrefab(special_gift,pt)
+    end 
+
+    inst.components.trader:Enable()
 end
-local function OnGetItemFromPlayer2(inst, giver, item)
+
+local VALUE_LOOKUP = {redgem = 30, bluegem = 40, purplegem = 50, dreadstone = 50, 
+yellowgem = 60, orangegem = 70, greengem = 80, opalpreciousgem = 120, shadow_soul = 200}
+
+local function OnGetItemFromPlayer(inst, giver, item)
     inst.AnimState:PlayAnimation("vortex_splash")
-    inst.AnimState:PlayAnimation("vortex_empty")
     inst.AnimState:PushAnimation("vortex_idle_full")
 
     inst.SoundEmitter:PlaySound("turnoftides/common/together/water/splash/small") 
 
-    local value = 1
-    if item.prefab == "dreadstone" then
-        value = 100
-    elseif item:HasTag("gem") then
-        value = 50               
-    else
-        giver.components.combat:GetAttacked(nil, 300, nil, "darkness")
+    inst.components.trader:Disable()
+
+    -------determine item's value
+    local value = VALUE_LOOKUP[item.prefab] or 0
+
+
+    -------special item based on trigger_specialtrade from the last trade
+    local special_gift 
+    if item:HasTag("mushroom") and inst.trigger_specialtrade then
+        special_gift = "odd_mushroom"
+    elseif value == 0 then ---punish
+        special_gift = math.random()<0.5 and "abyss_leech" or "fused_shadeling_quickfuse_bomb"
     end
-    local should_give_key
-    if item.prefab=="shadow_soul" and not inst.nokey then
-        should_give_key = true
-        value = 500
-    end     
-    
-    value = value + math.random()*100		
 
-    inst:DoTaskInTime(1, function(inst)
-        local x,y,z = inst.Transform:GetWorldPosition()
-        local gems = 0
-        if value < 100 then
-            if math.random() <= 0.6 then
-                SpawnPrefab("dreaddragon").Transform:SetPosition(x,y,z)
-            else
-                SpawnPrefab("fused_shadeling").Transform:SetPosition(x,y,z)
-            end
-        elseif value < 150 then
-            gems = 1
-        elseif value < 200 then
-            gems = 2
-        else
-            gems = 5
-        end    
+    -----override the specialtrade 
+    inst.trigger_specialtrade = value == 200
 
-        if gems > 0 then
-            inst.AnimState:PlayAnimation("vortex_splash")
-            inst.AnimState:PushAnimation("vortex_idle_full")   
-            inst.SoundEmitter:PlaySound("turnoftides/common/together/water/splash/small")                
-            
-            for i = 1,gems do
-                inst.components.lootdropper:DropLoot()
-            end
-            if should_give_key then
-                inst.nokey = true
-                inst.components.lootdropper:SpawnLootPrefab("void_key")
-            end 
-        end
-    end)
+    ----give key only once!!!
+    if inst.haskey and inst.trigger_specialtrade then
+        inst.haskey = false
+        special_gift = "void_key"
+    end
+
+
+    value = value + math.random()*25
+
+    --every 50 units of value -> 1 gem
+    local gems = math.floor(value/50)
+
+    inst:DoTaskInTime(1,give_reward,gems,special_gift)
 end
 
 local function OnSave(inst,data)
-    data.nokey = inst.nokey
+    if not inst.haskey then
+        data.nokey = true
+    end
 end
 
 local function OnLoad(inst,data)
-    inst.nokey = data and data.nokey
+    if data~=nil then
+        inst.haskey = not data.nokey
+    end
 end
 
 
-local function MakeWell(name,anim,accepttest,onacceptfn)
-    local function fn()
-        local inst = CreateEntity()
+local function fn()
+    local inst = CreateEntity()
 
-        inst.entity:AddTransform()
-        inst.entity:AddAnimState()
-        inst.entity:AddSoundEmitter()
-        inst.entity:AddNetwork()
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddSoundEmitter()
+    inst.entity:AddNetwork()
 
-        inst.AnimState:SetBuild("pig_ruins_well")
-        inst.AnimState:SetBank("pig_ruins_well")
-        inst.AnimState:PlayAnimation(anim, true)
+    inst.AnimState:SetBuild("pig_ruins_well")
+    inst.AnimState:SetBank("pig_ruins_well")
+    inst.AnimState:PlayAnimation("vortex_idle_full", true)
 --     
-        MakePondPhysics(inst,2)
+    MakePondPhysics(inst,2)
 
-		inst:AddTag("watersource")		
+    inst:AddTag("watersource")		
 
-		inst.entity:SetPristine()
+    inst.entity:SetPristine()
 
-		if not TheWorld.ismastersim then
-			return inst
-		end	
-        
-        inst:AddComponent("sanityaura")
-        inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
-
-        inst:AddComponent("lootdropper")
-        inst.components.lootdropper:AddRandomLoot("redgem", 3)
-        inst.components.lootdropper:AddRandomLoot("bluegem", 3)
-        inst.components.lootdropper:AddRandomLoot("purplegem", 2)
-        inst.components.lootdropper:AddRandomLoot("yellowgem", 2)
-        inst.components.lootdropper:AddRandomLoot("orangegem", 2)
-        inst.components.lootdropper:AddRandomLoot("greengem", 1)
-        inst.components.lootdropper.numrandomloot = 1
-
-        inst:AddComponent("trader")
-        inst.components.trader:SetAcceptTest(accepttest)
-        inst.components.trader:SetOnAccept(onacceptfn)
-        --inst.components.trader:SetOnRefuse(OnRefuseItem)
-
-        inst:AddComponent("inspectable")
-
-        inst.OnSave = OnSave
-        inst.OnLoad = OnLoad
-        --anim:SetTime(math.random() * anim:GetCurrentAnimationLength())
-
+    if not TheWorld.ismastersim then
         return inst
     end
-    return Prefab(name,fn,assets,prefabs)
-end
+
+    inst.trigger_specialtrade = false
+    inst.haskey = true
     
-return MakeWell("abyss_fountain","idle_full",ShouldAcceptItem1,OnGetItemFromPlayer1),
-    MakeWell("abyss_endswell","vortex_idle_full",ShouldAcceptItem2,OnGetItemFromPlayer2)
+    inst:AddComponent("inspectable")
+    
+    inst:AddComponent("sanityaura")
+    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
+
+    inst:AddComponent("lootdropper")
+
+    inst:AddComponent("trader")
+    inst.components.trader:SetAcceptTest(ShouldAcceptItem)
+    inst.components.trader:SetOnAccept(OnGetItemFromPlayer)
+
+    inst.OnSave = OnSave
+    inst.OnLoad = OnLoad
+
+
+    return inst
+end
+
+return Prefab("abyss_endswell",fn,assets,prefabs)
 

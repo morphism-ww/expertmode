@@ -21,7 +21,8 @@ local function proximityscan(inst, dt)
         local new_target = nil
         for i, v in ipairs(AllPlayers) do
             if not v:HasTag("playerghost") and v.entity:IsVisible()
-                and v:GetDistanceSqToPoint(x, y, z) < SCAN_DIST*SCAN_DIST then
+                and v:GetDistanceSqToPoint(x, y, z) < SCAN_DIST*SCAN_DIST 
+                and (v:IsNear(inst, 5) or not v:HasTag("chessfriend")) then
                 new_target = v
                 break
             end
@@ -162,7 +163,8 @@ local function TryFindTarget(inst)
 
     for _, v in ipairs(AllPlayers) do
         if not v:HasTag("playerghost") and v.entity:IsVisible()
-                and v:GetDistanceSqToPoint(px, py, pz) < 144 then
+            and v:GetDistanceSqToPoint(px, py, pz) < 144 
+            and (v:IsNear(inst, 5) or not v:HasTag("chessfriend")) then
             OnTargetFound(inst, v)
             break
         end
@@ -422,7 +424,7 @@ local function OnReturnedAfterSuccessfulScan(inst)
     inst.sg:GoToState("scan_success")
 end
 local function OnExplodeFn(inst)
-    local explosive = SpawnPrefab("laser_explosion")
+    local explosive = SpawnPrefab("newcs_laser_explosion")
     explosive.Transform:SetPosition(inst.Transform:GetWorldPosition())
 end
 
@@ -564,30 +566,20 @@ local function OnPreLoad(inst, data)
 end
 local function spawnfn()
     local inst = CreateEntity()
+    
 
     inst.entity:AddTransform()
-    inst.entity:AddSoundEmitter()
-    inst.entity:AddNetwork()
-
+    inst:AddTag("CLASSIFIED")
+    inst:AddTag("NOBLOCK")
     inst:AddTag("NOCLICK")
-
-
-    inst.entity:SetPristine()
-
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
     -------------------
     inst:AddComponent("childspawner")
     inst.components.childspawner.childname = "ancient_scanner"
     inst.components.childspawner:SetRegenPeriod(REGEN_TIME)
     inst.components.childspawner:SetSpawnPeriod(60)
     inst.components.childspawner:SetMaxChildren(2)
-    WorldSettings_ChildSpawner_SpawnPeriod(inst, 10, true)
-    WorldSettings_ChildSpawner_RegenPeriod(inst, 2*TUNING.TOTAL_DAY_TIME, true)
-    --inst.components.childspawner:SetSpawnedFn( onspawnchild )
-
+    WorldSettings_ChildSpawner_SpawnPeriod(inst, 60, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, 3*TUNING.TOTAL_DAY_TIME, true)
     inst.components.childspawner:StartSpawning()
     inst.components.childspawner:StartRegen()
     inst.components.childspawner.childreninside = 2

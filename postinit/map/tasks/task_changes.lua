@@ -6,9 +6,10 @@ end
 
 AddTaskPreInit("BigBatCave",function (task)
     task.room_choices={
-        ["BatCave"] = 1 ,
+        ["BatCave"] = 2,
         ["BattyCave"] = 1,
         ["FernyBatCave"] = 1,
+        ["PitRoom"] = 3,
     }
 end)
 AddTaskPreInit("MudWorld",function (task)
@@ -16,7 +17,7 @@ AddTaskPreInit("MudWorld",function (task)
     task.keys_given={ KEYS.CAVE, KEYS.TIER2 }
     task.room_choices={
         ["LightPlantField"] = 1,
-        ["WormPlantField"] = 2,
+        ["WormPlantField"] = 1,
         ["FernGully"] = 1,
         ["SlurtlePlains"] = 2,
         ["MudWithRabbit"] = 1,
@@ -55,8 +56,8 @@ AddTaskPreInit("BigBatCave",function (task)
     task.room_choices={
         ["BatCave"] = 2,
         ["BattyCave"] = 1,
-        ["FernyBatCave"] = 2,
-        ["PitRoom"] = 2,
+        ["FernyBatCave"] = 1,
+        ["PitRoom"] = 1,
     }
 end)
 
@@ -94,7 +95,6 @@ AddTaskPreInit("GreenForest",function (task)
         ["RabbitCity"] = 1,
         ["GreenMushNoise"] = 1,
     }]]
-    task.room_choices.PitRoom = nil
     task.room_choices.GreenMushForest = 1
     task.background_room = "Blank"
 end)
@@ -108,20 +108,41 @@ AddTaskPreInit("BlueForest",function (task)
         ["DropperDesolation"] = 1,
         ["BlueMushMeadow"] = 1,
     }
-    --task.entrance_room = {"BlueMushMeadow"}
+    task.background_room = "Blank"
+    task.entrance_room = {"BlueMushMeadow"}
+end)
+AddTaskPreInit("MoonCaveForest",function (task)
+    task.room_choices.MoonMushForest=1
 end)
 AddTaskPreInit("SpillagmiteCaverns",function (task)
     task.locks={ LOCKS.CAVE, LOCKS.TIER3 }
     task.keys_given={ KEYS.CAVE, KEYS.TIER4 }
     task.room_choices={
         ["SpillagmiteForest"] = 1,
-        ["DropperCanyon"] = 2,
+        ["DropperCanyon"] = 1,
         ["StalagmitesAndLights"] = 1,
         ["ThuleciteDebris"] = 1,
     }
 end)
+AddTaskPreInit("RabbitCity",function (task)
+    task.locks={ LOCKS.CAVE, LOCKS.TIER4 }
+    task.keys_given={ KEYS.CAVE, KEYS.RABBIT, KEYS.TIER5, KEYS.ENTRANCE_OUTER }
+    task.room_choices={
+        ["RabbitCity"] = 1,
+        ["RabbitTown"] = 1,
+        ["RabbitArea"] = 1,
+    }
+end)
 
-
+--[[AddTaskPreInit("ToadStoolTask1",function (task)
+    task.room_choices["ToadstoolArenaBGMud"] = 1
+end)
+AddTaskPreInit("ToadStoolTask2",function (task)
+    task.room_choices["ToadstoolArenaBGCave"] = 1
+end)
+AddTaskPreInit("ToadStoolTask3",function (task)
+    task.room_choices["ToadstoolArenaBGMud"] = 1
+end)]]
 -------------------------------------------
 AddTaskPreInit("LichenLand", function (task)
     task.locks={LOCKS.NONE}
@@ -161,13 +182,26 @@ end)
 AddTaskPreInit("Military",function (task)
     task.locks={LOCKS.TIER2, LOCKS.RUINS}
     task.keys_given= {KEYS.TIER3, KEYS.RUINS}
+    task.room_choices =
+    {
+        ["MilitaryMaze"] = 5,
+        ["Barracks"] = 1,
+    }
 end)
+
+AddTaskPreInit("TheLabyrinth",function (task)
+    task.locks={LOCKS.TIER3, LOCKS.RUINS}
+    task.keys_given = {}
+    task.room_choices["Labyrinth"] = function() return math.random(3,4) end
+end)
+
 AddTaskPreInit("Sacred",function (task)
     task.locks={LOCKS.TIER2, LOCKS.RUINS}
     task.keys_given= { KEYS.RUINS, KEYS.SACRED}
     task.room_choices={
         ["SacredBarracks"] = 1,
-        ["BrokenAltar"] = 1,
+        ["BrokenAltar"] = 2,
+        ["Bishops"] = 1,
         ["Spiral"] = 1,
         ["BrokenAltar2"] = 1,
         ["SacredDanger2"] = 1,
@@ -176,101 +210,7 @@ AddTaskPreInit("Sacred",function (task)
     task.room_bg = WORLD_TILES.BRICK
 end)
 
-AddTaskPreInit("TheLabyrinth",function (task)
-    task.locks={LOCKS.TIER3, LOCKS.RUINS}
-    task.keys_given = {}
-    task.room_choices={
-        ["RuinedGuarden"] = 1,
-        ["Labyrinth"] = function() return 3+math.random(1) end,
-    }
-end)
-
 AddTaskPreInit("AtriumMaze",function(task)
     task.locks={LOCKS.TIER2, LOCKS.RUINS}
-    task.room_choices =
-    {
-        ["AtriumMazeRooms"] = 4,
-    }
+    task.room_choices["AtriumMazeRooms"] = 4
 end)
----------------------------------------
-
-AddTask("RUINS_TO_SHADOW", {
-    locks={LOCKS.SACRED,LOCKS.RUINS},
-    keys_given = {KEYS.SACRED, KEYS.TIER4},
-    entrance_room = "AbyssEntrance",
-    room_tags = {"Nightmare","nocavein"},
-    room_choices={
-        ["Abyss_Frontline"] = 1,
-        ["shadow_wild"] = 3,
-	    ["RuinedCity_Abyss"] = 1
-    },
-    background_room = "Blank",
-    room_bg = WORLD_TILES.BRICK,
-    colour={r=0.3,g=0.2,b=0.1,a=0.3},
-    level_set_piece_blocker = true
-})
-
-
-AddTask("MeTal_Labyrinth_Task", {
-    locks={ LOCKS.SACRED, LOCKS.TIER4},
-    keys_given= {},
-    room_tags = {"Nightmare","Abyss","nocavein"},
-    entrance_room="LabyrinthEntrance",
-    room_choices={
-        ["Metal_Labyrinth"] = function() return 3+math.random(3) end,
-        ["HulkGuarden"] = 1,
-    },
-    room_bg = WORLD_TILES.IMPASSABLE,
-    background_room = "Metal_Labyrinth",
-    colour={r=0.4,g=0.4,b=0.0,a=1},
-    level_set_piece_blocker = true
-})
-
-AddTask("Hades",{
-    locks={ LOCKS.SACRED, LOCKS.TIER4},
-    keys_given= {KEYS.SACRED, KEYS.TIER5},
-    room_tags = {"Nightmare","Abyss","nocavein"},
-    room_choices={
-        ["EndsWell"] = 1,
-        ["Marsh_Abyss"] = 3,
-    },
-    hub_room = "EndsWell",
-    background_room="BGHades",
-    room_bg = WORLD_TILES.CAVE,
-    colour={r=0.8,g=0.8,b=0.8,a=0.9},
-    level_set_piece_blocker = true
-})
-
-AddTask("Iron_Miner",{
-    locks={ LOCKS.SACRED, LOCKS.TIER4},
-    keys_given= {},
-    required_prefabs = {"ancient_hulk_spawner"},
-    room_tags = {"Nightmare","Abyss","nocavein"},
-    room_choices={
-        ["Mine_Iron"] = 3,
-        ["GemLand"] = 1,
-    },
-    background_room="Blank",
-    room_bg = WORLD_TILES.ROCKY,
-    hub_room = "GemLand",
-    cove_room_name = "Mine_Iron",
-    cove_room_chance = 1,
-	cove_room_max_edges = 2,
-    crosslink_factor = 2,
-    colour={r=0.8,g=0.8,b=0.8,a=0.9},
-    level_set_piece_blocker = true
-})
-
-AddTask("DarkGarden",{
-    locks={ LOCKS.SACRED, LOCKS.TIER5},
-    keys_given= {},
-    room_tags = {"Nightmare","Abyss","nocavein"},
-    entrance_room = "BridgeEntrance",
-    room_choices={
-        ["QueenGarden"] = 1
-    },
-    background_room="Blank",
-    room_bg = WORLD_TILES.CAVE,
-    colour={r=0.8,g=0.8,b=0.8,a=0.9},
-    level_set_piece_blocker = true
-})

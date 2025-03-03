@@ -11,8 +11,101 @@ local function MakeNoStun(inst)
 	end
 end
 
+local function UpdatePlayerTargets(inst)
+	local toadd = {}
+	local toremove = {}
+	local x, y, z = inst.Transform:GetWorldPosition()
+
+	for k in pairs(inst.components.grouptargeter:GetTargets()) do
+		toremove[k] = true
+	end
+	for i, v in ipairs(FindPlayersInRange(x, y, z, 40, true)) do
+		if toremove[v] then
+			toremove[v] = nil
+		else
+			table.insert(toadd, v)
+		end
+	end
+
+	for k in pairs(toremove) do
+		inst.components.grouptargeter:RemoveTarget(k)
+	end
+	for i, v in ipairs(toadd) do
+		inst.components.grouptargeter:AddTarget(v)
+	end
+end
+
+local function RetargetFn(inst)
+	UpdatePlayerTargets(inst)
+
+	local target = inst.components.combat.target
+	local inrange = target ~= nil and inst:IsNear(target, 40 + target:GetPhysicsRadius(0))
+
+	if target ~= nil and target:HasTag("player") then
+		local newplayer = inst.components.grouptargeter:TryGetNewTarget()
+		return newplayer ~= nil
+			and newplayer:IsNear(inst, inrange and 20 + newplayer:GetPhysicsRadius(0) or 30)
+			and newplayer
+			or nil,
+			true
+	end
+
+	local nearplayers = {}
+	for k in pairs(inst.components.grouptargeter:GetTargets()) do
+		if inst:IsNear(k, inrange and 20 + k:GetPhysicsRadius(0) or 40) then
+			table.insert(nearplayers, k)
+		end
+	end
+	return #nearplayers > 0 and nearplayers[math.random(#nearplayers)] or nil, true
+end
+local function KeepTargetFn(inst, target)
+	return inst.components.combat:CanTarget(target)
+		and target:IsNear(inst, 60)
+end
+	
+local function empty_droploot(self)
+	TheWorld:PushEvent("entity_droploot", { inst = self.inst })
+end
+
+local function SpawnProtect(inst)
+	inst.components.health.externalabsorbmodifiers:SetModifier(inst, 0.99, "br_protect")
+	inst:DoTaskInTime(3,function ()
+		inst.components.health.externalabsorbmodifiers:RemoveModifier(inst,"br_protect")
+	end)
+end
+
+local function common_boss_combatchange(boss)
+	if boss.components.planardamage==nil then
+		boss:AddComponent("planardamage")
+	end
+	boss.components.planardamage:SetBaseDamage(35)
+
+	if boss.components.planarentity==nil then
+		boss:AddComponent("planarentity")
+	end
+
+	if boss.components.grouptargeter==nil then
+		boss:AddComponent("grouptargeter")
+	end
+
+	boss.components.combat.playerdamagepercent = 1
+	boss.components.combat.externaldamagetakenmultipliers:SetModifier(boss, 0.7, "void_armor")
+	boss.components.health:SetMaxDamageTakenPerHit(boss.components.health.maxhealth/25)
+	boss.components.combat:SetRetargetFunction(1, RetargetFn)
+	boss.components.combat:SetKeepTargetFunction(KeepTargetFn)
+
+	boss.persists = false
+
+	if boss.components.lootdropper~=nil then
+		boss.components.lootdropper.DropLoot = empty_droploot
+	end
+
+	SpawnProtect(boss)
+	MakeSmartAbsorbDamageEnt(boss)
+
+end
 ---------------------------------------
-local function bearger_process(inst,data)
+local function bearger_process(inst)
 	local brain = require("brains/bossrush_beargerbrain")
 	inst:SetBrain(brain)
     inst.Transform:SetScale(1.5,1.5,1.5)
@@ -23,7 +116,7 @@ local function bearger_process(inst,data)
 	inst.components.groundpounder.numRings = 4
 	inst.components.groundpounder.damageRings = 4
 	inst.components.groundpounder.destructionRings = 4
-	inst.components.sleeper:SetResistance(30)
+	inst.components.sleeper:SetResistance(20)
 end
 ---------------------------------------
 local function MakeBaby(inst,prefab)
@@ -37,7 +130,7 @@ local function MakeBaby(inst,prefab)
         spider.sg:GoToState("taunt")
 		spider:AddComponent("planarentity")
 		MakeNoStun(spider)
-		spider.components.lootdropper.DropLoot = TrueFn
+		spider.components.lootdropper.DropLoot = empty_droploot
         inst.components.leader:AddFollower(spider)
         if inst.components.combat.target ~= nil then
             spider.components.combat:SetTarget(inst.components.combat.target)
@@ -97,18 +190,18 @@ local function sharkboi_process(inst)
 	inst.components.health:SetMinHealth(0)
 	inst:SetStateGraph("SGbr_sharkboi")
 	inst:AddTag("no_rooted")
-	inst.components.sleeper:SetResistance(30)
-
+	inst.components.sleeper:SetResistance(20)
 end
 ---------------------------------------------
 local function bee_process(inst,manager)
+	local brain = require("brains/bossrush_beequeenbrain")
+	inst:SetBrain(brain)
+
 	MakeNoStun(inst)
     inst.components.locomotor.walkspeed = 6
 	inst.components.sleeper:SetResistance(20)
 end
 ---------------------------------------------
-
-
 local function fire_era(inst)
 	inst.components.temperatureoverrider:SetTemperature(80)
 
@@ -116,7 +209,7 @@ local function fire_era(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
 
 	local angle_delta = PI/2
-	for i=1, 4	do
+	for i = 1, 4 do
 		local lava = SpawnPrefab("lava_pond")
 		lava.Transform:SetPosition(x + 18*math.cos(angle_delta*i), 0, z - 18* math.sin(angle_delta*i))
 	end
@@ -137,9 +230,9 @@ local function dragon_process(inst)
 	local brain = require("brains/br_dragonflybrain")
 	inst:SetBrain(brain)
 	
-	inst.components.rampingspawner.spawn_prefab = "dragoon_cs"
+	inst.components.rampingspawner.spawn_prefab = "newcs_dragoon"
 
-	inst.components.sleeper:SetResistance(30)
+	inst.components.sleeper:SetResistance(20)
 	inst.components.freezable:SetResistance(50)
 end
 ---------------------------------------------
@@ -159,7 +252,7 @@ local function eye_process(inst)
 	inst.sg:GoToState("arrive", player)
 	inst:PushEvent("set_spawn_target", player)
 	MakeNoStun(inst)
-	inst.components.sleeper:SetResistance(30)
+	inst.components.sleeper:SetResistance(20)
 	inst.components.freezable:SetResistance(30)
 end
 ---------------------------------------------
@@ -189,15 +282,26 @@ local function klaus_process(inst)
 
 	local klaus = SpawnPrefab("klaus")
 
-	klaus.components.sleeper:SetResistance(30)
+	klaus.components.sleeper:SetResistance(20)
 	klaus.components.freezable:SetResistance(10)
 	klaus.Transform:SetPosition(spawnx or pos.x, 0, spawnz or pos.z)
 	klaus.persists = false
+	MakeSmartAbsorbDamageEnt(klaus)
 	MakeNoStun(klaus)
 	local pos = inst:GetPosition()
     local rot = klaus.Transform:GetRotation()
     local theta = (rot - 90) * DEGREES
-    local offset =
+    
+	klaus:AddComponent("planardamage")
+	klaus.components.planardamage:SetBaseDamage(20)
+	klaus.soulcount = 100
+	-- override the spawn point so klaus comes to his sack
+	klaus.components.knownlocations:RememberLocation("spawnpoint", pos, false)
+	
+	klaus.components.lootdropper.DropLoot = empty_droploot
+	pos = klaus:GetPosition()
+
+	local offset =
         FindWalkableOffset(pos, theta, klaus.deer_dist, 5, true, false) or
         FindWalkableOffset(pos, theta, klaus.deer_dist * .5, 5, true, false) or
         Vector3(0, 0, 0)
@@ -221,14 +325,8 @@ local function klaus_process(inst)
 	deer.components.health:SetAbsorptionAmount(0.99)
     deer.components.spawnfader:FadeIn()
     klaus.components.commander:AddSoldier(deer)
-	
-	klaus:AddComponent("planardamage")
-	klaus.components.planardamage:SetBaseDamage(20)
-	klaus.soulcount = 100
-	-- override the spawn point so klaus comes to his sack
-	klaus.components.knownlocations:RememberLocation("spawnpoint", pos, false)
 	klaus.components.spawnfader:FadeIn()
-	klaus.components.lootdropper.DropLoot = TrueFn
+	
 	inst:ListenForEvent("death",function (klaus)
 		if klaus:IsUnchained() then
 			inst.components.battlemanager:Next()
@@ -249,10 +347,10 @@ local function TryShadowFire(inst)
         local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
 
         local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
-        local fire = SpawnPrefab("shadow_flame")
+        local fire = SpawnPrefab("newcs_shadowflame")
         fire.Transform:SetRotation(theta/DEGREES)
         fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
-		fire:settargetdread(target,20,inst)
+		fire:settarget_dread(target,20,inst)
     end
 end
 local function minotaur_process(inst)
@@ -261,7 +359,7 @@ local function minotaur_process(inst)
 	inst.atphase3 = true
 	MakeNoStun(inst)
 	inst.components.freezable:SetResistance(30)
-	inst.components.sleeper:SetResistance(30)
+	inst.components.sleeper:SetResistance(20)
 	inst.components.groundpounder.groundpoundFn = TryShadowFire
 end
 local function pillar_process(inst)
@@ -278,7 +376,7 @@ end
 local function daywalker_process(inst)
 	--inst:AddTag("shadowhide")
 	inst.AnimState:HideSymbol("HEAD_follow")
-	inst.components.health:SetMinHealth(0)
+	--inst.components.health:SetMinHealth(0)
 	MakeNoStun(inst)
 
 	local healthtrigger = inst.components.healthtrigger.triggers
@@ -334,7 +432,7 @@ local function SummonSpawn(pt, upgrade)
 			MakeNoStun(spawn)
             spawn.Physics:Teleport(spawn_pt:Get())
             spawn:FacePoint(pt)
-			spawn.components.lootdropper.DropLoot = TrueFn
+			spawn.components.lootdropper.DropLoot = empty_droploot
             if spawn.components.spawnfader ~= nil then
                 spawn.components.spawnfader:FadeIn()
             end
@@ -383,22 +481,28 @@ local function mutatedbearger_postinit(inst)
 	inst.components.groundpounder.damageRings = 5
 	inst.components.groundpounder.destructionRings = 5
 
-	inst.Transform:SetScale(1.6,1.6,1.6)
+	inst.Transform:SetScale(1.5,1.5,1.5)
 	inst.components.locomotor.walkspeed = 13
 	inst.components.locomotor.runspeed = 15
 end
 --------------------------------------------
+local function DropItemAsLoot(inst, action, nosound)
+	inst:DropItem(action, nosound)
+end
 local function daywalker2_postinit(inst)
 	inst.Transform:SetScale(1.5,1.5,1.5)
-	inst.components.health:SetMinHealth(0)
+	--inst.components.health:SetMinHealth(0)
+	--inst.components.health.nofadeout = true
 	inst:SetEngaged(true)
 	inst.OnItemUsed = TrueFn
-	MakeNoStun(inst)
-	inst.components.sleeper:SetResistance(30)
+	
+	inst.components.sleeper:SetResistance(20)
 	inst.components.freezable:SetResistance(30)
     inst:SetEquip("swing", "object")
     inst:SetEquip("tackle", "spike")
     inst:SetEquip("cannon", "cannon")
+	inst.DropItemAsLoot = DropItemAsLoot
+	
 end
 -------------------------------------------
 local function dont_leave(inst)
@@ -533,8 +637,8 @@ local function twin_process(inst)
 
     local twin1 = SpawnPrefab("twinofterror1")
 
-
-	twin1.components.lootdropper.DropLoot = TrueFn
+	
+	twin1.components.lootdropper.DropLoot = empty_droploot
 	twin1.persists = false
     inst.components.entitytracker:TrackEntity("twin1", twin1)
     twin1.Transform:SetPosition(twin1spawnpos:Get())
@@ -543,27 +647,36 @@ local function twin_process(inst)
 
     local twin2 = SpawnPrefab("twinofterror2")
 	twin2.persists = false
-	twin2.components.lootdropper.DropLoot = TrueFn
+	twin2.components.lootdropper.DropLoot = empty_droploot
     inst.components.entitytracker:TrackEntity("twin2", twin2)
     twin2.Transform:SetPosition(twin2spawnpos:Get())
     twin2.sg:GoToState("arrive_delay")
+	
     hookup_twin_listeners(inst, twin2)
 end
 --------------------------------------------
+local function DoAlterChange(ent)
+	if ent.prefab == "alterguardian_phase2" or ent.prefab == "alterguardian_phase3" then
+		common_boss_combatchange(ent)
+	end
+end
 local function alter_process(inst)
 	local x,y,z = inst.Transform:GetWorldPosition()
 	local boss = SpawnPrefab("alterguardian_phase1")
 	boss.Transform:SetPosition(x,0,z)
 
 	if boss.components.lootdropper~=nil then
-		boss.components.lootdropper.DropLoot = TrueFn
+		boss.components.lootdropper.DropLoot = empty_droploot
 	end
-
+	common_boss_combatchange(boss)
 	boss.sg:GoToState("prespawn_idle")
+	inst:ListenForEvent("entity_spawned", DoAlterChange,TheWorld)
 	inst:ListenForEvent("moonboss_defeated", function(world)
 		world.components.voidland_manager:ForceLunacy(false)
 		inst.components.battlemanager:Next()
-	end,	TheWorld)		
+		inst:RemoveEventCallback("entity_spawned",DoAlterChange,TheWorld)
+	end,	TheWorld)	
+	
 
 	--[[for i, v in ipairs(AllPlayers) do
         if v.entity:IsVisible() and
@@ -582,11 +695,9 @@ local function NextStage(inst)
 end
 
 local function lv1_start(inst)
+	
+	inst:DoTaskInTime(0,NextStage)
 	inst._talkerdirty:set(1)
-	inst:DoTaskInTime(10,function ()
-		inst._musicdirty:set(2)
-		NextStage(inst)
-	end)
 end
 
 local function lv2_start(inst)
@@ -595,8 +706,6 @@ local function lv2_start(inst)
 	inst._talkerdirty:set(2)
 end
 local function lv3_start(inst)
-	
-	inst._musicdirty:set(2)
 	inst:DoTaskInTime(10,NextStage)
 	inst._talkerdirty:set(3)
 end
@@ -607,7 +716,7 @@ local function lv4_start(inst)
 end
 local function lv5_start(inst)
 	
-	inst._musicdirty:set(1)
+
 	inst:DoTaskInTime(10,NextStage)
 	inst._talkerdirty:set(5)
 end
@@ -661,63 +770,13 @@ local program = {
 	--{boss = "supreme_shadow"}
 }
 
-local function UpdatePlayerTargets(inst)
-	local toadd = {}
-	local toremove = {}
-	local x, y, z = inst.Transform:GetWorldPosition()
 
-	for k in pairs(inst.components.grouptargeter:GetTargets()) do
-		toremove[k] = true
-	end
-	for i, v in ipairs(FindPlayersInRange(x, y, z, 40, true)) do
-		if toremove[v] then
-			toremove[v] = nil
-		else
-			table.insert(toadd, v)
-		end
-	end
 
-	for k in pairs(toremove) do
-		inst.components.grouptargeter:RemoveTarget(k)
-	end
-	for i, v in ipairs(toadd) do
-		inst.components.grouptargeter:AddTarget(v)
-	end
-end
-
-local function RetargetFn(inst)
-	UpdatePlayerTargets(inst)
-
-	local target = inst.components.combat.target
-	local inrange = target ~= nil and inst:IsNear(target, 40 + target:GetPhysicsRadius(0))
-
-	if target ~= nil and target:HasTag("player") then
-		local newplayer = inst.components.grouptargeter:TryGetNewTarget()
-		return newplayer ~= nil
-			and newplayer:IsNear(inst, inrange and 20 + newplayer:GetPhysicsRadius(0) or 30)
-			and newplayer
-			or nil,
-			true
-	end
-
-	local nearplayers = {}
-	for k in pairs(inst.components.grouptargeter:GetTargets()) do
-		if inst:IsNear(k, inrange and 20 + k:GetPhysicsRadius(0) or 40) then
-			table.insert(nearplayers, k)
-		end
-	end
-	return #nearplayers > 0 and nearplayers[math.random(#nearplayers)] or nil, true
-end
-local function KeepTargetFn(inst, target)
-	return inst.components.combat:CanTarget(target)
-		and target:IsNear(inst, 60)
-end
-
-local CREATURE_CLEAR_NOT = {"player","character","companion","shadowminion"}
+local CREATURE_CLEAR_NOT = {"player","character","companion","shadowminion","INLIMBO"}
 local CREATURE_CLEAR_ONEOF = {"_health","_combat"}
 local INVENTORY_CLEAR_NOT = {"irreplaceable","INLIMBO","_equippable","weapon","book","preparedfood","cs_soul","nosteal",
 "forgerepair_lunarplant","forgerepair_voidcloth","forgerepair_wagpunk_bits"}
-local OTHER_TAGS = {"antlion_sinkhole","groundspike","blocker","projectile","junk"}
+local OTHER_TAGS = {"antlion_sinkhole","groundspike","blocker","projectile"}
 
 local function ClearLand(inst)
 	inst.components.temperatureoverrider:SetTemperature(25)
@@ -733,16 +792,15 @@ local function ClearLand(inst)
 		v:Remove()
 	end
 
-	local others = TheSim:FindEntities(x, 0, z, 70,nil,{"DECOR","irreplaceable"},OTHER_TAGS)
+	local others = TheSim:FindEntities(x, 0, z, 70,nil,{"_combat","irreplaceable","_inventoryitem","INLIMBO"},OTHER_TAGS)
 	for i,v in ipairs(others) do
 		v:Remove()
 	end
 end
 
 local commonfn = {
-    retarget = RetargetFn,
-    keeptarget = KeepTargetFn,
 	clearland = ClearLand,
+	bosscombat_handle = common_boss_combatchange,
 }
 
 return {program = program, commonfn = commonfn}

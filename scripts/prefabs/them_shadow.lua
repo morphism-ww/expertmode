@@ -752,7 +752,7 @@ local function DoEcho(inst)
     for i, v in ipairs(ents) do
         if v.entity:IsVisible() and not (v.components.health ~= nil and v.components.health:IsDead()) then
             if v.components.combat:GetAttacked(inst,75,nil,nil,{["planar"] = 35}) then
-                v:AddDebuff("exhaustion","exhaustion",{duration = 20})
+                v:AddDebuff("buff_exhaustion","buff_exhaustion",{duration = 20})
             end
         end
     end

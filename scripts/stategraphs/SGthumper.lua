@@ -2,13 +2,16 @@ require("stategraphs/commonstates")
 
 local actionhandlers = {}
 
-local events = {}
+local events = {
+    EventHandler("onbuilt",function (inst)
+        inst.sg:GoToState("place")
+    end)
+}
 
 local states =
 {
 
-    State
-    {
+    State{
         name = "idle",
         tags = {"idle"},
 
@@ -22,14 +25,15 @@ local states =
         }
     },
 
-    State
-    {
+    State{
         name = "raise",
         tags = {"busy"},
 
         onenter = function(inst)
+            
             inst.SoundEmitter:PlaySound("dontstarve_wagstaff/characters/wagstaff/thumper/reset")
             inst.AnimState:PlayAnimation("reset")
+            inst.components.machine.enabled = false
         end,
 
         timeline = {    
@@ -59,8 +63,7 @@ local states =
         }
     },
 
-    State
-    {
+    State{
         name = "smash",
         tags = {"busy"},
 
@@ -70,6 +73,7 @@ local states =
 
         onexit = function(inst)
             inst.components.machine:TurnOff()
+            inst.components.machine.enabled = true
         end,
 
         timeline = {    
@@ -85,8 +89,7 @@ local states =
         }
     },
 
-    State
-    {
+    State{
         name = "hit_low",
         tags = {"idle"},
 
@@ -102,8 +105,7 @@ local states =
         }        
     },
 
-    State
-    {  
+    State{  
         name = "place",
         tags = {"busy"},
 
@@ -122,8 +124,7 @@ local states =
         },
     },
 
-    State
-    {  
+    State{  
         name = "hit",
         tags = {"busy"},
 

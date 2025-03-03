@@ -2,7 +2,6 @@ local events=
 {
     EventHandler("death", function(inst) inst.sg:GoToState("death") end),
     EventHandler("doattack", function(inst)
-
         if not inst.sg:HasStateTag("busy") then
             inst.sg:GoToState("attack")
         end
@@ -31,12 +30,12 @@ local states=
 
     State{
         name ="attack",
-        tags = {"busy"},
+        tags = {"busy","attack"},
         onenter = function(inst)
             inst.components.combat:StartAttack()
             inst.AnimState:PlayAnimation("atk_pre")
             inst.AnimState:PushAnimation("atk", false)
-            inst.sg.statemem.target=inst.components.combat.target
+            inst.sg.statemem.target = inst.components.combat.target
         end,
         timeline =
         {
@@ -62,7 +61,6 @@ local states=
 
         onenter = function(inst)
             inst.AnimState:PlayAnimation("disappear")
-            inst:AddTag("NOCLICK")
             inst.persists = false
         end,
         events =
@@ -72,7 +70,6 @@ local states=
             end),
         },
     },
-
 }
 
 

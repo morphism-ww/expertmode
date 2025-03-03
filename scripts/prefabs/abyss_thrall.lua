@@ -15,19 +15,18 @@ local prefabs =
 }
 
 
-local SHARE_TARGET_DIST = 20
+local SHARE_TARGET_DIST = 30
 local MAX_TARGET_SHARES = 10
 
 SetSharedLootTable("abyss_thrall",
 {
     { "voidcloth",		1.00 },
 	{ "voidcloth",		1.00 },
-	{ "voidcloth",		1.00 },
 	{ "voidcloth",		0.50 },
-	{ "horrorfuel",		1.00 },
 	{ "horrorfuel",		1.00 },
 	{ "horrorfuel",	    0.50 },
 	{ "shadow_soul",	1.00 },
+    { "armorskeleton",	1.00 },
 })
 
 
@@ -61,9 +60,12 @@ end
 
 local function OnAttacked(inst, data)
     inst.components.combat:SetTarget(data.attacker)
-    inst.components.combat:ShareTarget(data.attacker, SHARE_TARGET_DIST, ShareTargetFn, MAX_TARGET_SHARES)
 end
 
+
+local function ShareTarget(inst,data)
+    inst.components.combat:ShareTarget(data.target, SHARE_TARGET_DIST, ShareTargetFn, MAX_TARGET_SHARES)
+end
 
 
 local function nodmgshielded(inst, amount, overtime, cause, ignore_invincible, afflicter, ignore_absorb)
@@ -77,14 +79,11 @@ local function fn()
     inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()	
     
-    
+    MakeGhostPhysics(inst, 1000, .5)
     
     inst.Transform:SetSixFaced()
 
-    MakeCharacterPhysics(inst, 1000, .5)
-    RemovePhysicsColliders(inst)
-    inst.Physics:SetCollisionGroup(COLLISION.SANITY)
-    inst.Physics:CollidesWith(COLLISION.SANITY)
+    
 
     inst.AnimState:SetBank("ancient_spirit")
     inst.AnimState:SetBuild("ancient_spirit")
@@ -95,7 +94,6 @@ local function fn()
 
 
 	inst:AddTag("hostile")
-	inst:AddTag("scarytoprey")
 	inst:AddTag("shadow_aligned")
     inst:AddTag("fossil")
     inst:AddTag("abysscreature")
@@ -151,10 +149,15 @@ local function fn()
     ------------------------------------------
     inst:SetStateGraph("SGabyssthrall")
     inst:SetBrain(brain)	
+
+
     ------------------------------------------
     inst.hasshield = false
 
+    inst:ListenForEvent("newcombattarget",ShareTarget)
     inst:ListenForEvent("attacked", OnAttacked)
+    MakeSmartAbsorbDamageEnt(inst)
+
 
     return inst
 end

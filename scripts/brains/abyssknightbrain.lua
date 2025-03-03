@@ -5,7 +5,7 @@ require "behaviours/doaction"
 
 ------------------------------------------------------------------------------------------------------------------------------------
 
-local MAX_WANDER_DIST = 12
+local MAX_WANDER_DIST = 8
 
 
 local function GetWanderPoint(inst)
@@ -44,7 +44,7 @@ function AbyssKnightBrain:OnStart()
                     ),
                 WhileNode(function() return ShouldHide(self.inst) end, "Hide",
                     ActionNode(function() self.inst:PushEvent("hide") end)),
-                ChaseAndAttack(self.inst,20,40),
+                ChaseAndAttack(self.inst,20,30),
                 Wander(self.inst, GetWanderPoint, MAX_WANDER_DIST)
             },0.5)    
             )    
@@ -54,7 +54,10 @@ function AbyssKnightBrain:OnStart()
 end
 
 function AbyssKnightBrain:OnInitializationComplete()
-    self.inst.components.knownlocations:RememberLocation("home", self.inst:GetPosition())
+    if self.inst.components.knownlocations:GetLocation("home")==nil then
+        self.inst.components.knownlocations:RememberLocation("home", self.inst:GetPosition())
+    end
+    
 end
 
 return AbyssKnightBrain

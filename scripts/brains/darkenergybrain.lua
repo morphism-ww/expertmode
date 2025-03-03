@@ -1,39 +1,47 @@
 require "behaviours/chaseandattack"
 require "behaviours/wander"
-require "behaviours/chaseandram"
+require "behaviours/chaseandcharge"
+require "behaviours/avoidlight"
 
 
-local GOHOMEDSQ = 1600
-local WANDER_DIST = 8
-local MAX_CHASE_TIME = 5
-local MAX_CHARGE_DIST = 25
-local CHASE_GIVEUP_DIST = 20
+local WANDER_DIST = 18
+local MAX_CHASE_TIME = 4
+local MAX_CHARGE_DIST = 14
+local CHASE_GIVEUP_DIST = 8
 
 local function GetHome(inst)
 	return inst.components.knownlocations:GetLocation("spawnpoint")
 end
 
+local function getdirectionFn(inst)
+    local light = inst.LightWatcher:GetLightAngle()
+    if light then
+        return  180 + light
+    end
+end
   
-
-local AbyssHopLiteBrain = Class(Brain, function(self, inst)
+local DarkEnergyBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
 end)
 
 
-function AbyssHopLiteBrain:OnStart()
+function DarkEnergyBrain:OnStart()
 
     local root =  
         PriorityNode({
-            ChaseAndRam(self.inst, MAX_CHASE_TIME, CHASE_GIVEUP_DIST, MAX_CHARGE_DIST),
-            Wander(self.inst, GetHome, WANDER_DIST),
+            ChaseAndCharge(self.inst, MAX_CHASE_TIME, CHASE_GIVEUP_DIST, MAX_CHARGE_DIST),
+            --AvoidLight(self.inst),
+            Wander(self.inst, GetHome, WANDER_DIST,nil,getdirectionFn),
 
         },0.5)
     
     self.bt = BT(self.inst, root)
 end
 
-function AbyssHopLiteBrain:OnInitializationComplete()
-    self.inst.components.knownlocations:RememberLocation("spawnpoint", self.inst:GetPosition())
+function DarkEnergyBrain:OnInitializationComplete()
+    if self.inst.components.knownlocations:GetLocation("spawnpoint")==nil then
+        self.inst.components.knownlocations:RememberLocation("spawnpoint", self.inst:GetPosition())
+    end
 end
 
-return AbyssHopLiteBrain
+return DarkEnergyBrain

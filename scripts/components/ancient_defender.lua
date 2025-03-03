@@ -118,6 +118,7 @@ UpdateSpawn = function(player, params)
         --Don't reschedule spawning
         params.spawntask = nil
     end
+    params.abyss = nil
 end
 
 local function StartSpawn(player, params)
@@ -133,37 +134,13 @@ local function StopSpawn(player, params)
     end
 end
 
---[[local function GetArea(player)
-    local x,y,z=player.Transform:GetWorldPosition()
-    local node, node_index = TheWorld.Map:FindVisualNodeAtPoint(x, y, z)
-    return node~=nil and node.tags~=nil and table.contains(node.tags, "Nightmare")
-end]]
-
-local function ShouldSpawn(params,tags)
-    if tags~=nil then
-        for k,v in pairs(tags) do
-            if v=="Abyss" then
-                params.abyss = true
-                return true   
-            elseif v=="Atrium" then
-                return false
-            elseif v=="Nightmare" then
-                return true
-            end
-        end
-    end
-    return false
-end
-
-
-
 local function UpdatePopulation(player, params)
 	local is_insanity_mode = player.components.sanity:IsInsanityMode()
 
-    params.areadata = player.components.areaaware.current_area_data
-    local canspawn= is_insanity_mode and not player.components.sanity.inducedinsanity 
-    and params.areadata and ShouldSpawn(params,params.areadata.tags)
-   
+    local canspawn = is_insanity_mode and not player.components.sanity.inducedinsanity 
+    and player.components.areaaware:CurrentlyInTag("Nightmare")
+    params.abyss = player.components.areaaware:CurrentlyInTag("notele")
+
     local maxpop = 0
     local inc_chance = 0
     local dec_chance = 0
@@ -181,7 +158,7 @@ local function UpdatePopulation(player, params)
         else
             inc_chance = 0.2
         end
-    elseif sanity > 0.0 and canspawn then
+    elseif canspawn then
         maxpop = 2
         if targetpop >= maxpop then
             dec_chance = 0
@@ -190,16 +167,6 @@ local function UpdatePopulation(player, params)
         else
             inc_chance = 0.6
             dec_chance = 0.4
-        end
-    elseif canspawn then
-        maxpop = 2
-        if targetpop >= maxpop then
-            dec_chance = 0
-        elseif targetpop <= 0 then
-            inc_chance = 1
-        else
-            inc_chance = 1
-            dec_chance = 0
         end
     end
 
@@ -222,7 +189,7 @@ local function UpdatePopulation(player, params)
         StartSpawn(player, params)
     end
     --Reschedule population update
-    params.poptask = player:DoTaskInTime(30+20*math.random(), UpdatePopulation, params)
+    params.poptask = player:DoTaskInTime(20+20*math.random(), UpdatePopulation, params)
 end
 
 local function Start(player, params)

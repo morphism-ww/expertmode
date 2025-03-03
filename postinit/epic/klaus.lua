@@ -43,14 +43,14 @@ local function  DoSacrifice(inst,targets)
     end
     return spells
 end
-AddPrefabPostInit("deer_red", function(inst)
+newcs_env.AddPrefabPostInit("deer_red", function(inst)
 	if not TheWorld.ismastersim then
 		return
 	end
     inst.DoCast = DoCast
     inst.DoSacrifice=DoSacrifice
 end)
-AddPrefabPostInit("deer_blue", function(inst)
+newcs_env.AddPrefabPostInit("deer_blue", function(inst)
 	if not TheWorld.ismastersim then
 		return
 	end
@@ -85,7 +85,7 @@ local function DoFootstepRun(inst, volume)
     PlayFootstep(inst, volume)
 end
 
-AddStategraphState("deer",
+newcs_env.AddStategraphState("deer",
 State{
     name = "sacrifice_pre",
     tags = { "attack", "busy", "casting" },
@@ -145,7 +145,7 @@ State{
 })
 
 
-AddStategraphState("deer",
+newcs_env.AddStategraphState("deer",
 State{
     name = "sacrifice_loop",
     tags = { "attack", "busy", "casting" },
@@ -180,7 +180,7 @@ State{
     end,
 })
 
-AddStategraphState("deer",
+newcs_env.AddStategraphState("deer",
 State{
     name = "sacrifice_pst",
     tags = { "attack", "busy", "casting" },
@@ -251,7 +251,7 @@ State{
     end,
 })
 
-AddStategraphEvent("deer",
+newcs_env.AddStategraphEvent("deer",
 EventHandler("sacrifice", function(inst)
     if inst.gem ~= nil and not inst.components.health:IsDead() then
         if not inst.sg:HasStateTag("busy") then
@@ -297,7 +297,7 @@ local function lootsetfn(self)
 end
 
 
-AddPrefabPostInit("klaus", function(inst)
+newcs_env.AddPrefabPostInit("klaus", function(inst)
     inst:AddTag("noteleport")
 	if not TheWorld.ismastersim then
 		return
@@ -331,7 +331,7 @@ local function dropeverthing(inst)
             v.components.inventory:DropItem(item)
             LaunchItem(inst, v, item)
         end
-        v:AddDebuff("vulnerable","vulnerable")
+        v:AddDebuff("buff_vulnerable","buff_vulnerable")
     end
 end
 
@@ -347,24 +347,6 @@ local function DeerCanCast(deer)
                 (deer.components.burnable ~= nil and deer.components.burnable:IsBurning()))
 end
 
-local function PickCommandDeer(inst, highprio, lowprio)
-    local deer, lowpriodeer
-    for i, v in ipairs(inst.components.commander:GetAllSoldiers()) do
-        if DeerCanCast(v) and v:FindCastTargets() ~= nil then
-            if v == highprio then
-                return v
-            elseif v == lowprio then
-                lowpriodeer = v
-            elseif highprio == nil then
-                return v
-            elseif deer == nil then
-                deer = v
-            end
-        end
-    end
-    return deer or lowpriodeer
-end
-
 local function DoWortoxPortalTint(inst, val)
     if val > 0 then
         inst.components.colouradder:PushColour("portaltint", 154 / 255 * val, 23 / 255 * val, 19 / 255 * val, 0)
@@ -376,7 +358,7 @@ local function DoWortoxPortalTint(inst, val)
     end
 end
 
-AddStategraphState("SGklaus",
+newcs_env.AddStategraphState("SGklaus",
 State{
         name = "hip_in",
         tags = { "busy", "attack","nosleep","nofreeze" },
@@ -435,7 +417,7 @@ State{
         end,
     })
 
-AddStategraphState("SGklaus",
+newcs_env.AddStategraphState("SGklaus",
 State{
         name = "attack_hip",
         tags = { "busy", "attack","nosleep","nofreeze" },
@@ -502,7 +484,7 @@ local function DoFoleySounds(inst, volume)
 end
 
 
-AddStategraphState("SGklaus",
+newcs_env.AddStategraphState("SGklaus",
 State{
         name = "sacrifice_pre",
         tags = { "transition", "busy"},
@@ -536,7 +518,7 @@ State{
 )
 
 
-AddStategraphState("SGklaus",
+newcs_env.AddStategraphState("SGklaus",
 State{
     name = "sacrifice_loop",
     tags = { "busy" },
@@ -571,7 +553,7 @@ State{
 )    
 
 
-AddStategraphEvent("SGklaus",
+newcs_env.AddStategraphEvent("SGklaus",
 EventHandler("sacrifice", function(inst)
     if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
         inst.sg:GoToState("sacrifice_pre")
@@ -580,7 +562,7 @@ EventHandler("sacrifice", function(inst)
     end        
 end))
 
-AddStategraphEvent("SGklaus",
+newcs_env.AddStategraphEvent("SGklaus",
 EventHandler("soul_hip", function(inst,target)
     if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) 
         and target~=nil and target:IsValid() then
@@ -599,7 +581,7 @@ local function TryChomp(inst)
     end
 end
 
-AddStategraphPostInit("SGklaus",function(sg)
+newcs_env.AddStategraphPostInit("SGklaus",function(sg)
     sg.states.taunt_roar.onenter =function(inst)
         inst.components.locomotor:StopMoving()
         inst.AnimState:PlayAnimation("taunt2")
@@ -638,7 +620,7 @@ local function ShouldSacrifice(inst)
             and not inst.components.timer:TimerExists("sacrifice_cd")
 end
 
-AddBrainPostInit("klausbrain", function(self)
+newcs_env.AddBrainPostInit("klausbrain", function(self)
     self.bt.root.children[1]=
     WhileNode(function() return ShouldEnrage(self.inst) end, "Enrage",
             ActionNode(function() self.inst:PushEvent("enrage") end))
@@ -646,9 +628,117 @@ AddBrainPostInit("klausbrain", function(self)
             WhileNode(function() return ShouldSacrifice(self.inst) end, "Sacrifice",
             ActionNode(function() self.inst:PushEvent("sacrifice") end)))
     table.insert(self.bt.root.children, 4,
-            WhileNode(function() return ShouldHip(self.inst) end, "Sacrifice",
+            WhileNode(function() return ShouldHip(self.inst) end, "SoulHip",
             ActionNode(function() self.inst:PushEvent("soul_hip",self.inst.components.combat.target) end)))        
 
 end)
 
 
+newcs_env.AddComponentPostInit("klaussackloot", function(KlausSackLoot)
+    local giant_loot1 =
+    {
+    "deerclops_eyeball",
+    "dragon_scales",
+    "hivehat",
+    "shroom_skin",
+    }
+
+    local giant_loot2 =
+    {
+    "dragonflyfurnace_blueprint",
+    "red_mushroomhat_blueprint",
+    "green_mushroomhat_blueprint",
+    "blue_mushroomhat_blueprint",
+    "mushroom_light2_blueprint",
+    "mushroom_light_blueprint",
+    "townportal_blueprint",
+    "bundlewrap_blueprint",
+    "trident_blueprint",
+    }
+
+    local giant_loot3 =
+    {
+    "bearger_fur",
+    "lavae_egg",
+    "greengem",
+    "malbatross_beak",
+    }
+    local giant_loot4 =
+    {
+    "lightninggoathorn",
+    "staff_tornado",
+    "mandrake",
+    "tallbirdegg",
+    }
+    local boss_ornaments =
+    {
+    "winter_ornament_boss_klaus",
+    "winter_ornament_boss_noeyeblue",
+    "winter_ornament_boss_noeyered",
+    "winter_ornament_boss_krampus",
+    }
+
+    local function FillItems(items, prefab)
+    for i = 1 + #items, math.random(3, 4) do
+        table.insert(items, prefab)
+    end
+    end
+    function KlausSackLoot:RollKlausLoot()
+        --WINTERS FEAST--
+        self.wintersfeast_loot = {}
+
+        local rnd = math.random(3)
+        local items = {
+            boss_ornaments[math.random(#boss_ornaments)],
+            GetRandomFancyWinterOrnament(),
+            GetRandomLightWinterOrnament(),
+            ((rnd == 1 and GetRandomLightWinterOrnament()) or (rnd == 2 and GetRandomFancyWinterOrnament()) or GetRandomBasicWinterOrnament()),
+        }
+        table.insert(self.wintersfeast_loot, items)
+
+        items = {
+            "goatmilk",
+            "goatmilk",
+            {"winter_food"..tostring(math.random(2)), 4},
+        }
+        table.insert(self.wintersfeast_loot, items)
+
+        --WINTERS FEAST--
+        self.loot = {}
+
+        items = {}
+        table.insert(items, "amulet")
+        table.insert(items, "goldnugget")
+        FillItems(items, "charcoal")
+        table.insert(self.loot, items)
+
+        items = {}
+        if math.random() < .5 then
+            table.insert(items, "yellowamulet")
+        end
+        if math.random()< .75 then
+            FillItems(items, "bluegem")
+        else
+            FillItems(items, "yellowgem")
+        end
+
+        table.insert(self.loot, items)
+
+        items = {}
+        if math.random() < .5 then
+            table.insert(items, "krampus_sack")
+        end
+        table.insert(items, "goldnugget")
+        FillItems(items, "charcoal")
+        table.insert(self.loot, items)
+
+        items = {}
+
+        table.insert(items, giant_loot1[math.random(#giant_loot1)])
+        table.insert(items, giant_loot2[math.random(#giant_loot2)])
+        table.insert(items, giant_loot3[math.random(#giant_loot3)])
+        table.insert(items, giant_loot4[math.random(#giant_loot4)])
+        table.insert(self.loot, items)
+    end
+    KlausSackLoot:RollKlausLoot()
+end)

@@ -362,27 +362,22 @@ local function SetLarge(inst)
     inst.components.brightshadespawner.shouldspawn = true
     inst.components.brightshadespawner:StartNextSpawn()
     
-    inst.queen=true
+    inst.queen = true
     inst.vinelimit=0
 
-    --inst.icon.MiniMapEntity:SetIcon("lunarrift_portal_max1.png")
+    inst.MiniMapEntity:SetIcon("brightshade_queen.tex")
+    inst.icon = SpawnPrefab("globalmapicon")
+    inst.icon:TrackEntity(inst)
+    inst.icon.MiniMapEntity:SetPriority(21)
 end
-local Absorption_list={0,0.2,0.8,0.9}
+
+
 local function UpdateLevel(inst)
     local num = inst.components.brightshadespawner.numminions
 
-    local level
-    if num>6 then
-        level=4
-    elseif num>5 then
-        level=3
-    elseif num>3 then
-        level=2
-    else
-        level=1
-    end
+    local level = math.floor(num/2)*0.2
 
-    inst.components.health:SetAbsorptionAmount(Absorption_list[level])
+    inst.components.health:SetAbsorptionAmount(level)
     
 end
 
@@ -390,15 +385,21 @@ local function GetMedGrowTime(inst)
     return TUNING.TOTAL_DAY_TIME
 end
 
-local function GetLargeGrowTime(inst)
-    return 10
+local function ScreenFlash()
+    TheWorld:PushEvent("screenflash", .5)
 end
 
+local function PreGrow(inst)
+    ScreenFlash()
+    for i = 1, 5 do
+        inst:DoTaskInTime(0.5*i,ScreenFlash)
+    end
+end
 
 local growth_stages =
 {
-    { name = "med",     time = GetMedGrowTime,      fn = SetMedium        },
-    { name = "large",   time = GetLargeGrowTime,    fn = SetLarge         },
+    { name = "med",     time = GetMedGrowTime,      --[[fn = SetMedium]]        },
+    { name = "large",   --[[time = GetLargeGrowTime,]]    fn = SetLarge  ,pregrowfn = PreGrow  },
 }
 
 
@@ -411,10 +412,9 @@ end
 
 local function cloudOnSpawned(inst, cloud)
     local heading_angle = PI2*math.random()
-    local radius=6+6*math.random()
+    local radius = 6 + 6*math.random()
     local pos = Vector3(inst.Transform:GetWorldPosition())
     pos.x = pos.x + radius*math.cos(heading_angle*DEGREES)
-    pos.y = pos.y
     pos.z = pos.z - radius*math.sin(heading_angle*DEGREES)
     cloud.Transform:SetPosition(pos.x, pos.y, pos.z)
 end
@@ -478,7 +478,8 @@ local function fn()
 	MakeObstaclePhysics(inst, .8)
 	inst:SetPhysicsRadiusOverride(.4) --V2C: WARNING intentionally reducing range for incoming attacks; make sure everyone can still reach!
 
-    inst.MiniMapEntity:SetIcon("brightshade_queen.tex")
+    
+    inst.MiniMapEntity:SetIcon("lunarthrall_plant.png")
     inst.MiniMapEntity:SetCanUseCache(false)
     inst.MiniMapEntity:SetDrawOverFogOfWar(true)
     inst.MiniMapEntity:SetPriority(22)
@@ -593,6 +594,7 @@ local function fn()
 
     inst.playSpawnAnimation = playSpawnAnimation
     inst.OnLoadPostPass = OnLoadPostPass
+
     MakeMediumFreezableCharacter(inst)
     inst.components.freezable:SetRedirectFn(nofreeze)
 
@@ -601,9 +603,6 @@ local function fn()
 
 	spawnback(inst)
 
-    inst.icon = SpawnPrefab("globalmapicon")
-    inst.icon:TrackEntity(inst)
-    inst.icon.MiniMapEntity:SetPriority(0)
 
     return inst
 end

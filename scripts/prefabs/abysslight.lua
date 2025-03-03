@@ -1,5 +1,4 @@
 require("worldsettingsutil")
-local RuinsRespawner = require "prefabs/ruinsrespawner"
 
 local assets =
 {
@@ -10,6 +9,7 @@ local prefabs =
 {
     "shadowdragon",
     "nightmarelightfx",
+    "ruinsnightmare"
 }
 
 local MAX_LIGHT_ON_FRAME = 15
@@ -267,7 +267,8 @@ local function fn()
     WorldSettings_ChildSpawner_SpawnPeriod(inst, TUNING.NIGHTMAREFISSURE_RELEASE_TIME, TUNING.NIGHTMARELIGHT_ENABLED)
     WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.NIGHTMAREFISSURE_REGEN_TIME, TUNING.NIGHTMARELIGHT_ENABLED)
 
-    inst.components.childspawner.childname = "shadowdragon"
+    inst.components.childspawner.childname = "ruinsnightmare"
+    inst.components.childspawner:SetRareChild("shadowdragon", .4)
 
     inst:AddComponent("inspectable")
 
@@ -282,12 +283,151 @@ local function fn()
     return inst
 end
 
-local function gemspawner()
+local shadowthrall_table = {"shadowthrall_wings","shadowthrall_horns","shadowthrall_hands","shadowthrall_mouth"}
+
+local function GetRareChildFn()
+    return shadowthrall_table[math.random(1,4)]
+end
+
+local function TryRegisterBiteTarget(inst, target)
+	if target then
+		if inst._bite_target == target then
+		
+			return true
+		elseif inst._bite_target == nil and target:IsValid() then			
+			inst._bite_target = target
+			return true
+		end
+	end
+	return false
+end
+
+local function ontakeownership(inst,thrall)
     
+    if thrall.prefab == "shadowthrall_hands" then
+        thrall.sg.mem.lastfootstep = GetTime()
+    elseif thrall.prefab == "shadowthrall_mouth" then
+        thrall.TryRegisterBiteTarget = TryRegisterBiteTarget
+    end
+end
+
+local function OnPreLoad(inst, data)
+    WorldSettings_ChildSpawner_PreLoad(inst, data, 30, TUNING.ABYSS_THRALLGEN)
+end
+local function OnSpawned(inst,thrall)
+    if thrall.components.knownlocations ~= nil then
+		thrall.components.knownlocations:RememberLocation("spawnpoint", inst:GetPosition())
+	end
+    
+    thrall.sg:GoToState("spawndelay",0.1)
+end
+
+local function spawnfn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+
+    inst:AddTag("NOCLICK")
+    inst:AddTag("CLASSIFIED")
+    inst:AddTag("NOCLICK")
+
+    -------------------
+    inst:AddComponent("childspawner")
+    inst.components.childspawner:SetRegenPeriod(TUNING.ABYSS_THRALLGEN)
+    inst.components.childspawner:SetSpawnPeriod(30)
+    inst.components.childspawner:SetMaxChildren(4)
+    WorldSettings_ChildSpawner_SpawnPeriod(inst, 30, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.ABYSS_THRALLGEN, true)
+    inst.components.childspawner:SetRareChild(GetRareChildFn, 1)
+    inst.components.childspawner:SetSpawnedFn(OnSpawned)
+    inst.components.childspawner:SetOnTakeOwnershipFn(ontakeownership)
+    inst.components.childspawner:StartSpawning()
+    inst.components.childspawner:StartRegen()
+    inst.components.childspawner.childreninside = 4
+
+    inst.OnPreLoad = OnPreLoad
+
+    return inst
+end
+
+local function gelspawnerfn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    --[[Non-networked entity]]
+
+    inst:AddTag("gelblobspawningground")
+    inst:AddTag("NOBLOCK")
+    inst:AddTag("NOCLICK")
+
+    TheWorld:PushEvent("ms_registergelblobspawningground", inst)
+
+    return inst
+end
+
+
+local function OnPreLoad2(inst, data)
+    WorldSettings_ChildSpawner_PreLoad(inst, data, 30, TUNING.ABYSS_THRALLGEN)
+end
+local function mouth_spawnfn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+
+    inst:AddTag("NOCLICK")
+    inst:AddTag("CLASSIFIED")
+    inst:AddTag("NOBLOCK")
+
+    -------------------
+    inst:AddComponent("childspawner")
+    inst.components.childspawner:SetRegenPeriod(TUNING.ABYSS_THRALLGEN)
+    inst.components.childspawner:SetSpawnPeriod(30)
+    inst.components.childspawner:SetMaxChildren(3)
+    WorldSettings_ChildSpawner_SpawnPeriod(inst, 30, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.ABYSS_THRALLGEN, true)
+    inst.components.childspawner.childname = "shadowthrall_mouth"
+
+    inst.components.childspawner:StartSpawning()
+    inst.components.childspawner:StartRegen()
+    inst.components.childspawner.childreninside = 2
+    inst.components.childspawner:SetOnTakeOwnershipFn(ontakeownership)
+
+    inst.OnPreLoad = OnPreLoad2
+
+    return inst
+end
+
+
+local function statuspawn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+
+    inst:AddTag("NOCLICK")
+    inst:AddTag("CLASSIFIED")
+    inst:AddTag("NOBLOCK")
+    -------------------
+    inst:AddComponent("childspawner")
+    inst.components.childspawner:SetRegenPeriod(TUNING.ABYSS_THRALLGEN)
+    inst.components.childspawner:SetSpawnPeriod(30)
+    inst.components.childspawner:SetMaxChildren(3)
+    WorldSettings_ChildSpawner_SpawnPeriod(inst, 30, true)
+    WorldSettings_ChildSpawner_RegenPeriod(inst, TUNING.ABYSS_THRALLGEN, true)
+    inst.components.childspawner.spawnradius = {min = 5, max = 22}
+    inst.components.childspawner.childname = "void_peghook"
+
+    inst.components.childspawner:StartSpawning()
+    inst.components.childspawner:StartRegen()
+    inst.components.childspawner.childreninside = 3
+
+    inst.OnPreLoad = OnPreLoad2
+
+    return inst
 end
 
 
 return Prefab("abysslight", fn, assets, prefabs),
-    RuinsRespawner.Inst("shadowthrall_hands"), RuinsRespawner.WorldGen("shadowthrall_hands"),
-    RuinsRespawner.Inst("shadowthrall_wings"), RuinsRespawner.WorldGen("shadowthrall_wings"),
-    RuinsRespawner.Inst("shadowthrall_horns"), RuinsRespawner.WorldGen("shadowthrall_horns")
+    Prefab("shadowthrall_spawner",spawnfn),
+    Prefab("gelblobspawning_worldgen", gelspawnerfn),
+    Prefab("shadowmouth_spawner",mouth_spawnfn),
+    Prefab("void_peghook_spawner",statuspawn)

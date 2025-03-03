@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Atlas>
+    <Texture filename="newcs_inventoryitems.tex"/>
+    <Elements>
+        <Element name="armorabyss.tex" u1="0.12793" u2="0.249023" v1="0.000976563" v2="0.12207"/>
+        <Element name="armororichal.tex" u1="0.254883" u2="0.37793" v1="0.875977" v2="0.999023"/>
+        <Element name="aurumite.tex" u1="0.379883" u2="0.50293" v1="0.875977" v2="0.999023"/>
+        <Element name="aurumite_kit.tex" u1="0.504883" u2="0.62793" v1="0.875977" v2="0.999023"/>
+        <Element name="aurumite_kit_broken.tex" u1="0.629883" u2="0.75293" v1="0.875977" v2="0.999023"/>
+        <Element name="cs_infused_iron.tex" u1="0.250977" u2="0.37207" v1="0.000976563" v2="0.12207"/>
+        <Element name="cs_void_bag.tex" u1="0.754883" u2="0.87793" v1="0.875977" v2="0.999023"/>
+        <Element name="cs_waterdrop.tex" u1="0.25293" u2="0.374023" v1="0.62793" v2="0.749023"/>
+        <Element name="demon_soul.tex" u1="0.254883" u2="0.37793" v1="0.750977" v2="0.874023"/>
+        <Element name="dreadsword.tex" u1="0.000976563" u2="0.125977" v1="0.874023" v2="0.999023"/>
+        <Element name="insight_soul.tex" u1="0.12793" u2="0.250977" v1="0.749023" v2="0.87207"/>
+        <Element name="iokheira.tex" u1="0.379883" u2="0.50293" v1="0.750977" v2="0.874023"/>
+        <Element name="iron_soul.tex" u1="0.504883" u2="0.62793" v1="0.750977" v2="0.874023"/>
+        <Element name="laser_generator.tex" u1="0.25293" u2="0.374023" v1="0.504883" v2="0.625977"/>
+        <Element name="newcs_armorobsidian.tex" u1="0.000976563" u2="0.125977" v1="0.74707" v2="0.87207"/>
+        <Element name="newcs_axeobsidian.tex" u1="0.000976563" u2="0.125977" v1="0.620117" v2="0.745117"/>
+        <Element name="newcs_dragoonheart.tex" u1="0.000976563" u2="0.125977" v1="0.493164" v2="0.618164"/>
+        <Element name="newcs_obsidian.tex" u1="0.000976563" u2="0.125977" v1="0.366211" v2="0.491211"/>
+        <Element name="newcs_obsidianfirepit.tex" u1="0.000976563" u2="0.125977" v1="0.239258" v2="0.364258"/>
+        <Element name="newcs_spear_obsidian.tex" u1="0.000976563" u2="0.125977" v1="0.112305" v2="0.237305"/>
+        <Element name="newcs_volcanostaff.tex" u1="0.12793" u2="0.25293" v1="0.874023" v2="0.999023"/>
+        <Element name="obsidianhat.tex" u1="0.629883" u2="0.75293" v1="0.750977" v2="0.874023"/>
+        <Element name="odd_mushroom.tex" u1="0.754883" u2="0.87793" v1="0.750977" v2="0.874023"/>
+        <Element name="orichalhat.tex" u1="0.12793" u2="0.250977" v1="0.624023" v2="0.74707"/>
+        <Element name="shadow_soul.tex" u1="0.12793" u2="0.250977" v1="0.499023" v2="0.62207"/>
+        <Element name="staff_lunarblast.tex" u1="0.12793" u2="0.250977" v1="0.374023" v2="0.49707"/>
+        <Element name="sword_lunarblast.tex" u1="0.12793" u2="0.250977" v1="0.249023" v2="0.37207"/>
+        <Element name="true_voidcloth_scythe.tex" u1="0.12793" u2="0.250977" v1="0.124023" v2="0.24707"/>
+    </Elements>
+    <StraightAlpha>false</StraightAlpha>
+</Atlas>
+

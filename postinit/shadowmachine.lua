@@ -18,37 +18,37 @@ local function DoFx(inst)
     end
 end
 local function SetNightmare(inst)
-    inst:AddTag("shadowchesspiece")
-    if inst.shadow==nil then
-        inst.shadow = SpawnPrefab("small_leechterror")
-        inst.shadow:SetHost(inst,inst:HasTag("rook") and "innerds" or "hips")
+    inst:AddTag("nightmare")
+    if inst.leech==nil then
+        inst.leech = SpawnPrefab("small_leechterror")
+        inst.leech:SetHost(inst,inst:HasTag("rook") and "innerds" or "hips")
     end
     
     inst.components.lootdropper:SetLoot(NIGHTMARE_LOOT)
 end
 local function SetNormal(inst)
-    inst:RemoveTag("shadowchesspiece")
-    if inst.shadow~=nil then
-        inst.shadow:Remove()
-        inst.shadow = nil
+    inst:RemoveTag("nightmare")
+    if inst.leech~=nil then
+        inst.leech:Remove()
+        inst.leech = nil
     end
     inst.components.lootdropper:SetLoot(nil)
 end
 local function TestNightmarePhase(inst, phase)
 	
     if IsWorldNightmare(inst, phase) then
-        if not inst:HasTag("shadowchesspiece") then
+        if not inst:HasTag("nightmare") then
             DoFx(inst)
             SetNightmare(inst)
         end
-    elseif inst:HasTag("shadowchesspiece") then
+    elseif inst:HasTag("nightmare") then
         DoFx(inst)
         SetNormal(inst)
     end
 end
 
 local function OnSave(inst, data)
-    data.nightmare = inst:HasTag("shadowchesspiece") or nil
+    data.nightmare = inst:HasTag("nightmare") or nil
 end
 
 local function OnLoad(inst, data)
@@ -57,16 +57,15 @@ local function OnLoad(inst, data)
     end
 end
 
-AddPrefabPostInit("bishop_nightmare",function(inst)
+newcs_env.AddPrefabPostInit("bishop_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
-    
 
     inst:WatchWorldState("nightmarephase", TestNightmarePhase)
     inst.OnSave = OnSave
     inst.OnLoad = OnLoad
 end)
 
-AddPrefabPostInit("knight_nightmare",function(inst)
+newcs_env.AddPrefabPostInit("knight_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
     inst:WatchWorldState("nightmarephase", TestNightmarePhase)
     inst.OnSave = OnSave
@@ -74,30 +73,32 @@ AddPrefabPostInit("knight_nightmare",function(inst)
 end)
 ----------------------------------------------------------
 
-local function OnHitOther2(inst, data)
-	if data.target ~= nil then
+local function KnockbackOther(inst, data)
+	if data.target ~= nil and inst.sg:HasStateTag("runningattack") then
         data.target:PushEvent("knockback", { knocker = inst, radius = 5, strengthmult = 1.2})
-        if data.target.components.sanity~=nil then
-            data.target.components.sanity:DoDelta(-5)
-        end
     end
-
 end
 
-AddPrefabPostInit("rook_nightmare",function(inst)
+newcs_env.AddPrefabPostInit("rook_nightmare",function(inst)
     if not TheWorld.ismastersim then return end
-    inst:ListenForEvent("onhitother", OnHitOther2)
+
+    inst.components.combat:SetAreaDamage(3, 0.8)
+
+    inst:ListenForEvent("onattackother", KnockbackOther)
     inst:WatchWorldState("nightmarephase", TestNightmarePhase)
+    
     inst.OnSave = OnSave
     inst.OnLoad = OnLoad
 end)
+
+
 
 local function spawnshadow(inst)
     SpawnPrefab("shadowdragon").Transform:SetPosition(inst.Transform:GetWorldPosition())
 end
 
 
-AddPrefabPostInit("ancient_altar_broken",function(inst)
+newcs_env.AddPrefabPostInit("ancient_altar_broken",function(inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("onprefabswaped",spawnshadow)
 end)

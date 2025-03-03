@@ -1,8 +1,8 @@
 local function fn()
     local inst = CreateEntity()
+
     inst.entity:AddTransform()
     inst.entity:AddLight()
-    inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
     inst:AddTag("FX")

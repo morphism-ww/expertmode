@@ -9,8 +9,7 @@ end
 local List_of_Creature = {"klaus","spider_hider","slurtle","toadstool","woodie","rocky"}
 
 for k,v in ipairs(List_of_Creature) do
-    AddPrefabPostInit(v,function (inst)
-        if not TheWorld.ismastersim then return end
+    newcs_env.AddPrefabPostInit(v,function (inst)
         inst.components.health.SetAbsorptionAmount = SetAbsorptionAmount
     end)
 end

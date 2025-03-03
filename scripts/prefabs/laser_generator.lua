@@ -25,7 +25,10 @@ local function onunequip1(inst,owner)
     owner.AnimState:ClearOverrideSymbol("hand")
 
 
-    owner.components.skinner:SetSkinMode()
+    if owner.components.skinner~=nil then
+        owner.components.skinner:SetSkinMode()
+    end
+    
 end
 
 local function OnRepaired(inst)
@@ -116,9 +119,13 @@ end
 local function onequip2(inst,owner)
     
     owner:AddTag("canrepeatcast")
-    if not owner.components.channelcaster:IsChanneling() then
+    --[[if not owner.components.channelcaster:IsChanneling() then
         owner.components.channelcaster:StartChanneling()
-    end 
+    end]]
+    if owner.player_classified then
+        owner.components.locomotor:StartStrafing()
+		owner.player_classified.ischannelcasting:set(true)
+	end
 
     
     owner:DoTaskInTime(0.2,function ()
@@ -142,23 +149,30 @@ local function onunequip2(inst,owner)
     owner.AnimState:ClearOverrideSymbol("arm_upper_skin")
     owner.AnimState:ClearOverrideSymbol("hand")
     
-    if owner.components.channelcaster then
+    --[[if owner.components.channelcaster then
 		owner.components.channelcaster:StopChanneling()
+	end]]
+    if owner.player_classified then
+        owner.components.locomotor:StopStrafing()
+		owner.player_classified.ischannelcasting:set(false)
 	end
-    owner.components.skinner:SetSkinMode()
+    if owner.components.skinner~=nil then
+        owner.components.skinner:SetSkinMode()
+    end
+    
     SetBuffOwner(inst, nil)
     inst.components.fueled:StopConsuming()
 end
 
 local function DoLaserShoot(inst,owner,pos)
-    if not owner.components.channelcaster:IsChanneling() then
+    --[[if not owner.components.channelcaster:IsChanneling() then
         owner.components.channelcaster:StartChanneling()
         
-    end    
+    end]]    
     if owner.components.combat:InCooldown() then
         return
     end
-    owner.components.combat:OverrideCooldown(inst._bonusenabled and 0.4 or 0.7)
+    owner.components.combat:OverrideCooldown(inst._bonusenabled and 0.25 or 0.5)
     inst.components.fueled:DoDelta(inst._bonusenabled and -10 or -40)
     local proj = SpawnPrefab("laser_orb")
     local x, y, z = owner.Transform:GetWorldPosition()
@@ -208,8 +222,11 @@ local function postinitfn1(inst)
     inst.components.repairable:SetFiniteUsesRepairable(true)
 end
 
+
+
 local function commonfn2(inst)
     inst:AddTag("locomote_atk")
+    inst:AddTag("blocker_immune")
 
     inst:AddComponent("aoetargeting")
     inst.components.aoetargeting:SetAlwaysValid(true)
@@ -222,10 +239,9 @@ local function commonfn2(inst)
     inst.components.aoetargeting.reticule.invalidcolour = { .5, 0, 0, 1 }
     inst.components.aoetargeting.reticule.ease = true
     inst.components.aoetargeting.reticule.mouseenabled = true
+    inst.components.aoetargeting:SetShouldRepeatCastFn(function () return true end)
 
-    inst.components.aoetargeting:SetShouldRepeatCastFn(function (inst)
-        return true
-    end)
+    
 end
 
 local function onfuelchange(newsection, oldsection, inst)
@@ -235,6 +251,7 @@ end
 local function postinitfn2(inst)
     inst.components.equippable:SetOnEquip(onequip2)
     inst.components.equippable:SetOnUnequip(onunequip2)
+    --inst.components.equippable.walkspeedmult = 0.8
 
     inst:AddComponent("aoespell")
     inst.components.aoespell:SetSpellFn(DoLaserShoot)
@@ -242,7 +259,8 @@ local function postinitfn2(inst)
     inst:AddComponent("fueled")
     inst.components.fueled:InitializeFuelLevel(TUNING.LASERCANNON_FUEL)
     inst.components.fueled:SetSectionCallback(onfuelchange)
-    
+
+    inst.components.inventoryitem:ChangeImageName("laser_generator")
 end
 
 local function MakeGun(name,common,postinit)
@@ -275,7 +293,6 @@ local function MakeGun(name,common,postinit)
         inst:AddComponent("inspectable")
 
         inst:AddComponent("inventoryitem")
-        inst.components.inventoryitem:ChangeImageName("laser_generator")
 
         inst:AddComponent("equippable")
         inst.components.equippable.equipslot = EQUIPSLOTS.HANDS

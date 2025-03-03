@@ -2,80 +2,65 @@ require("stategraphs/commonstates")
 
 local SHAKE_DIST = 40
 local BEAMRAD = 9
-local function onattackedfn(inst, data)
-    if inst.components.health ~= nil and not inst.components.health:IsDead()
-        and not (inst.sg:HasStateTag("busy") or inst._is_shielding) then
-        inst.sg:GoToState("hit")
-    end
+
+
+local ARC = 90 * DEGREES --degrees to each side
+local AOE_RANGE_PADDING = 3
+local AOE_TARGET_MUSTHAVE_TAGS = { "_combat" }
+local AOE_TARGET_CANT_TAGS = { "INLIMBO", "flight", "invisible", "notarget", "noattack", "laser" }
+local MAX_SIDE_TOSS_STR = 0.8
+
+local function DoArcAttack(inst, dist, radius, targets)
+	inst.components.combat.ignorehitrange = true
+	local x, y, z = inst.Transform:GetWorldPosition()
+	local rot = inst.Transform:GetRotation() * DEGREES
+	local x0, z0
+	if dist ~= 0 then
+		x = x + dist * math.cos(rot)
+		z = z - dist * math.sin(rot)
+	end
+	for i, v in ipairs(TheSim:FindEntities(x, y, z, radius + AOE_RANGE_PADDING, AOE_TARGET_MUSTHAVE_TAGS, AOE_TARGET_CANT_TAGS)) do
+		if v ~= inst and
+			not (targets ~= nil and targets[v]) and
+			v:IsValid() and not v:IsInLimbo()
+			and not (v.components.health ~= nil and v.components.health:IsDead())
+		then
+			local range = radius + v:GetPhysicsRadius(0)
+			local x1, y1, z1 = v.Transform:GetWorldPosition()
+			local dx = x1 - x
+			local dz = z1 - z
+			local distsq = dx * dx + dz * dz
+			if distsq > 0 and distsq < range * range and
+				DiffAngleRad(rot, math.atan2(-dz, dx)) < ARC and
+				inst.components.combat:CanTarget(v)
+			then
+				inst.components.combat:DoAttack(v)
+				if targets ~= nil then
+					targets[v] = true
+				end
+			end
+		end
+	end
+	inst.components.combat.ignorehitrange = false
 end
 
-local function checkmine(inst)
-    local x, y, z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x,y,z,12,nil,nil,{"ancient_hulk_mine"})
-    return #ents < 9
-end
-
-
-
-local function onattackfn(inst,data)
-    if inst.components.health ~= nil and not inst.components.health:IsDead()
-            and not (inst.sg:HasStateTag("busy") or inst.sg:HasStateTag("hit"))
-            and (data.target ~= nil and data.target:IsValid()) then
-        local dsq_to_target = inst:GetDistanceSqToInst(data.target)
-        if inst.canbarrier and not inst.components.timer:TimerExists("destroyer_cd")
-                and dsq_to_target < 36 then
-            inst.sg:GoToState("destroyer",data.target)
-        elseif inst.angry and not inst.components.timer:TimerExists("spin_cd") and dsq_to_target < 49 then
-            inst.sg:GoToState("spin", data.target)
-        elseif not inst.components.timer:TimerExists("teleport_cd") then
-            inst.sg:GoToState("teleportout_pre", data.target)
-        else
-            local attack_state
-            if not inst.components.timer:TimerExists("bomb_cd")
-                    and checkmine(inst) then
-                attack_state = "bomb_pre"
-            elseif dsq_to_target > 36 and not inst.components.timer:TimerExists("lob_cd") then
-                --inst.sg.mem.lob_count=3
-                attack_state = "lob"
-            else
-                attack_state = "attack"
+---如果无法发射激光，就逼近，否则保持距离
+local function FindTelePos(inst,target,type)
+    local pt 
+    local x,y,z = inst.Transform:GetWorldPosition()
+    if target and target:IsValid() then
+        pt = target:GetPosition()
+        if type ==1 then
+            return pt
+        elseif type ==2 then
+            local offset = FindWalkableOffset(pt, PI2*math.random(), 12 + math.random()*4, 10)
+            if offset~=nil then
+                return pt + offset
             end
-            inst.sg:GoToState(attack_state, data.target)
         end
     end
+    return Vector3(x,0,z)
 end
-
-local function teleport(inst)
-    local pt = Vector3(inst.Transform:GetWorldPosition())
-    local target=inst.components.combat.target
-    if target~=nil then
-        pt = Vector3(target.Transform:GetWorldPosition())
-    end
-
-    local theta = math.random() * PI2
-
-    local offset
-    if target~=nil and inst:GetDistanceSqToPoint(pt) > 64 then
-        offset = FindWalkableOffset(pt, theta, 3 + math.random()*2, 10)
-    else
-        offset = FindWalkableOffset(pt, theta, 12 + math.random()*4, 10)
-    end
-        --[[while not offset do
-            offset = FindWalkableOffset(pt, theta, 12 + math.random()*5, 12, true) --12
-        end]]
-    local x1,y1,z1=inst.components.knownlocations:GetLocation("home"):Get()
-    if offset and not inst.sg.mem.teleporthome then
-        pt.x = pt.x + offset.x
-        pt.z = pt.z + offset.z
-    else
-        pt.x=x1
-        pt.z=z1
-    end
-
-    inst.Physics:Teleport(pt.x,0,pt.z)
-    --inst.sg:GoToState("telportin")
-end
-
 
 local function teleportcharge(inst)
 
@@ -85,30 +70,14 @@ local function teleportcharge(inst)
     local offset = FindWalkableOffset(pt, theta, 7 , 8)
 
 
-    if offset then
+    if offset~=nil then
         pt.x = pt.x + offset.x
         pt.z = pt.z + offset.z
     end
 
     inst.Physics:Teleport(pt.x,0,pt.z)
-    --inst.sg:GoToState("telportin")
 end
 
-local function launchprojectile(inst, dir)
-    local pt =  inst:GetPosition()
-
-    local theta = (dir - 30 + (15*math.random()))*DEGREES
-
-    local offset = FindWalkableOffset(pt, theta, 6 + math.random()*5, 8)
-
-
-    if offset then
-        pt.x = pt.x + offset.x
-        pt.y = 0
-        pt.z = pt.z + offset.z
-        inst:LaunchProjectile(pt)
-    end
-end
 
 local function spawnburns(inst,rad,startangle,endangle,num)
     local pt = inst:GetPosition() 
@@ -132,36 +101,41 @@ local events=
 {
     CommonHandlers.OnLocomote(false,true),
     CommonHandlers.OnDeath(),
-    EventHandler("doattack", onattackfn),
-    EventHandler("attacked", onattackedfn),
+    EventHandler("doattack", function (inst,data)
+        if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy"))
+            and (data.target ~= nil and data.target:IsValid()) then
+            local dsq_to_target = inst:GetDistanceSqToInst(data.target)
+            if inst.canbarrier and not inst.components.timer:TimerExists("barrier_cd")
+                    and dsq_to_target < 36 then
+                inst.sg:GoToState("barrier",data.target)
+            elseif inst.angry and not inst.components.timer:TimerExists("spin_cd") and dsq_to_target < 49 then
+                inst.sg:GoToState("spin", data.target)
+            elseif inst.cancharge and not inst.components.timer:TimerExists("teleportcharge_cd") then
+                inst.sg:GoToState("teleportout_pre", {charge = true,data.target})
+            elseif dsq_to_target > 36 and inst.lob_count>0 then
+                inst.sg:GoToState("lob",data.target)
+            else
+                inst.sg:GoToState("attack", data.target)
+            end
+        end
+    end),
+    EventHandler("attacked",function (inst)
+        if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy") or inst._is_shielding) then
+            inst.sg:GoToState("hit")
+        end
+    end),
+    EventHandler("lay_mines", function (inst)
+        if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
+            inst.sg:GoToState("bomb_pre")
+        end
+    end),
+    EventHandler("teleportout", function (inst,data)
+        if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
+            inst.sg:GoToState("teleportout_pre",{target = data.target,type = data.type})
+        end
+    end),
     --EventHandler("activate", function(inst) inst.sg:GoToState("activate") end),
-    EventHandler("stunned", function(inst)
-        if inst.components.health ~= nil and not inst.components.health:IsDead() then
-            inst:EnterShield()
-        end
-    end),
-    EventHandler("stun_finished", function(inst)
-        if inst.components.health ~= nil and not inst.components.health:IsDead() then
-            inst:ExitShield()
-        end
-    end),
 }
-
-local function ShakeIfClose(inst)
-    local player = GetClosestInstWithTag("player", inst, SHAKE_DIST)
-    --[[if player then
-        player.components.playercontroller:ShakeCamera(inst, "FULL", 0.7, 0.02, 3, SHAKE_DIST)
-    end]]
-    ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 1, inst, 40)
-end
-
-local function ShakeIfClose_Footstep(inst)
-    local player = GetClosestInstWithTag("player", inst, SHAKE_DIST)
-    --[[if player then
-        player.components.playercontroller:ShakeCamera(inst, "FULL", 0.35, 0.02, 1.25, SHAKE_DIST)
-    end]]
-    ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 1, inst, 40)
-end
 
 
 local function DoFootstep(inst)
@@ -178,39 +152,10 @@ local states=
         onenter = function(inst)
             inst.Physics:Stop()
             inst.AnimState:PlayAnimation("idle")
-            --[[local target=inst.components.combat.target
-            if inst.wantstobarrier then
-                inst.wantstobarrier = nil
-                if inst.components.combat.target then                                    
-                    inst.sg:GoToState("barrier")
-                end
-            elseif inst.wantstospin then
-                inst.wantstospin = nil
-                if inst.components.combat.target then                                    
-                    inst.sg:GoToState("spin")
-                end            
-            elseif inst.wantstolob then
-                inst.wantstolob = nil
-                if inst.components.combat.target then                                    
-                    inst.sg:GoToState("lob",target)
-                end                
-            elseif inst.wantstoteleport then
-                inst.wantstoteleport = nil
-                if inst.components.combat.target then                                    
-                    inst.sg:GoToState("telportout_pre")
-                end            
-            elseif inst.wantstomine then
-                inst.wantstomine = nil
-                if inst.components.combat.target then                                    
-                    inst.sg:GoToState("bomb_pre")
-                end       
-            end]]
-
         end,
 
         timeline=
         {
-    ----------gears loop--------------
             TimeEvent(19*FRAMES, function(inst)
                 inst.SoundEmitter:SetParameter( "gears", "intensity", .2 )
             end),
@@ -326,9 +271,8 @@ local states=
         tags = {"hit"},
 
         onenter = function(inst)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+            inst.components.locomotor:StopMoving()
+            
             inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/hit")
             inst.AnimState:PlayAnimation("hit")
         end,
@@ -346,9 +290,8 @@ local states=
         tags = {"attack", "busy", "canrotate"},
 
         onenter = function(inst)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+            
+            inst.components.locomotor:StopMoving()
             inst.components.combat:StartAttack()
             inst.AnimState:PlayAnimation("atk_chomp")
         end,
@@ -357,12 +300,18 @@ local states=
         {
             TimeEvent(8*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/dig") end),
             TimeEvent(22*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/drag") end),
-            TimeEvent(15*FRAMES, function(inst) inst.components.combat:DoAttack() end),
+            TimeEvent(14*FRAMES, function(inst)
+				inst.sg.statemem.targets = {}
+				DoArcAttack(inst, 0.5, 6, inst.sg.statemem.targets) 
+			end),
+            TimeEvent(15*FRAMES, function(inst) 
+                DoArcAttack(inst, 0.5, 6, inst.sg.statemem.targets) 
+            end),
         },
 
         events=
         {
-            EventHandler("animqueueover", function(inst) inst.sg:GoToState("idle") end),
+            EventHandler("animover", function(inst) inst.sg:GoToState("idle") end),
         },
     },
 
@@ -371,69 +320,51 @@ local states=
         tags = {"busy"},
 
         onenter = function(inst)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+            
+            inst.components.locomotor:StopMoving()
+            
             inst.AnimState:PlayAnimation("death_explode")
+            
             RemovePhysicsColliders(inst)
+
+            inst:ExitShield()
         end,
 
         timeline=
         {
-                    -------------green_explotion---------------
-            TimeEvent(2*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= .2})
-            end),
-            TimeEvent(6*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= .3})
-            end),
-            TimeEvent(23*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= .4})
-            end),
-            TimeEvent(26*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= .6})
-            end),
-            TimeEvent(33*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= .8})
-            end),
-            TimeEvent(36*FRAMES, function(inst)
-                 inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity= 1})
-            end),
-            ----gears loop_---
-            TimeEvent(17*FRAMES, function (inst) inst.SoundEmitter:KillSound("gears") end),
-            ----death voice----
-            TimeEvent(17*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/death") end),
-            TimeEvent(20*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/death_taunt") end),
-            ---- explode---
-            TimeEvent(61*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small",nil,.5) end),
-            TimeEvent(67*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small",nil,.6) end),
-            TimeEvent(77*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small",nil,.7) end),
-            TimeEvent(79*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small",nil,.6) end),
-            TimeEvent(82*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode") end),
+            TimeEvent(2  * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 0.2}) end),
+            TimeEvent(6  * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 0.3}) end),
+            TimeEvent(23 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 0.4}) end),
+            TimeEvent(26 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 0.6}) end),
+            TimeEvent(33 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 0.8}) end),
+            TimeEvent(36 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity = 1.0}) end),
+
+            TimeEvent(17 * FRAMES, function (inst) inst.SoundEmitter:KillSound("gears") end),
+
+            TimeEvent(17 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/death") end),
+            TimeEvent(20 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/death_taunt") end),
+
+            TimeEvent(61 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small", nil, 0.5) end),
+            TimeEvent(67 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small", nil, 0.6) end),
+            TimeEvent(77 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small", nil, 0.7) end),
+            TimeEvent(79 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small", nil, 0.6) end),
+            TimeEvent(82 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("porkland_soundpackage/creatures/boss/hulk_metal_robot/explode") end),
 
             TimeEvent(81*FRAMES, function(inst)
-                    --[[local player = GetClosestInstWithTag("player", inst, SHAKE_DIST)
-                    if player then
-                        player.components.playercontroller:ShakeCamera(inst, "FULL", 0.7, 0.02, 2, SHAKE_DIST)
-                    end]]
-                    local x,y,z = inst.Transform:GetWorldPosition()
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x, 0, z)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x+1, 0, z-1)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x-1, 0, z+1)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x+1, 0, z)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x, 0, z+1)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x, 0, z-1)
-                    SpawnPrefab("laserscorch").Transform:SetPosition(x-1, 0, z)
+                   
+                ShakeAllCameras(CAMERASHAKE.FULL, 0.7, 0.02, 2, inst, 40)
+                local x,y,z = inst.Transform:GetWorldPosition()
 
-                    inst:DoDamage(6)
-                    local EXTRA_LOOT = {}
-                    for k,v in pairs(inst.attackerUSERIDs) do
-                        table.insert(EXTRA_LOOT,"iron_soul")
+                for i = -1, 1 do
+                    for j = -1, 1 do
+                        SpawnPrefab("deerclops_laserscorch").Transform:SetPosition(x+i, 0, z+j)
                     end
-                    inst.components.lootdropper:SetLoot(EXTRA_LOOT)
-                    inst.components.lootdropper:DropLoot()
-                    --inst.dropparts(inst,x,z)
-                end),
+                end
+
+                inst:DoDamage(7)
+                inst.components.lootdropper:DropLoot()
+                    
+            end),
         },
     },
 
@@ -443,33 +374,16 @@ local states=
         name = "teleportout_pre",
         tags = {"busy"},
 
-        onenter = function(inst)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+        onenter = function(inst,data)
+            inst.Physics:Stop()
             inst.AnimState:PlayAnimation("teleport_out_pre")
-            inst.sg.statemem.target=inst.components.combat.target
+
+            
+            if data.target~=nil and data.target:IsValid() then
+                inst:ForceFacePoint(data.target.Transform:GetWorldPosition())
+            end
+            inst.sg.statemem.teledata = data
         end,
-        onupdate = function(inst)
-			if inst.sg.statemem.target ~= nil then
-				if inst.sg.statemem.target:IsValid() then
-					inst:ForceFacePoint(inst.sg.statemem.target.Transform:GetWorldPosition())
-				else
-					inst.sg.statemem.target = nil
-				end
-			end
-        end,
-        events =
-        {
-            EventHandler("animover", function(inst)
-                if inst.cancharge and not inst.sg.mem.teleporthome then
-                    inst.sg:GoToState("teleport_attack")
-                else
-                    inst.sg.mem.teleporthome=nil
-                    inst.sg:GoToState("teleportout")
-                end
-            end),
-        },
 
         timeline=
         {
@@ -479,17 +393,37 @@ local states=
             TimeEvent(9*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step",nil,.25) end),
             TimeEvent(20*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step",nil,.25) end),
         },
+
+        events =
+        {
+            EventHandler("animover", function(inst)
+                --[[if inst.cancharge and not inst.sg.mem.teleporthome then
+                    inst.sg:GoToState("teleport_attack")
+                else
+                    inst.sg.mem.teleporthome=nil
+                    inst.sg:GoToState("teleportout")
+                end]]
+                if inst.sg.statemem.teledata.charge then
+                    inst.sg:GoToState("teleport_attack")
+                else
+                    inst.sg:GoToState("teleportout",inst.sg.statemem.teledata)
+                end
+                
+            end),
+        },
     },
 
     State{
         name = "teleportout",
         tags = {"busy"},
 
-        onenter = function(inst)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+        onenter = function(inst,data)
+            
+            inst.components.locomotor:StopMoving()
+            
             inst.AnimState:PlayAnimation("teleport_out")
+            inst.sg.statemem.telepos = FindTelePos(inst,data.target,data.type)
+            inst.components.timer:StartTimer("teleport_cd",15)
         end,
 
         timeline=
@@ -526,9 +460,8 @@ local states=
         {
             EventHandler("animover", function(inst)
                 inst:Hide()
-                teleport(inst)
+                inst.Physics:Teleport(inst.sg.statemem.telepos:Get())
                 inst.sg:GoToState("teleportin")
-                --inst:DoTaskInTime(0.5,function() teleport(inst)  end)
             end ),
         },
     },
@@ -538,9 +471,10 @@ local states=
 
         onenter = function(inst)
             
-            inst.components.locomotor:StopMoving()
+            inst.components.locomotor:Stop()
 
             inst.AnimState:PlayAnimation("teleport_out")
+            inst.components.timer:StartTimer("teleportcharge_cd",15)
             inst.sg:SetTimeout(1.2)
         end,
 
@@ -577,9 +511,15 @@ local states=
             end),
         },
         ontimeout=function(inst)
-            inst:Hide()
+            
             inst.sg:GoToState("teleportin")
         end,
+        onexit = function (inst)
+            inst:Hide()
+
+
+            inst.components.locomotor:Stop()
+        end
     },
     
     State{
@@ -589,10 +529,11 @@ local states=
         onenter = function(inst)
             inst:Show()
             inst.DynamicShadow:Enable(true)
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
-            inst.AnimState:PlayAnimation("teleport_in",true)
+            
+            inst.components.locomotor:StopMoving()
+            
+            inst.AnimState:PlayAnimation("teleport_in")
+            
         end,
 
         timeline=
@@ -617,7 +558,7 @@ local states=
         events =
         {
             EventHandler("animover", function(inst)
-                inst.components.timer:StartTimer("teleport_cd",20)
+                
 
                 inst.sg:GoToState("idle")
             end ),
@@ -670,6 +611,7 @@ local states=
         onenter = function(inst)
             inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("atk_bomb_loop")
+            inst.components.timer:StartTimer("bomb_cd",16)
         end,
 
         timeline=
@@ -681,18 +623,18 @@ local states=
 
 
             TimeEvent(5*FRAMES, function(inst)
-                launchprojectile(inst, 0)
-                launchprojectile(inst, 45)
+                inst:LaunchMine(0)
+                inst:LaunchMine(45)
             end),
             TimeEvent(9*FRAMES, function(inst)
-                launchprojectile(inst, 90)
+                inst:LaunchMine(90)
             end),
             TimeEvent(13*FRAMES, function(inst)
-                launchprojectile(inst, 180)
+                inst:LaunchMine(180)
             end),
             TimeEvent(19*FRAMES, function(inst)
-                launchprojectile(inst, 270)
-                launchprojectile(inst, 220)
+                inst:LaunchMine(270)
+                inst:LaunchMine(220)
             end),
         },
 
@@ -735,7 +677,7 @@ local states=
         events =
         {
             EventHandler("animover", function(inst)
-                inst.components.timer:StartTimer("bomb_cd",16)
+                
                 inst.sg:GoToState("idle")
             end ),
         },
@@ -750,13 +692,15 @@ local states=
         onenter = function(inst,target)
 
             inst.AnimState:PlayAnimation("atk_lob")
-            if target~=nil and target:IsValid() then
-                
-                inst:ForceFacePoint(target:GetPosition())
-                inst.sg.statemem.target = target
-                inst.components.combat:StartAttack()
-            end
+            inst.sg.statemem.target = target
+            --inst.components.combat:StartAttack()
             inst.components.locomotor:Stop()
+        end,
+
+        onupdate = function(inst)
+            if inst.sg.statemem.target and inst.sg.statemem.target:IsValid() then
+                inst:ForceFacePoint(inst.sg.statemem.target.Transform:GetWorldPosition())
+            end
         end,
 
         timeline =
@@ -769,8 +713,8 @@ local states=
                 else
                     
                     local offset = Vector3(15 * math.cos( angle ), 0, -15 * math.sin( angle ))
-                    local pt = Vector3(inst.Transform:GetWorldPosition())
-                    inst.sg.statemem.targetpos = Vector3(pt.x + offset.x,pt.y + offset.y,pt.z + offset.z)
+                    local x, y, z = inst.Transform:GetWorldPosition()
+                    inst.sg.statemem.targetpos = Vector3(x + offset.x,y + offset.y,z + offset.z)
                 end
                 
                 inst:ShootProjectile(inst.sg.statemem.targetpos)
@@ -784,27 +728,24 @@ local states=
                     inst:ShootProjectile(inst.sg.statemem.targetpos+offset3)
                     inst:ShootProjectile(inst.sg.statemem.targetpos+offset4)
                 end
+                inst.lob_count = inst.lob_count - 1
+                if inst.lob_count<=0 then
+                    inst.components.combat.attackrange = 5
+                    inst:DoTaskInTime(inst.cancharge and 12 or 18, function() 
+                        inst.lob_count = 5 
+                        inst.components.combat.attackrange = 18
+                    end)
+                end
             end),
 
-            TimeEvent(FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser_pre") end),
-            TimeEvent(30*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity=math.random()})
-            end),
+            TimeEvent(0*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser_pre") end),
+            TimeEvent(30*FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/laser", {intensity=math.random()})end),
         },
 
 
         events =
         {
             EventHandler("animover", function(inst)
-                --[[if inst.sg.mem.lob_count ~= nil and inst.sg.mem.lob_count > 0 then
-                    inst.sg.mem.lob_count=inst.sg.mem.lob_count-1
-                    inst.sg:GoToState("lob",inst.sg.statemem.target)
-                end]]
-                inst.lob_count = inst.lob_count - 1
-                if inst.lob_count<=0 then
-                    inst.components.combat.attackrange = 5
-                    inst.components.timer:StartTimer("lob_cd",inst.cancharge and 20 or 25)
-                end
                 inst.sg:GoToState("idle")
             end ),
         },
@@ -822,51 +763,31 @@ local states=
             inst.Transform:SetNoFaced()
             inst.components.locomotor:StopMoving()
 
-            inst.components.combat:StartAttack()
-
             inst.AnimState:PlayAnimation("atk_circle")
-            inst.components.planardamage:SetBaseDamage(40)
+            inst.components.timer:StartTimer("spin_cd", 20)
+
+            inst.components.planardamage:AddBonus(inst, 25, "full_charged")
         end,
 
         timeline=
         {
-            -------------step---------------
-            TimeEvent(10*FRAMES, function(inst)inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step",nil,.5) end),
-            TimeEvent(68*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step",nil,.5) end),
-            TimeEvent(70*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step",nil,.5) end),
-            TimeEvent(82*FRAMES, function(inst)inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step",nil,.5) end),
-            TimeEvent(90*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step",nil,.5) end),
+            TimeEvent(10 * FRAMES, function(inst)inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step", nil, 0.5) end),
+            TimeEvent(68 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step", nil, 0.5) end),
+            TimeEvent(70 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step", nil, 0.5) end),
+            TimeEvent(82 * FRAMES, function(inst)inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step", nil, 0.5) end),
+            TimeEvent(90 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/leg/step", nil, 0.5) end),
 
-            -----------servo---------------
-            TimeEvent(11*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity=math.random()})
-            end),
-            TimeEvent(62*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity=math.random()})
-            end),
-            ----electro-----
-            TimeEvent(14*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro")
-            end),
-            TimeEvent(21*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro")
-            end),
-            TimeEvent(26*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro")
-            end),
-            ---------spin laser--------
-            TimeEvent(30*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/spin")
-            end),
-            TimeEvent(30*FRAMES, function(inst)
-                inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/burn_LP","laserburn")
-            end),
-            TimeEvent(49*FRAMES, function(inst)
-                inst.SoundEmitter:KillSound("laserburn")
-            end),
-            ---mix---
-            TimeEvent(49*FRAMES, function(inst) TheMixer:PushMix("boom")
-            end),
+            TimeEvent(11 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity = math.random()}) end),
+            TimeEvent(62 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity = math.random()}) end),
+
+            TimeEvent(14 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro") end),
+            TimeEvent(21 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro") end),
+            TimeEvent(26 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/electro") end),
+
+            TimeEvent(30 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/spin") end),
+            TimeEvent(30 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/burn_LP", "laserburn") end),
+            TimeEvent(49 * FRAMES, function(inst) inst.SoundEmitter:KillSound("laserburn") end),
+
              ---------spin laser ground--------
             TimeEvent(37*FRAMES, function(inst)
                 inst:DoDamage(BEAMRAD,0,45)
@@ -912,8 +833,7 @@ local states=
 
         onexit = function(inst)
             inst.Transform:SetSixFaced()
-            inst.components.planardamage:SetBaseDamage(30)
-            inst.components.timer:StartTimer("spin_cd", 20)
+            inst.components.planardamage:RemoveBonus(inst,"full_charged")
         end,
 
         events =
@@ -925,41 +845,33 @@ local states=
     },
 
 
-----------------------DESTROYER--------------------
+----------------------  BARRIER--------------------
 
     State{
-        name = "destroyer",
+        name = "barrier",
         tags = {"busy"},
         
         onenter = function(inst)
             inst.Transform:SetNoFaced()
-            if inst.components.locomotor then
-                inst.components.locomotor:StopMoving()
-            end
+            
+            inst.components.locomotor:StopMoving()
+            
             inst.AnimState:PlayAnimation("atk_barrier")
         end,            
         
         timeline=
         {        
             --step---
-            TimeEvent(12*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step") 
-            end),
-            ---barrier attack---
-            TimeEvent(19*FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/barrier") 
-            end),
+            TimeEvent(12 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/step") end),
+            TimeEvent(19 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/barrier") end),
+            TimeEvent(67 * FRAMES, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/bearger/groundpound")end),
 
-            
-            TimeEvent(67*FRAMES, function(inst) 
-                inst.SoundEmitter:PlaySound("dontstarve_DLC001/creatures/bearger/groundpound")
-                TheMixer:PushMix("boom")
-            end),
-
-            TimeEvent(90*FRAMES, function(inst) TheMixer:PopMix("boom")
-            end),
 
             TimeEvent(64*FRAMES, function(inst)
-                --GetPlayer().components.playercontroller:ShakeCamera(inst, "FULL", 0.7, 0.02, 2, 40)
-                --ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, 1, inst, 40)
+                inst.components.groundpounder.damageRings = 4
+                inst.components.groundpounder.destructionRings = 4
+                inst.components.groundpounder.numRings = 4
+                ShakeAllCameras(CAMERASHAKE.FULL, 0.7, 0.02, 2, inst, SHAKE_DIST)
                 inst.components.groundpounder:GroundPound()
                 
                 inst:DoTaskInTime(0.6,inst.spawnbarrier)
@@ -973,97 +885,32 @@ local states=
 
         onexit = function(inst)
             inst.Transform:SetSixFaced()
-            inst.components.timer:StartTimer("destroyer_cd",40)
+            inst.components.timer:StartTimer("barrier_cd",40)
+            inst.components.groundpounder.damageRings = 2
+            inst.components.groundpounder.destructionRings = 3
+            inst.components.groundpounder.numRings = 3
         end, 
 
         events =
         {   
-            EventHandler("animover", function(inst)
-                
+            EventHandler("animover", function(inst)  
                 inst.sg:GoToState("idle")
             end ),        
         },
     },
-
-
----------------------------WALKING---------------
-
-    State{
-            name = "walk_start",
-            tags = {"moving", "canrotate"},
-
-            onenter = function(inst) 
-                
-                inst.components.locomotor:WalkForward()
-                inst.AnimState:PlayAnimation("walk_pre")
-            end,
-
-            events =
-            {   
-                EventHandler("animover", function(inst) inst.sg:GoToState("walk") end ),        
-            },
-        },
-        
-    State{            
-            name = "walk",
-            tags = {"moving", "canrotate"},
-            
-            onenter = function(inst)
-                inst.AnimState:PlayAnimation("walk_loop")
-
-                inst.components.locomotor:WalkForward()
-
-            end,
-            timeline=
-            {
-                TimeEvent(12*FRAMES, function(inst)
-                    DoFootstep(inst)
-                end),
-                TimeEvent(16*FRAMES, function(inst)
-                    DoFootstep(inst)
-                end),
-                TimeEvent(20*FRAMES, function(inst) 
-                    inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/arm/step", {intensity=math.random()}) 
-                end),
-                TimeEvent(3*FRAMES, function(inst) 
-                    inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity=math.random()}) 
-                end),
-            
-            },
-
-
-            events=
-            {   
-                EventHandler("animover", function(inst) inst.sg:GoToState("walk") end ),        
-            },
-
-            
-        },        
-    
-    State{            
-            name = "walk_stop",
-            tags = {"canrotate"},
-            
-            onenter = function(inst) 
-                inst.components.locomotor:StopMoving()
-
-                DoFootstep(inst)
-                inst.AnimState:PlayAnimation("walk_pst")
-            end,
-
-            events=
-            {   
-                EventHandler("animqueueover", function(inst) 
-                    if inst.AnimState:AnimDone() then
-                        inst.sg:GoToState("idle")
-                    end 
-            end ),        
-            },
-        },
 }
 
---CommonStates.AddFrozenStates(states)
-CommonStates.AddHitState(states)
+CommonStates.AddWalkStates(states,
+{
+    walktimeline =
+    {
+        TimeEvent(12 * FRAMES, function(inst) DoFootstep(inst) end),
+        TimeEvent(16 * FRAMES, function(inst) DoFootstep(inst) end),
+        TimeEvent(20 * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/arm/step", {intensity = math.random()}) end),
+        TimeEvent(3  * FRAMES, function(inst) inst.SoundEmitter:PlaySoundWithParams("dontstarve_DLC003/creatures/boss/hulk_metal_robot/ribs/servo", {intensity = math.random()}) end),
+    },
+}, nil, nil, true, {endonenter = DoFootstep})
+
 
 return StateGraph("ancient_hulk", states, events, "idle")
 

@@ -201,8 +201,8 @@ local states=
 		tags = {"busy", "hit"},
 
 		onenter = function(inst)
+			inst.Physics:Stop()
 			inst.AnimState:PlayAnimation("hit")
-			inst.components.locomotor:StopMoving()
 			inst.SoundEmitter:PlaySound("dontstarve_DLC002/creatures/dragoon/hit")
 		end,
 
@@ -246,7 +246,7 @@ local states=
 			inst.AnimState:PlayAnimation("death")
 			inst.Physics:Stop()
 			RemovePhysicsColliders(inst)            
-			inst.components.lootdropper:DropLoot(Vector3(inst.Transform:GetWorldPosition()))            
+			inst.components.lootdropper:DropLoot(inst:GetPosition())            
 		end,
 
 	},
@@ -277,21 +277,29 @@ local states=
 
 	State{
 		name = "charge_pre",
-		tags = {"moving", "canrotate", "running"},
+		tags = {"canrotate", "busy"},
 		
 		onenter = function(inst)
+			inst.Physics:Stop()
 			inst.AnimState:PlayAnimation("charge_pre")
 			--inst.sg:SetTimeout(2*math.random()+.5)
 		end,
 		
-		onupdate= function(inst)
+		onupdate = function(inst)
 			if not inst.components.locomotor:WantsToMoveForward() then
 				inst.sg:GoToState("idle", "charge_pst")
 			end
 		end,
 
 		events = {
-            EventHandler("animqueueover", function(inst) inst.sg:GoToState("charge") end),
+            EventHandler("animover", function(inst)
+            	inst:DoTaskInTime(1, function(inst)
+            		if inst.sg:HasStateTag("charging") then
+            			inst.sg:GoToState("idle", "charge_pst")
+            		end
+            	end)
+            	inst.sg:GoToState("charge")
+            end),
         }
 	},
 
@@ -331,4 +339,4 @@ CommonStates.AddSleepStates(states,
 CommonStates.AddFrozenStates(states)
 CommonStates.AddHopStates(states, true, { pre = "walk_pre", loop = "walk_loop", pst = "walk_pst"})
 
-return StateGraph("dragoon", states, events, "taunt", actionhandlers)
+return StateGraph("dragoon", states, events, "idle", actionhandlers)

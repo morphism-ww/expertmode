@@ -86,6 +86,25 @@ local states =
                 inst.sg:AddStateTag("flight")
                 inst.sg:AddStateTag("noattack")
                 inst.components.health:SetInvincible(true)
+
+                inst._lightreset:push()
+                local et = inst.components.entitytracker
+                    local t1 = et:GetEntity("twin1")
+                    local t2 = et:GetEntity("twin2")
+                if t1~=nil then
+                    et:ForgetEntity("twin1") 
+                    t1:Remove()
+                    t1 = nil
+                end
+                if t2~=nil then
+                    et:ForgetEntity("twin2") 
+                    t2:Remove()
+                    t2 = nil
+                end
+                inst.components.circlecenter:Kill()
+                if not TheNet:IsDedicated() then
+                    TheWorld:PushEvent("overrideambientlighting", nil)
+                end
             end),
         },
 
@@ -218,7 +237,7 @@ local states =
         ontimeout = function (inst)
             inst.sg.mem.mouthcharge_count = (inst.sg.mem.crazy and 2 or 0) + math.random(2,3)
             if inst.sg.mem.crazy then
-                inst._tail:set(true)
+                inst:EnableTail(true)
             end
             
             inst.sg:GoToState("mouthcharge_loop", inst.sg.statemem.target)
@@ -242,8 +261,8 @@ local states =
             inst.sg.statemem.target = target
 
             
-            inst.Physics:SetMotorVelOverride(inst.sg.mem.crazy and 32 or 25, 0, 0)
-            local timeout = (inst.sg.mem.crazy and 0.6 or 1) + 0.4*math.random()
+            inst.Physics:SetMotorVelOverride(inst.sg.mem.crazy and 34 or 28, 0, 0)
+            local timeout = (inst.sg.mem.crazy and 0.5 or 0.6) + 0.2*math.random()
             inst.sg:SetTimeout(timeout)
 
             inst.sg.statemem.collisiontime = 0
@@ -291,7 +310,7 @@ local states =
 
             inst.components.locomotor:Stop()
 
-            inst._tail:set(false)
+            --inst:EnableTail(false)
             
         end,
 
@@ -334,11 +353,12 @@ local states =
         end,
         ontimeout = function (inst)
             if inst.sg.statemem.mouthcharge then
-                if inst.sg.mem.crazy then
-                    inst._tail:set(true)
-                end
+                --[[if inst.sg.mem.crazy then
+                    inst:EnableTail(true)
+                end]]
                 inst.sg:GoToState("mouthcharge_loop",inst.sg.statemem.target)
             else
+                inst:EnableTail(false)
                 inst.components.locomotor:SetStrafing(true)
                 if math.random() < 0.4 then
                     -- Try a target switch after finishing a charge move

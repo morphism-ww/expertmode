@@ -9,8 +9,8 @@ local actionhandlers =
 local events =
 {
     EventHandler("attacked", function(inst)
-        if not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("hit") or inst.sg:HasStateTag("noattack") or inst.components.health:IsDead())
-            and not CommonHandlers.HitRecoveryDelay(inst,4,1) then
+        if not (inst.sg:HasStateTag("attack") or inst.sg:HasStateTag("hit") or inst.components.health:IsDead())
+            and not CommonHandlers.HitRecoveryDelay(inst,4) then
             inst.sg:GoToState("hit")
         end
     end),
@@ -101,13 +101,13 @@ local function TryShadowFire(inst,target,pos)
 
         local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
         
-        local fire = SpawnPrefab("shadow_flame")
+        local fire = SpawnPrefab("newcs_shadowflame")
         fire.Transform:SetRotation(theta/DEGREES)
         fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
         
         if inst.dread then
-            fire:settargetdread(target,lifetime,inst)
-            fire.components.weapon:SetDamage(120)
+            fire:settarget_dread(target,lifetime,inst)
+            
         else
             fire:settarget(target,lifetime,inst)
         end    
@@ -204,7 +204,7 @@ local states =
         events =
         {
             EventHandler("animqueueover", function(inst)
-                if math.random() < .333 then
+                if math.random() < .333 and not inst.dread then
                     inst.components.combat:SetTarget(nil)
                     inst.sg:GoToState("taunt")
                 else
@@ -351,13 +351,10 @@ local states =
         events=
         {
             EventHandler("animover", function(inst)
-                inst.components.timer:StartTimer("wave_cd",11)
-                if math.random() < .333 then
-                    --inst.components.combat:SetTarget(nil)
-                    inst.sg:GoToState("taunt")
-                else
-                    inst.sg:GoToState("idle")
-                end
+                inst.components.timer:StartTimer("wave_cd",10)
+              
+                inst.sg:GoToState("idle")
+                
             end),
         },
     },    
@@ -395,6 +392,11 @@ local states =
             PlayExtendedSound(inst, "taunt")
         end,
 
+        timeline = {
+            TimeEvent(10*FRAMES,function (inst)
+                inst:EpicScare()
+            end)
+        },
         events =
         {
             EventHandler("animover", function(inst) inst.sg:GoToState("idle") end),

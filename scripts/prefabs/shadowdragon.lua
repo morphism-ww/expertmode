@@ -88,15 +88,7 @@ local function CLIENT_ShadowSubmissive_HostileToPlayerTest(inst, player)
 	if player:HasTag("shadowdominance") then
 		return false
 	end
-	local combat = inst.replica.combat
-	if combat ~= nil and combat:GetTarget() == player then
-		return true
-	end
-	local sanity = player.replica.sanity
-	if sanity ~= nil and sanity:IsCrazy() then
-		return true
-	end
-	return false
+	return true
 end
 
 
@@ -105,7 +97,7 @@ local function StealLife2(inst,victim,damage, stimuli, weapon, damageresolved, s
     if damageredirecttarget==nil and victim and victim.components.sanity~=nil then
         inst.components.health:DoDelta(200)
         victim.components.sanity:DoDelta(-15)
-        victim:AddDebuff("exhaustion","exhaustion",{duration=10})
+        victim:AddDebuff("buff_exhaustion","buff_exhaustion",{duration=10})
     end
 end
 local function onkilledbyother(inst, attacker,damage, stimuli, weapon, damageresolved, spdamage, damageredirecttarget)
@@ -126,6 +118,17 @@ local sounds =
     disappear = "dontstarve/sanity/creature"..num.."/dissappear",
 }
 
+local function EpicScare(inst)
+    local x,y,z = inst.Transform:GetWorldPosition()
+    for _, player in ipairs(AllPlayers) do
+        if player:IsValid() and not player:HasTag("playerghost") and player.sg:HasStateTag("sleeping") then
+            local distsq = player:GetDistanceSqToPoint(x, y, z)
+            if distsq < 400 then
+                player:PushEvent("knockback", { knocker = inst, radius = 5, strengthmult = 1.2})
+            end
+        end
+    end
+end
 
 local function CreateCommon(common_init)
     local inst = CreateEntity()
@@ -155,7 +158,7 @@ local function CreateCommon(common_init)
 
     common_init(inst)
 
-    inst.HostileToPlayerTest = CLIENT_ShadowSubmissive_HostileToPlayerTest
+    
 
     inst.entity:SetPristine()
 
@@ -178,10 +181,12 @@ local function CreateCommon(common_init)
     inst:AddComponent("health")
 
     inst:AddComponent("combat")
-    inst.components.combat:SetRange(6,5)
-    inst.components.combat:SetAttackPeriod(4)
+    inst.components.combat:SetRange(4.5,5)
+    
     inst.components.combat.canbeattackedfn = canbeattackedfn
     inst.components.combat.onkilledbyother = onkilledbyother
+
+    inst.EpicScare = EpicScare
 
     inst:ListenForEvent("attacked", OnAttacked)
     --inst:ListenForEvent("onhitother", steallife)
@@ -212,6 +217,7 @@ local function RegularFn()
     inst:AddComponent("shadowsubmissive")
 
     inst.components.health:SetMaxHealth(TUNING.SHAODWDRAGON_HEALTH)
+    inst.components.combat:SetAttackPeriod(4)
     inst.components.combat:SetDefaultDamage(TUNING.SHAODWDRAGON_DAMAGE)
     inst.components.combat:SetRetargetFunction(1.5,retargetfn)
     --inst.components.combat.onhitotherfn = steallife
@@ -268,14 +274,15 @@ local function AbyssCommongPostInit(inst)
     --inst.AnimState:SetSymbolAddColour("seashadow_spine", 169/255, 36/255, 30/255, 1)
     inst.AnimState:SetSymbolLightOverride("seashadow_bit", 0.1)
     inst.Transform:SetScale(1.7,1.7,1.7)
+
+    inst:AddTag("notaunt")
+    inst:AddTag("shadowthrall")
+    inst:AddTag("abysscreature")
 end    
 
 local function AbyssFn()
     local inst = CreateCommon(AbyssCommongPostInit)
 
-    inst:AddTag("notaunt")
-    inst:AddTag("shadowthrall")
-    inst:AddTag("abysscreature")
 
     if not TheWorld.ismastersim then
         return inst
@@ -288,14 +295,13 @@ local function AbyssFn()
     inst:AddComponent("planarentity")
 
     inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(30)
+	inst.components.planardamage:SetBaseDamage(40)
 
     inst.components.health:SetMaxHealth(2000)
     --inst.components.combat:SetRange(12,5)
-    inst.components.combat:SetAreaDamage(5, 1)
+    inst.components.combat:SetAttackPeriod(3)
     inst.components.combat:SetDefaultDamage(100)
     inst.components.combat.onhitotherfn = StealLife2
-
     inst.components.combat:SetRetargetFunction(1.5,retargetfn2)
     
     inst.components.locomotor.walkspeed = 8
@@ -307,6 +313,9 @@ local function AbyssFn()
     inst.components.lootdropper:SetLoot(loots)
 
     inst:SetBrain(brain2)
+
+    MakeHitstunAndIgnoreTrueDamageEnt(inst)
+
     --inst:ListenForEvent("onhitother", StealLife2)
     return inst
 end

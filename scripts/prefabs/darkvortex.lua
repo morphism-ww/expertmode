@@ -41,7 +41,7 @@ local function OnUpdate(inst)
 	local x, y, z = inst.Transform:GetWorldPosition()
 	for i, v in ipairs(TheSim:FindEntities(x, y, z, 4*inst.scale, MUST_TAGS, NO_TAGS)) do
 		if v.entity:IsVisible() and v.components.health~=nil and not v.components.health:IsDead() then
-            v.components.health:DoDelta(-5,nil,"NIL")
+            v.components.health:DoDelta(-6,nil,"NIL")
             if v.components.locomotor~=nil then
                 v.components.locomotor:PushTempGroundSpeedMultiplier(0.1)
             end
@@ -52,7 +52,7 @@ local function OnUpdate(inst)
                 end
             end
             if v.components.sanity~=nil then
-                v.components.sanity:DoDelta(-5)
+                v.components.sanity:DoDelta(-6)
             end
 		end
 	end
@@ -60,6 +60,7 @@ end
 
 local function SetScale(inst,s)
     inst:AddTag("large")
+    inst.scale = s
     inst.AnimState:SetScale(1.5*s,1.5*s,1.5*s)
     inst.components.locomotor.walkspeed = 3
 end
@@ -70,6 +71,8 @@ local function disappear(inst)
     inst.sg:GoToState("disappear")
 end
 
+local delay_time = 0.5
+
 local function fn()
     local inst = CreateEntity()
 
@@ -78,7 +81,7 @@ local function fn()
 	inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
-    MakeCharacterPhysics(inst,10,1.5)
+    MakeCharacterPhysics(inst,10,2)
     RemovePhysicsColliders(inst)
     inst.Physics:SetCollisionGroup(COLLISION.SANITY)
     inst.Physics:CollidesWith(COLLISION.SANITY)
@@ -103,13 +106,11 @@ local function fn()
     inst.Light:Enable(false)
 
     
-    
-
     if not TheNet:IsDedicated() then
         --[[local aura = CreateRing()
         aura.entity:SetParent(inst.entity)
 	    aura.Follower:FollowSymbol(inst.GUID, "blackhole", 0, 0, 0)]]
-        inst:DoTaskInTime(0.5,function ()
+        inst:DoTaskInTime(delay_time,function ()
             local swirl = CreateSwirl(inst:HasTag("large") and 2 or 1)
             swirl.entity:SetParent(inst.entity)
             swirl.Follower:FollowSymbol(inst.GUID, "glow", 0, 0, 0)
@@ -118,6 +119,7 @@ local function fn()
 
     inst:AddTag("FX")
     inst:AddTag("notraptrigger")
+
     ------------------------------------------
 	inst.entity:SetPristine()
 	
@@ -125,26 +127,24 @@ local function fn()
         return inst
     end
 
+    inst.persists = false
+
     inst:AddComponent("knownlocations")
 
     inst:AddComponent("locomotor") -- locomotor must be constructed before the stategraph
     inst.components.locomotor:EnableGroundSpeedMultiplier(false)
     inst.components.locomotor:SetTriggersCreep(false)
-    inst.components.locomotor.walkspeed = 2
+    inst.components.locomotor.walkspeed = 1
 
     inst:SetStateGraph("SGdarkvortex")
     inst:SetBrain(brain)
 
-    inst:DoTaskInTime(60, disappear)
-    inst.Disappear = disappear
-
     inst.scale = 1
     inst.SetScale = SetScale
+    inst.Disappear = disappear
 
-    inst.task = inst:DoPeriodicTask(0.4, OnUpdate, math.random())
-	
-	inst.persists = false
-	
+    inst.task = inst:DoPeriodicTaskWithTimeLimit(0.5,OnUpdate,delay_time,60,disappear)
+		
     return inst
 end
 
@@ -213,8 +213,8 @@ local function shadowball()
     inst.components.linearprojectile:SetOnHit(onhit)
     inst.components.linearprojectile:SetOnMiss(onmiss)
     inst.components.linearprojectile.oneoftags = {"character","monster","animal"}
-    table.insert(inst.components.linearprojectile.notags,"shadow_aligned")
-    table.insert(inst.components.linearprojectile.notags,"fossil")
+    inst.components.linearprojectile:AddNoHitTag("fossil")
+    inst.components.linearprojectile:AddNoHitTag("shadowcreature")
 
     inst:DoTaskInTime(15,inst.Remove)
 

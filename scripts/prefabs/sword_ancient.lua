@@ -58,6 +58,8 @@ local function reset_stacks(inst)
 
     inst.buff_stacks = 0
 end
+
+
 local function onattack(inst,owner,target)
 
     
@@ -83,7 +85,7 @@ local function onattack(inst,owner,target)
         proj.Physics:SetMotorVel(30, 0, 0)
 
         local doer_combat = owner.components.combat
-        local ents = TheSim:FindEntities(x,0,z,30,{"_combat","_health"}, {"FX", "DECOR", "INLIMBO","player","wall", "campion"})
+        local ents = TheSim:FindEntities(x,0,z,30,P_AOE_TARGETS_MUST, P_AOE_TARGETS_CANT)
         for _, v in ipairs(ents) do
             if v~=target and doer_combat:CanTarget(v) and not doer_combat:IsAlly(v)
                 and not (v.components.health and v.components.health:IsDead()) then
@@ -150,9 +152,11 @@ local function fn()
     inst.AnimState:SetBuild("sword_ancient")
     inst.AnimState:PlayAnimation("idle")
     
-    inst:AddTag("ancient")
+    inst:AddTag("mythical")
     inst:AddTag("sharp")
     inst:AddTag("nosteal")
+
+    inst.itemtile_colour = RGB(218,165,32)
 
     MakeInventoryPhysics(inst)
 	MakeInventoryFloatable(inst, "med", 0.05, {1.1, 0.5, 1.1}, true, -9)
@@ -277,7 +281,7 @@ local function onhit(inst, attacker)
     local ents = TheSim:FindEntities(x, y, z, 2, {"_combat"}, { "INLIMBO", "brightmare","flight", "invisible", "notarget", "noattack"})
     for i, v in ipairs(ents) do
         if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
-            v:AddDebuff("moon_curse","moon_curse")
+            v:AddDebuff("buff_mooncurse","buff_mooncurse")
             v.components.combat:GetAttacked(attacker,200,nil,nil,{["planar"] = 40})
         end
     end
@@ -320,7 +324,8 @@ local function projfn()
     inst.components.linearprojectile:SetRange(30)
     inst.components.linearprojectile:SetOnHit(onhit)
     inst.components.linearprojectile:SetOnMiss(inst.Remove)
-    table.insert(inst.components.linearprojectile.notags,"deity")
+    inst.components.linearprojectile.hitdist = 1 
+    inst.components.linearprojectile:AddNoHitTag("deity")
 
     inst:DoTaskInTime(1,inst.Remove)
 

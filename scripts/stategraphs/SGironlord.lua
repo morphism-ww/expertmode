@@ -505,8 +505,8 @@ local states=
             TimeEvent(5*FRAMES, function(inst)
                 if inst.awake then
                     TryLineAttack(inst,0)
-                    TryLineAttack(inst,30)
-                    TryLineAttack(inst,-30)
+                    TryLineAttack(inst,40)
+                    TryLineAttack(inst,-40)
                 end
                 inst.shootcount = inst.shootcount - 1
                 inst.components.combat:DoAttack(inst.sg.statemem.target)
@@ -549,11 +549,11 @@ local states=
 			FrameEvent(15, function(inst)
 				inst.SoundEmitter:PlaySound("dontstarve/wilson/attack_whoosh")
                 if inst.awake then
-                    TryLineAttack(inst,30)
-                    TryLineAttack(inst,-30)
+                    TryLineAttack(inst,40)
+                    TryLineAttack(inst,-40)
                     TryLineAttack(inst,0)
-                    TryLineAttack(inst,60)
-                    TryLineAttack(inst,-60)
+                    TryLineAttack(inst,80)
+                    TryLineAttack(inst,-80)
                 end
                 inst.shootcount = inst.shootcount - 1
 				DoArcAttack(inst, SWIPE_OFFSET, SWIPE_RADIUS, SWIPE_ARC, nil, 1)
@@ -1006,7 +1006,7 @@ local states=
                 local x,y,z=inst.Transform:GetWorldPosition()
                 inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/hulk_metal_robot/explode_small",nil,.7)
                 inst.components.lootdropper:DropLoot(inst:GetPosition())
-                local explosive = SpawnPrefab("laser_explosion")
+                local explosive = SpawnPrefab("newcs_laser_explosion")
                 explosive.Transform:SetScale(1.5,1.5,1.5)
                 explosive.Transform:SetPosition(x,2,z) 
             end),

@@ -7,6 +7,7 @@ local prefabs =
 {
     "true_voidcloth_scythe_fx",
     "hitsparks_fx",
+    "scythe_shadow_fx",
     "voidcloth_scythe_classified",
 }
 local VOIDCLOTH_SCYTHE_DAMAGE = 51
@@ -117,12 +118,19 @@ local function SetFxOwner(inst, owner)
 		if owner.components.colouradder ~= nil then
 			owner.components.colouradder:AttachChild(inst.fx)
 		end
+        inst.bladefx.entity:SetParent(owner.entity)
+        inst.bladefx.Follower:FollowSymbol(owner.GUID, "swap_object",nil ,nil,nil,true,nil,1,5)
+        
     else
         inst.fx.entity:SetParent(inst.entity)
         --For floating
         inst.fx.Follower:FollowSymbol(inst.GUID, "swap_spear", nil, nil, nil, true, nil, 2)
+        
         inst.fx.components.highlightchild:SetOwner(inst)
         inst.fx:ToggleEquipped(false)
+        inst.bladefx.entity:SetParent(inst.entity)
+        inst.bladefx.Follower:StopFollowing()
+        inst.bladefx:Hide()
     end
 end
 
@@ -167,34 +175,50 @@ local function ToggleTalking(inst, turnon, owner)
     end
 end
 
-local function  DoAOEAttack(attacker,weapon)
 
-    if weapon==nil then return end
+
+local function  DoAOEAttack(weapon,attacker)
+    ---延时任务，考虑破碎判定
+    if weapon.components.weapon==nil then
+        return
+    end
     local doer_pos = attacker:GetPosition()
-    local x, y, z = doer_pos:Get()
     local doer_rotation = attacker.Transform:GetRotation()
     local doer_combat = attacker.components.combat
+    
+    local ents = TheSim:FindEntities(doer_pos.x, 0, doer_pos.z, TUNING.DEATH_HUNTER_HARVEST_RADIUS,P_AOE_TARGETS_MUST, P_AOE_TARGETS_CANT)
+    for _, v in pairs(ents) do
+        if weapon:IsEntityInFront(v, doer_rotation, doer_pos) and 
+            doer_combat:P_AOECheck(v) then
+            local dmg, spdmg = doer_combat:CalcDamage(v, weapon)
+            v.components.combat:GetAttacked(attacker, dmg, weapon, nil, spdmg)
 
-    local fx = SpawnPrefab("scythe_shadow_fx")
-    fx.entity:SetParent(attacker.entity)
-    fx.Follower:FollowSymbol(attacker.GUID, "swap_object",0,0,0,true,nil,1,7)
-    --fx.components.highlightchild:SetOwner(owner)
-    local ents = TheSim:FindEntities(x, y, z, 7, {"_combat"}, { "INLIMBO", "invisible", "player", "wall" })
-    for _, ent in pairs(ents) do
-        if ent:IsValid() and ent.components.health ~= nil and not ent.components.health:IsDead() 
-            and doer_combat:CanTarget(ent) and not doer_combat:IsAlly(ent)  then
-            if weapon:IsEntityInFront(ent, doer_rotation, doer_pos) then
-                local dmg, spdmg = doer_combat :CalcDamage(ent, weapon)
-                ent.components.combat:GetAttacked(attacker, dmg, weapon, nil, spdmg)
-                local fx = SpawnPrefab("wanda_attack_pocketwatch_old_fx")
-
-                local tx, _, tz = ent.Transform:GetWorldPosition()
-                local radius = ent:GetPhysicsRadius(.5)
-                local angle = (doer_rotation - 90) * DEGREES
-                fx.Transform:SetPosition(tx + math.sin(angle) * radius, 0.5, tz + math.cos(angle) * radius)
-            end
+            local fx = SpawnPrefab("wanda_attack_pocketwatch_old_fx")
+            local tx, _, tz = v.Transform:GetWorldPosition()
+            local radius = v:GetPhysicsRadius(.5)
+            local angle = (doer_rotation - 90) * DEGREES
+            fx.Transform:SetPosition(tx + math.sin(angle) * radius, 0.5, tz + math.cos(angle) * radius)
         end
-    end   
+    end
+    
+end
+
+local function OnAttack(inst, owner, target)
+    if owner.components.health ~= nil and
+        owner.components.health:IsHurt() and
+        not target:HasOneOfTags(NON_LIFEFORM_TARGET_TAGS)
+    then
+        if owner.components.sanity ~= nil then
+            owner.components.sanity:DoDelta(-3.4)
+        end
+        owner.components.health:DoDelta(6.8, false, "death_hunter")
+    end
+    --local bladefx = SpawnPrefab("scythe_shadow_fx")
+    --bladefx.entity:SetParent(owner.entity)
+    inst.bladefx:Show()
+    inst.bladefx.AnimState:PlayAnimation("scythe_shadow")
+    
+    inst.aoetask = inst:DoTaskInTime(4*FRAMES,DoAOEAttack,owner)
 end
 
 local function OnEquip(inst, owner)
@@ -233,45 +257,6 @@ local function HarvestPickable(inst, ent, doer)
     end
 end
 
-local function IsEntityInFront(inst, entity, doer_rotation, doer_pos)
-    local facing = Vector3(math.cos(-doer_rotation / RADIANS), 0 , math.sin(-doer_rotation / RADIANS))
-
-    return IsWithinAngle(doer_pos, facing, TUNING.VOIDCLOTH_SCYTHE_HARVEST_ANGLE_WIDTH, entity:GetPosition())
-end
-
-local HARVEST_MUSTTAGS  = {"pickable"}
-local HARVEST_CANTTAGS  = {"INLIMBO", "FX"}
-local HARVEST_ONEOFTAGS = {"plant", "lichen", "oceanvine", "kelp"}
-
-local function DoScythe(inst, target, doer)
-    inst:SayRandomLine(STRINGS.VOIDCLOTH_SCYTHE_TALK.onharvest, doer)
-
-    if target.components.pickable ~= nil then
-        local doer_pos = doer:GetPosition()
-        local x, y, z = doer_pos:Get()
-
-        local doer_rotation = doer.Transform:GetRotation()
-
-        local ents = TheSim:FindEntities(x, y, z, TUNING.VOIDCLOTH_SCYTHE_HARVEST_RADIUS, HARVEST_MUSTTAGS, HARVEST_CANTTAGS, HARVEST_ONEOFTAGS)
-        for _, ent in pairs(ents) do
-            if ent:IsValid() and ent.components.pickable ~= nil then
-                if inst:IsEntityInFront(ent, doer_rotation, doer_pos) then
-                    inst:HarvestPickable(ent, doer)
-                end
-            end
-        end
-    end
-end
-
-
-
-
-local function OnAttack(inst, attacker, target)
-    if attacker.components.health ~= nil and attacker.components.health:GetPercent() < 1 and not (target:HasTag("wall") or target:HasTag("engineering")) then
-        attacker.components.health:DoDelta(6)
-    end
-    DoAOEAttack(attacker,inst)
-end
 
 local function SetupComponents(inst)
 	inst:AddComponent("equippable")
@@ -293,6 +278,40 @@ local function DisableComponents(inst)
 	inst:RemoveComponent("equippable")
 	inst:RemoveComponent("weapon")
     inst:RemoveComponent("tool")
+end
+
+
+local function IsEntityInFront(inst, ent, doer_rotation, doer_pos)
+    if not ent.entity:IsValid() then
+        return
+    end
+    local facing = Vector3(math.cos(-doer_rotation / RADIANS), 0 , math.sin(-doer_rotation / RADIANS))
+
+    return IsWithinAngle(doer_pos, facing, TUNING.VOIDCLOTH_SCYTHE_HARVEST_ANGLE_WIDTH, ent:GetPosition())
+end
+
+local HARVEST_MUSTTAGS  = {"pickable"}
+local HARVEST_CANTTAGS  = {"INLIMBO", "FX"}
+local HARVEST_ONEOFTAGS = {"plant", "lichen", "oceanvine", "kelp"}
+
+local function DoScythe(inst, target, doer)
+    inst:SayRandomLine(STRINGS.VOIDCLOTH_SCYTHE_TALK.onharvest, doer)
+
+    if target.components.pickable ~= nil then
+        local doer_pos = doer:GetPosition()
+        local x, y, z = doer_pos:Get()
+
+        local doer_rotation = doer.Transform:GetRotation()
+
+        local ents = TheSim:FindEntities(x, y, z, TUNING.DEATH_HUNTER_HARVEST_RADIUS, HARVEST_MUSTTAGS, HARVEST_CANTTAGS, HARVEST_ONEOFTAGS)
+        for _, ent in pairs(ents) do
+            if ent:IsValid() and ent.components.pickable ~= nil then
+                if inst:IsEntityInFront(ent, doer_rotation, doer_pos) then
+                    inst:HarvestPickable(ent, doer)
+                end
+            end
+        end
+    end
 end
 
 local FLOAT_SCALE_BROKEN = { 0.8, 0.4, 0.8 }
@@ -378,8 +397,10 @@ local function ScytheFn()
 
     inst:AddTag("shadow_item")
 
-    inst:AddTag("pure")
+    inst:AddTag("mythical")
     inst:AddTag("scythe_attack")
+
+    inst.itemtile_colour = RGB(143,41,41)
 
 	inst:AddComponent("floater")
 	inst.isbroken = net_bool(inst.GUID, "true_voidcloth_scythe.isbroken", "isbrokendirty")
@@ -429,6 +450,8 @@ local function ScytheFn()
     inst.fx = SpawnPrefab("true_voidcloth_scythe_fx")
     inst.fx.AnimState:SetFrame(frame)
 
+    inst.bladefx = SpawnPrefab("scythe_shadow_fx")
+    inst.bladefx.entity:SetParent(inst.entity)
 
     SetFxOwner(inst, nil)
     inst:ListenForEvent("floater_stopfloating", OnStopFloating)
@@ -454,6 +477,8 @@ local function ScytheFn()
     inst.components.shadowlevel:SetDefaultLevel(TUNING.VOIDCLOTH_SCYTHE_SHADOW_LEVEL)
 
 	MakeForgeRepairable(inst, FORGEMATERIALS.VOIDCLOTH, OnBroken, OnRepaired)
+    
+    
     MakeHauntableLaunch(inst)
 
     inst.SayRandomLine = SayRandomLine
@@ -469,12 +494,13 @@ end
 
 local function fxfn()
     local inst = CreateEntity()
+
     inst.entity:AddTransform()
     inst.entity:AddNetwork()
     inst.entity:AddAnimState()
     inst.entity:AddFollower()
 
-    inst:AddTag("FX")
+    
 
     inst.AnimState:SetBank("true_scythe_voidcloth")
     inst.AnimState:SetBuild("true_scythe_voidcloth")
@@ -484,15 +510,19 @@ local function fxfn()
     
     inst.AnimState:PlayAnimation("scythe_shadow")
     --inst:AddComponent("highlightchild")
+    inst:AddTag("FX")
+
+    inst:Hide()
 
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
     end
+
+    inst:ListenForEvent("animover",inst.Hide)
     
     inst.persists = false
-    inst:DoTaskInTime(0.3,inst.Remove)
 
     return inst
 end

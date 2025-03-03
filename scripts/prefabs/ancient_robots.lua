@@ -11,7 +11,10 @@ local assets=
 local prefabs = {
     "gears",
     "thulecite",
-    "cs_iron"
+    "aurumite",
+    "deerclops_laser",
+    "deerclops_laserempty",
+    "spider_robot_debris"
 }
 
 SetSharedLootTable("spider_robot",{
@@ -19,7 +22,7 @@ SetSharedLootTable("spider_robot",{
     {"gears",            0.50},
     {"thulecite", 		 1.00},
     {"thulecite", 		 0.50},
-    {"cs_iron",          1.00},
+    {"aurumite",          1.00},
 })
 
 
@@ -58,20 +61,16 @@ local function OnAttacked(inst, data)
     inst.components.combat:ShareTarget(attacker, 40, _ShareTargetFn, 8)
 end
 
-local function revive(inst,data)
-    if data~=nil and data.name=="revive" then
-        inst:RemoveEventCallback("timerdone",revive)
-        inst.components.health:SetPercent(1)
-        inst.sg:GoToState("activate")
-    end
-end
 
 
 local function Ondeath(inst)
+    --[[inst:AddTag("NOCLICK")
+    inst:StopBrain()
     inst:ListenForEvent("timerdone",revive)
     if not inst.components.timer:TimerExists("revive") then
         inst.components.timer:StartTimer("revive", TUNING.TOTAL_DAY_TIME*10)
-    end
+    end]]
+    ReplacePrefab(inst,"spider_robot_debris")
 end
 
 
@@ -82,7 +81,7 @@ local function SetHomePosition(inst)
 end
 
 local function fn()
-    local inst=CreateEntity()
+    local inst = CreateEntity()
 
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
@@ -144,7 +143,7 @@ local function fn()
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetChanceLootTable("spider_robot")
 
-    inst:AddComponent("timer")
+    --inst:AddComponent("timer")
 
     inst:AddComponent("knownlocations")
 
@@ -155,11 +154,47 @@ local function fn()
     inst:SetStateGraph("SGspider_robot")
 
     inst:ListenForEvent("attacked", OnAttacked)
-    inst:ListenForEvent("death",Ondeath)
+    --inst:ListenForEvent("death",Ondeath)
     inst:DoTaskInTime(0, SetHomePosition)
 
 
     return inst
 end
 
-return  Prefab("spider_robot",fn,assets,prefabs)
+local function revive(inst,data)
+    if data.name =="revive" then
+        ReplacePrefab(inst,"spider_robot").sg:GoToState("activate")
+    end
+end
+
+local function deathfn()
+    local inst = CreateEntity()
+
+    inst.entity:AddTransform()
+    inst.entity:AddAnimState()
+    inst.entity:AddNetwork()
+
+
+    inst.AnimState:SetBank("metal_spider")
+    inst.AnimState:SetBuild("metal_spider")
+    inst.AnimState:PlayAnimation("death")
+
+    
+    inst.Transform:SetScale(1.5,1.5,1.5)
+
+    inst:AddTag("NOCLICK")
+
+    inst.entity:SetPristine()
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    inst:AddComponent("timer")
+    inst.components.timer:StartTimer("revive", TUNING.TOTAL_DAY_TIME*10)
+    inst:ListenForEvent("timerdone",revive)
+
+    return inst
+end
+
+return  Prefab("spider_robot",fn,assets,prefabs),
+    Prefab("spider_robot_debris",deathfn,assets)

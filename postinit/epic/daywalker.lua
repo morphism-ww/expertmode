@@ -140,7 +140,7 @@ local function CalcaulteTargetAlpha(self)
 	return pct	
 end
 
-AddPrefabPostInit("daywalker",function(inst)
+newcs_env.AddPrefabPostInit("daywalker",function(inst)
 	inst:AddTag("notraptrigger")
 	if not TheNet:IsDedicated() then
 		-- this is purely view related
@@ -257,7 +257,7 @@ local function ChooseAttack(inst)
 end
 
 
-AddStategraphPostInit("daywalker",function(sg)
+newcs_env.AddStategraphPostInit("daywalker",function(sg)
 	sg.events["doattack"].fn = function(inst)
 		if not (inst.sg:HasStateTag("busy") or inst.defeated) then
 			ChooseAttack(inst)
@@ -310,7 +310,7 @@ AddStategraphPostInit("daywalker",function(sg)
 				local rot1 = inst:GetAngleToPoint(inst.sg.statemem.targetpos)
 				local drot = ReduceAngle(rot1 - rot)
 				if inst:HasTag("shadowhide") then
-					rot1 = rot + math.clamp(drot/2, -4, 4)
+					rot1 = rot + math.clamp(drot/2, -3, 3)
 					inst.Transform:SetRotation(rot1)
 				elseif math.abs(drot) < 120 then
 					rot1 = rot + math.clamp(drot / 2, -1, 1)

@@ -13,12 +13,12 @@ SetSharedLootTable("ironlord",
 {
     {'gears',           1.0},
     {'gears',           1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         1.0},
-    {"cs_iron",         0.5},
-    {"cs_iron",         0.5},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         1.0},
+    {"aurumite",         0.5},
+    {"aurumite",         0.5},
     {"purebrilliance",  1.0},
     {"purebrilliance",  1.0},
     {"purebrilliance",   .5},
@@ -155,6 +155,7 @@ local function retargetfn(inst)
     return FindClosestPlayerInRangeSq(x, y, z,	1600, true)
 end
 
+
 local function keeptargetfn(inst,target)
     return  inst.components.combat:CanTarget(target)
 end
@@ -191,8 +192,8 @@ local function EnterShield(inst)
         inst._shieldfx:kill_fx()
     end
     inst._shieldfx = SpawnPrefab("forcefieldfx")
+    inst:AddChild(inst._shieldfx)
     inst._shieldfx.Transform:SetScale(1.1,1.1,1.1)
-    inst._shieldfx.entity:SetParent(inst.entity)
     inst._shieldfx.Transform:SetPosition(0, 0.5, 0)
     inst.components.health.externalabsorbmodifiers:SetModifier(inst._shieldfx, 0.99, "shield")
 end
@@ -288,7 +289,7 @@ local function fn()
     inst:AddTag("no_rooted")
     inst:AddTag("noteleport")
     inst:AddTag("deity")
-    inst:AddTag("laser_immune")
+    inst:AddTag("brightmareboss")
     inst:AddTag("mech")
     inst:AddTag("noepicmusic")
 
@@ -372,7 +373,7 @@ local function fn()
     
     
 
-    MakePlayerOnlyTarget(inst)
+    --MakePlayerOnlyTarget(inst)
 
     return inst
 end

@@ -44,12 +44,14 @@ local function fn()
     inst.AnimState:PlayAnimation("idle",true)
     
     inst:AddTag("shadow_item")
-    inst:AddTag("pure")
+    inst:AddTag("mythical")
     inst:AddTag("portablestorage")
     --inst:AddTag("backpack")
     inst:AddTag("nosteal")
     inst:AddTag("meteor_protection")
     inst:AddTag("NORATCHECK")
+
+    inst.itemtile_colour = DEFAULT_MYTHICAL_COLOUR
 
     inst.entity:SetPristine()
 

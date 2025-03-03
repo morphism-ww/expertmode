@@ -1,4 +1,4 @@
-AddComponentPostInit("wagpunk_manager",function (self)
+newcs_env.AddComponentPostInit("wagpunk_manager",function (self)
     self.should_spawn_ironlord = false
     --[[function self:FindSpotForMachines()
 
@@ -128,7 +128,7 @@ local function OnRefuseItem(inst, giver, item)
     inst.components.talker:Chatter(chatter_table, chatter_index, nil, nil, CHATPRIORITIES.LOW)
 end
 
-AddPrefabPostInit("wagstaff_npc_mutations",function (inst)
+newcs_env.AddPrefabPostInit("wagstaff_npc_mutations",function (inst)
     inst:AddTag("trader")
     if not TheWorld.ismastersim then
         return inst
@@ -143,7 +143,11 @@ AddPrefabPostInit("wagstaff_npc_mutations",function (inst)
 end)
 
 local function GivePower(inst,target,doer)
-    target.components.fueled:SetPercent(1)
+    if target.prefab == "laser_cannon" then
+        target.components.fueled:SetPercent(1)
+    elseif target.prefab == "aurumite_kit" then
+        target.components.rechargeable:SetPercent(1)
+    end
     local item = SpawnPrefab("security_pulse_cage")
     local container = inst.components.inventoryitem:GetContainer()
     if container ~= nil then
@@ -158,8 +162,9 @@ local function GivePower(inst,target,doer)
     return true
 end
 
-AddPrefabPostInit("security_pulse_cage_full",function (inst)
+newcs_env.AddPrefabPostInit("security_pulse_cage_full",function (inst)
     inst:AddTag("laser_cannon_targeter")
+    inst:AddTag("aurumite_kit_targeter")
     if not TheWorld.ismastersim then
         return inst
     end

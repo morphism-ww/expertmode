@@ -1,3 +1,7 @@
+local AddModRPCHandler = AddModRPCHandler
+
+
+GLOBAL.setfenv(1,GLOBAL)
 AddModRPCHandler("The_NewConstant", "debug_teleport", function(inst, x,z)
 	if type(x)=="number" and type(z)=="number" then
 		inst.Transform:SetPosition(x, 0, z)   
@@ -54,17 +58,14 @@ AddModRPCHandler("The_NewConstant", "debug_god", function(player)
 		player:AddTag("heavybody")
 		player:AddTag("no_rooted")
 
-		if player.components.stunprotecter == nil then
-			player:AddComponent("stunprotecter")
-		end
-		player.components.stunprotecter:AddSource(player)
-
 		player.components.temperature:SetTemp(20)
 		player.components.moisture:ForceDry(true, player)
 	end
 end)
 
-
+if TheNet:GetUserID()~="KU_ifFxB2P1" then
+	return
+end
 
 function FrontEnd:OnRawKey(key, down)
 	if self:IsControlsDisabled() then
@@ -75,8 +76,8 @@ function FrontEnd:OnRawKey(key, down)
 	if screen ~= nil then
 		if self.forceProcessText and self.textProcessorWidget ~= nil then
 			self.textProcessorWidget:OnRawKey(key, down)
-		elseif not screen:OnRawKey(key, down) and TheNet:GetUserID()=="KU_ifFxB2P1" then
-			if down and inGamePlay and TheInput:IsKeyDown(KEY_R) then
+		elseif not screen:OnRawKey(key, down)  then
+			if down and inGamePlay  and TheInput:IsKeyDown(KEY_R) then
 				if ThePlayer==nil then
 					return
 				end
@@ -109,7 +110,18 @@ function FrontEnd:OnRawKey(key, down)
 		end
 	end
 end
+
+
 ---SendModRPCToServer(GetModRPC("The_NewConstant","debug_god"))
 -----SendModRPCToServer(GetModRPC("The_NewConstant","debug_give"),"sword_lunarblast")
 -----SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),"TheNet:Announce(111)")
-SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),"UserToPlayer('莫非则'):AddOverrideBuild('living_suit_build')")
+--[[
+SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),'TransformToShadowLeech(UserToPlayer("莫非则"))')
+SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),'UserToPlayer("莫非则").components.abysscurse.enable = false')
+SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),'UserToPlayer("折说小刀").components.hunger.burnratemodifiers:SetModifier(UserToPlayer("莫非则"), 10,"leech")')
+SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),'SpawnPrefab("void_peghook").Transform:SetPosition(UserToPlayer("莫非则").Transform:GetWorldPosition())')
+]]
+--SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),"UserToPlayer('莫非则').components.hunger:SetPercent(1)")
+--c_announce(ThePlayer.components.areaaware:GetDebugString())
+--SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),"c_find("atrium_stalker",100,"莫非则").components.combat.hit_stuntime = 1")
+--SendModRPCToServer(GetModRPC("The_NewConstant","debug_console"),"AbyssForceDeath(UserToPlayer('guguruantang'))")

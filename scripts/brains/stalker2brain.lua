@@ -157,8 +157,8 @@ local function ShouldUseAbility(self)
     self.inst.returntogate = nil
     self.abilityname = self.inst.components.combat:HasTarget() and (
 		(ShouldVortex(self) and "vortex") or 
-		(ShouldShadowBall(self) and "shadowball") or 
         (ShouldMindControl(self) and "mindcontrol") or
+		(ShouldShadowBall(self) and "shadowball") or 
         (not wantstospikes and ShouldSnare(self) and "fossilsnare") or
         (ShouldSummonChannelers(self) and "shadowchannelers") or
         (ShouldCombatFeast(self) and "fossilfeast") or

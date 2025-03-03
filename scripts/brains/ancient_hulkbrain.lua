@@ -37,28 +37,56 @@ local function ShouldGoHome(inst)
             inst.components.combat.target == nil)
         or (TheWorld.Map:IsSurroundedByWater(dx, dy, dz, 2))
 end
+local function ShouldTeleport(self)
+    local target = self.inst.components.combat.target
+    if target~=nil and target:IsValid() and not self.inst.components.timer:TimerExists("teleport_cd") then
+        local target_dsq = self.inst:GetDistanceSqToInst(target)
+        if self.inst.lob_count==0 and target_dsq>64 then
+            self.abilitydata = {type = 1,target = target}
+            return true
+        elseif self.inst.lob_count>0 and target_dsq<36 then
+            self.abilitydata = {type = 2,target = target}
+            return true
+        end
+    end
+    return false
+end
+
 local Ancient_hulkBrain = Class(Brain, function(self, inst)
     Brain._ctor(self, inst)
+    self.abilityname = nil
+    self.abilitydata = nil
 end)
 
+function Ancient_hulkBrain:ShouldUseSpecialMove()
+    if self.inst.sg:HasStateTag("busy") then
+        return false
+    end
+    self.abilityname = (self.inst:ShouldLayMine() and "lay_mines")
+        or (ShouldTeleport(self) and "teleportout") or nil
+    return self.abilityname~=nil
+end
+
 function Ancient_hulkBrain:OnStart()
-
-
-    local root =
-        PriorityNode(
-        { 
-        ChaseAndAttack(self.inst),
-        ParallelNode{
-            SequenceNode{
-                WaitNode(10),
-                ActionNode(function() self.inst:SetEngaged(false) end),
+    local root = PriorityNode(
+        {
+            WhileNode(function() return self:ShouldUseSpecialMove() end, "Special Moves",
+                ActionNode(function() 
+                    self.inst:PushEvent(self.abilityname,self.abilitydata)
+                    self.abilityname = nil
+                    self.abilitydata = nil
+                 end)
+            ),
+            ChaseAndAttack(self.inst),
+            ParallelNode{
+                SequenceNode{
+                    WaitNode(10),
+                    ActionNode(function() self.inst:SetEngaged(false) end),
+                },
+                Wander(self.inst, HomePoint, 6),
             },
-            Wander(self.inst, HomePoint, 6),
-        },
         }, .5)
-    
     self.bt = BT(self.inst, root)
-         
 end
 
 

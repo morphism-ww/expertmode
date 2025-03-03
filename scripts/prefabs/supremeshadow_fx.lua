@@ -51,7 +51,7 @@ for k, v in pairs(SMASHABLE_WORK_ACTIONS) do
     table.insert(SMASHABLE_TAGS, k.."_workable")
 end
 
-local NON_SMASHABLE_TAGS = { "INLIMBO", "playerghost", "shadow","FX","deity","shadowcreature","abysscreature" }
+local NON_SMASHABLE_TAGS = { "INLIMBO", "playerghost", "shadow","FX","deity","shadowcreature","shadowthrall","abysscreature" }
 
 local function DoAOEAttack(inst)
     inst.SoundEmitter:PlaySound("dontstarve/impacts/lava_arena/meteor_strike")
@@ -96,7 +96,7 @@ local function DoAOEAttack(inst)
 				elseif inst.components.combat:CanTarget(v) then
 					v.components.combat:GetAttacked(inst, 100, nil, nil,{["planar"] = 30})
 					if  v.isplayer then
-						v:AddDebuff("curse_fire","curse_fire")
+						v:AddDebuff("buff_cursefire","buff_cursefire")
 					end
 				end
 			end		

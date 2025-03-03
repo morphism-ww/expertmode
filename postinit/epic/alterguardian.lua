@@ -9,6 +9,7 @@ local function anticheating(inst)
     if inst.components.shockable then
         inst:RemoveComponent("shockable") 
     end
+    MakeSmartAbsorbDamageEnt(inst)
 end
 
 
@@ -17,7 +18,7 @@ end
 --------------------------------------------
 
 
-AddPrefabPostInit("alterguardian_phase1",function(inst)
+newcs_env.AddPrefabPostInit("alterguardian_phase1",function(inst)
 
     inst:AddTag("meteor_protection")
     inst:AddTag("no_rooted")
@@ -51,7 +52,7 @@ local function spawn_landfx(inst)
     SpawnPrefab("mining_moonglass_fx").Transform:SetPosition(ix, iy, iz)
 end
 
-AddStategraphPostInit("alterguardian_phase1", function(sg)
+newcs_env.AddStategraphPostInit("alterguardian_phase1", function(sg)
     sg.states.roll.onenter = function(inst,speed)
         inst:EnableRollCollision(true)
 
@@ -124,9 +125,12 @@ AddStategraphPostInit("alterguardian_phase1", function(sg)
             end
     end
 
-	local oldOnEntershield_pre = sg.states.shield_pre.onenter
+	
     sg.states.shield_pre.onenter = function(inst, ...)
-        oldOnEntershield_pre(inst, ...)
+
+        inst.Physics:Stop()
+
+        inst.AnimState:PlayAnimation("shield_pre")
         inst.components.meteorshower:StartCrazyShower()
     end
 
@@ -139,7 +143,8 @@ end)
 
 
 local function OnCollide(inst, other)
-    if other ~= nil and
+    if not inst.sg:HasStateTag("spin") and 
+        other ~= nil and
         other:IsValid() and
         other.components.workable ~= nil and
         other.components.workable:CanBeWorked() and
@@ -174,7 +179,7 @@ local function spawnbarrier(inst)
     end
 end
 
-AddPrefabPostInit("alterguardian_phase2",function(inst)
+newcs_env.AddPrefabPostInit("alterguardian_phase2",function(inst)
 
 
     inst:AddTag("toughworker")
@@ -194,7 +199,7 @@ AddPrefabPostInit("alterguardian_phase2",function(inst)
         oldDoSpikeAttack(inst)
         spawnbarrier(inst)
     end
-
+    
 end)
 
 
@@ -204,7 +209,7 @@ end)
 local AOE_RANGE_PADDING = 3
 local CHOP_RANGE_DSQ = TUNING.ALTERGUARDIAN_PHASE2_CHOP_RANGE * TUNING.ALTERGUARDIAN_PHASE2_CHOP_RANGE
 local SPIN_RANGE_DSQ = TUNING.ALTERGUARDIAN_PHASE2_SPIN_RANGE * TUNING.ALTERGUARDIAN_PHASE2_SPIN_RANGE
-AddStategraphPostInit("alterguardian_phase2",function(sg)
+newcs_env.AddStategraphPostInit("alterguardian_phase2",function(sg)
 	sg.events["doattack"].fn = function(inst,data)
 		if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy"))
                 and (data.target ~= nil and data.target:IsValid()) then
@@ -315,7 +320,7 @@ local SPIN_CANT_TAGS = { "brightmareboss","brightmare","INLIMBO", "FX", "NOCLICK
 local SPIN_ONEOF_TAGS = {"_health", "CHOP_workable", "HAMMER_workable", "MINE_workable"}
 local SPIN_FX_RATE = 10*FRAMES
 
-AddStategraphState("alterguardian_phase2",State{
+newcs_env.AddStategraphState("alterguardian_phase2",State{
     name = "lightning_trial",
     tags = {"attack", "busy"},
 
@@ -411,7 +416,7 @@ AddStategraphState("alterguardian_phase2",State{
 })
 
 
-AddStategraphState("alterguardian_phase2",State {
+newcs_env.AddStategraphState("alterguardian_phase2",State {
     name = "atk_spike2",
     tags = {"attack", "busy"},
 
@@ -458,7 +463,7 @@ AddStategraphState("alterguardian_phase2",State {
 })
 
 
-AddStategraphState("alterguardian_phase2",State {
+newcs_env.AddStategraphState("alterguardian_phase2",State {
     name = "deadspin_pre",
     tags = {"busy", "canrotate", "spin"},
 
@@ -571,7 +576,7 @@ AddStategraphState("alterguardian_phase2",State {
 })
 
 
-AddStategraphState("alterguardian_phase2",State {
+newcs_env.AddStategraphState("alterguardian_phase2",State {
     name = "deadspin_loop",
     tags = {"busy", "canrotate", "spin"},
 
@@ -705,7 +710,11 @@ local function FallOffFn(inst,observer,dsq)
     return inst.sg.statemem.in_eraser and 1 or math.max(1, dsq)
 end
 
-AddPrefabPostInit("alterguardian_phase3",function(inst)
+local function DoEraser(inst,target)
+    target.components.health:DeltaPenalty(0.4)
+end
+
+newcs_env.AddPrefabPostInit("alterguardian_phase3",function(inst)
     
     inst:AddTag("no_rooted")
     inst:AddTag("toughworker")
@@ -722,6 +731,10 @@ AddPrefabPostInit("alterguardian_phase3",function(inst)
     inst.components.sanityaura.aurafn = CalcSanityAura
     inst.components.sanityaura.max_distsq = 400
     inst.components.sanityaura.fallofffn = FallOffFn
+
+    inst:AddComponent("truedamage")
+    inst.components.truedamage:SetBaseDamage(0)
+    inst.components.truedamage:SetOnAttack(DoEraser)
     
 end)
 
@@ -771,17 +784,13 @@ local NUM_STEPS = 10
 local STEP = 1.0
 local OFFSET = 2 - STEP
 
-local function DoEraser(inst,target)
-    if target.components.inventory then
-        target.components.inventory:ApplyDamage(5000)
-    end
-    target.components.health:DeltaPenalty(0.4)
-end
+
 
 local function SpawnEraserBeam(inst, target_pos)
     if target_pos == nil then
         return
     end
+    inst.components.truedamage:SetBaseDamage(10000)
 
     local ix, iy, iz = inst.Transform:GetWorldPosition()
 
@@ -803,36 +812,28 @@ local function SpawnEraserBeam(inst, target_pos)
     local x, z = nil, nil
     local trigger_time = nil
 
-
-    local i = -1
+    ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, .2, target_pos, 30)
+    local i = 1
     while i < 40 do
         i = i + 1
         x = gx - i * x_step * math.cos(angle)
         z = gz - i * STEP * math.sin(angle)
 
-        local first = (i == 0)
-        local prefab = (i > 0 and "alterguardian_laser") or "alterguardian_laserempty"
         local x1, z1 = x, z
 
         trigger_time = (math.max(0, i - 1) * FRAMES)*0.2
         inst:DoTaskInTime(trigger_time, function(inst2,index)
-            local fx = SpawnPrefab(prefab)
+            local fx = SpawnPrefab("alterguardian_laser")
             fx.caster = inst2
             fx.Transform:SetPosition(x1, 0, z1)
             fx:Trigger(0, targets, skiptoss,false,2,2,2)
-            if first then
-                ShakeAllCameras(CAMERASHAKE.FULL, .7, .02, .2, target_pos or fx, 30)
-            end
 
             if index%5==0 then
                 local light = SpawnPrefab("alter_light")
                 light.Transform:SetPosition(x1, 0, z1)
             end
         end,i)
-        
     end
-
-    
 end
 
 
@@ -887,18 +888,21 @@ local function HolyLightAttack(inst)
 end
 
 
-AddStategraphPostInit("alterguardian_phase3",function (sg)
+newcs_env.AddStategraphPostInit("alterguardian_phase3",function (sg)
     sg.events["doattack"].fn = function(inst,data)
         if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy"))
                 and (data.target ~= nil and data.target:IsValid()) then
             local dsq_to_target = inst:GetDistanceSqToInst(data.target)
-            local hp = inst.components.health:GetPercent()
-            if not inst.components.timer:TimerExists("eraser_cd") then
-                inst.sg:GoToState("eraserbeam",data.target)
-            elseif not inst.components.timer:TimerExists("summon_cd") and dsq_to_target < SUMMON_DSQ then
+                
+            if not inst.components.timer:TimerExists("summon_cd") and dsq_to_target < SUMMON_DSQ then
                 inst.sg:GoToState("atk_summon_pre", data.target)
-            elseif hp<0.5 and not inst.components.timer:TimerExists("eraser2_cd") and dsq_to_target < SUMMON_DSQ then
-                inst.sg:GoToState("eraserflame", data.target)    
+            elseif not inst.components.timer:TimerExists("eraser_cd") and dsq_to_target < SUMMON_DSQ then
+                if inst.components.health:GetPercent()<0.5 and inst.sg.mem.erasermode~=0 then
+                    
+                    inst.sg:GoToState("eraserflame", data.target)
+                else
+                    inst.sg:GoToState("eraserbeam",data.target)
+                end
             else
                 local attack_state = "atk_stab"
                 local geyser_pos = inst.components.knownlocations:GetLocation("geyser")
@@ -945,7 +949,7 @@ AddStategraphPostInit("alterguardian_phase3",function (sg)
 end)
 
 
-AddStategraphState("alterguardian_phase3",State{
+newcs_env.AddStategraphState("alterguardian_phase3",State{
     name = "eraserbeam",
     tags = {"attacking", "busy", "canrotate"},
 
@@ -962,6 +966,7 @@ AddStategraphState("alterguardian_phase3",State{
         inst:ForceFacePoint(target.Transform:GetWorldPosition())
         inst.sg.statemem.target = target
 
+        inst.sg.mem.erasermode = 1
         inst.sg.statemem.in_eraser = true
         inst.sg:SetTimeout(4)
             --inst.AnimState:SetHaunted(true)
@@ -984,9 +989,7 @@ AddStategraphState("alterguardian_phase3",State{
     {   
         TimeEvent(10*FRAMES,function (inst)
             set_lightvalues(inst, 1)
-            inst:AddComponent("truedamage")
-            inst.components.truedamage:SetBaseDamage(1000)
-            inst.components.truedamage:SetOnAttack(DoEraser)
+            
             dowarning(inst)
         end),
         TimeEvent(40*FRAMES,function (inst)
@@ -1046,13 +1049,12 @@ AddStategraphState("alterguardian_phase3",State{
     ontimeout = post_attack_idle,
     onexit = function(inst)
         inst.Transform:SetSixFaced()
-        inst:RemoveComponent("truedamage")
-        --inst.components.combat:SetDefaultDamage(TUNING.ALTERGUARDIAN_PHASE3_DAMAGE)
+        inst.components.truedamage:SetBaseDamage(0)
     end,
 })
 
 
-AddStategraphState("alterguardian_phase3",State{
+newcs_env.AddStategraphState("alterguardian_phase3",State{
     name = "eraserflame",
     tags = {"attacking", "busy", "canrotate"},
 
@@ -1065,10 +1067,11 @@ AddStategraphState("alterguardian_phase3",State{
         if inst.components.combat:TargetIs(target) then
             inst.components.combat:StartAttack()
         end
-        inst.components.timer:StartTimer("eraser2_cd",TUNING.ALTERGUARDIAN_PHASE3_FLAMECOOLDOWN)
+        inst.components.timer:StartTimer("eraser_cd",TUNING.ALTERGUARDIAN_PHASE3_FLAMECOOLDOWN)
+        
         inst:ForceFacePoint(target.Transform:GetWorldPosition())
         inst.sg.statemem.target = target
-
+        inst.sg.mem.erasermode = 0
         inst.sg.statemem.in_eraser = true
 
         dowarning(inst,true)

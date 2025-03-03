@@ -15,11 +15,11 @@ local function InitEnvelopes()
         }
     )
 
-    local max_scale = 7
+    local max_scale = 5
     EnvelopeManager:AddVector2Envelope(
         SCALE_ENVELOPE_NAME,
         {
-            { 0,    { 5, 5 } },
+            { 0,    { 4, 4 } },
             { 1,    { max_scale, max_scale } },
         }
     )
@@ -27,9 +27,9 @@ local function InitEnvelopes()
     InitEnvelopes = nil
 end
 
-local MAX_LIFETIME = 10
+local MAX_LIFETIME = 12
 local GROUND_HEIGHT = 0.3
-local EMITTER_RADIUS = 22
+local EMITTER_RADIUS = 25
 
 local function fn()
     local inst = CreateEntity()
@@ -94,13 +94,16 @@ local function fn()
     return inst
 end
 
-local function spanerfn()
+--[[local function spanerfn()
 	local inst = CreateEntity()
 	inst.entity:AddTransform()
     inst.entity:AddNetwork()
 
-    --[[Non-networked entity]]
+    
     inst.entity:SetPristine()
+
+    inst:AddTag("NOBLOCK")
+    inst:AddTag("CLASSIFIED")
 
     if not TheNet:IsDedicated() then
         inst:DoTaskInTime(0, function(inst)
@@ -117,7 +120,7 @@ local function spanerfn()
 
                 local ext = ResetextentsForPoly(node.poly)
                 mist.entity:SetAABB(ext.radius, 2)
-                mist.components.emitter.density_factor = math.ceil(node.area / 4) / 40
+                mist.components.emitter.density_factor = math.ceil(node.area / 8) / MAX_LIFETIME
                 mist.components.emitter:Emit()
             end
         end)
@@ -125,8 +128,66 @@ local function spanerfn()
 	
 
 	return inst
+end]]
+local function SpawnRaindropAtXZ(inst, x, z)
+	local raindrop = SpawnPrefab("acidraindrop")
+	raindrop.Transform:SetPosition(x, 0, z)
+end
+
+local function CreateAcidFx(inst,x,z)
+    local px, pz = inst.area_emitter()
+    --[[if TheWorld.Map:IsPassableAtPoint(px, 0, pz) then
+        SpawnRaindropAtXZ(inst, px,pz)
+    end]]
+    SpawnRaindropAtXZ(inst, px,pz)
+    local x, z = inst.area_emitter()
+    SpawnRaindropAtXZ(inst, x,z)
+end
+
+local function onentitysleep(inst)
+    if inst.task ~= nil then
+        inst.task:Cancel()
+        inst.task = nil
+    end
+end
+
+local function onentitywake(inst)
+    inst:DoTaskInTime(0,function ()
+         
+         --[[local x,y,z = inst.Transform:GetWorldPosition()
+         local node = TheWorld.Map:FindVisualNodeAtPoint(x, y, z)
+        if inst.area_emitter==nil then
+            inst.area_emitter = FindRandomPointInNode(node.poly, node.cent)
+        end]]
+        if inst.task == nil then
+            inst.task = inst:DoPeriodicTask(FRAMES,CreateAcidFx)
+        end
+    end)
 end
 
 
+local function spawnerfn()
+    local inst = CreateEntity()
+	inst:AddTag("FX")
+    --[[Non-networked entity]]
+    if TheNet:GetIsClient() then
+        inst.entity:AddClientSleepable()
+    end
+
+    inst.persists = false
+
+    inst.entity:AddTransform()
+    
+    
+    --inst.acid_fx = SpawnPrefab("caveacidrain")
+    --inst.acid_fx.entity:SetParent(inst.entity)
+
+    inst.OnEntitySleep = onentitysleep
+    inst.OnEntityWake = onentitywake
+
+    return inst
+end
+
 return Prefab("miasama_abyss_fx",fn),
-    Prefab("mist_spawner", spanerfn) 
+    Prefab("local_acid_spawner",spawnerfn)
+    --Prefab("mist_spawner", spanerfn) 

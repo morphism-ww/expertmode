@@ -95,7 +95,7 @@ end
 
 
 local PLANTS_MUST = {"plant","tree"}
-local BLOCKERS_MUST_TAGS = {"no_queen"}
+local BLOCKERS_MUST_TAGS = {"lunarthall_plant_blocker"}
 function Queen_spawner:FindWildPatch()
     local tries = {}
     local candidtate_nodes={}

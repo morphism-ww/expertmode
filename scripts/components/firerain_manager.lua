@@ -100,7 +100,7 @@ local function SpawnFireForPlayer(player)
     if player and player:IsValid() then
         local pos = player:GetPosition()
         if not hasprotecter(pos) then 
-            local firerain = SpawnPrefab(math.random() <= 0.4 and  "dragoonegg_falling_cs" or "firerain_cs" )
+            local firerain = SpawnPrefab(math.random() <= 0.4 and  "newcs_dragoonegg_falling" or "newcs_firerain" )
             local theta = math.random() * PI2
             local radius = math.random(4,10)
             firerain.Transform:SetPosition(pos.x+radius*math.cos(theta),0,pos.z-radius*math.sin(theta))

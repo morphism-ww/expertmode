@@ -61,13 +61,10 @@ return Class(function(self, inst)
     --local NEARFIRE_MUST_TAGS = { "lightsource" }
     local NEARFIRE_CANT_TAGS = { "INLIMBO","shadowlevel" }
 
-    local function shouldKill(inst,player)
-        return not (inst.components.riftspawner and inst.components.riftspawner:GetShadowRiftsEnabled() or
-            player:HasTag("playerghost"))
-    end
+    
 
     local function ShouldSpawn(player)
-        return player.components.areaaware:CurrentlyInTag("DarkLand")
+        return player.components.areaaware:CurrentlyInTag("Abyss")
     end
     
     local function SpawnHand(player, params)
@@ -77,18 +74,9 @@ return Class(function(self, inst)
             Reschedule(player, params)
             return
         end
-        local no_killer = true
-        if shouldKill(inst,player) then
-            local theta = math.random() * PI2
-            local px,py,pz = player.Transform:GetWorldPosition()
-            local eye = SpawnPrefab("abyss_eye")
-            eye.Transform:SetPosition(px + 12*math.cos(theta),0,pz-12*math.sin(theta))
-            eye:SetTarget(player)
-            no_killer = false
-        end
 
         local sanity = player.replica.sanity:IsInsanityMode() and player.replica.sanity:GetPercent() or 1
-        if no_killer and sanity<0.5 then
+        if sanity<0.5 then
             
             local radius = 5 + math.random() * 15
             local theta = math.random() * PI2

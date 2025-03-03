@@ -371,7 +371,7 @@ local function TryWave(inst)
         wave.Transform:SetPosition(wavepos:Get())
         wave.Transform:SetRotation(rot)
         rot = rot + anglePerWave
-        wave.Physics:SetMotorVel(12, 0, 0)
+        wave.Physics:SetMotorVel(14, 0, 0)
     end
 end
 

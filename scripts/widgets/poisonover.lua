@@ -3,10 +3,10 @@ local Image = require "widgets/image"
 local easing = require "easing"
 
 local PoisonOver =  Class(Widget, function(self, owner)
-
 	self.owner = owner
 	Widget._ctor(self, "PoisonOver")
-	
+	self:UpdateWhilePaused(false)
+
 	self:SetClickable(false)
 
     self.bg = self:AddChild(Image("images/fx4te.xml", "poison_over.tex"))
@@ -30,6 +30,7 @@ local PoisonOver =  Class(Widget, function(self, owner)
     self.time_since_pulse = 0 
     self.pulse_period = 1
 
+    self.inst:ListenForEvent("poisondamage",function ()self:Flash() end,owner)
 end)
 
 function PoisonOver:TurnOn()
@@ -45,14 +46,15 @@ end
 function PoisonOver:TurnOff()
     self.base_level = 0    
     self.k = 5
-    self:OnUpdate(0)
     self.flashing = false
 end
 
 function PoisonOver:OnUpdate(dt)
     
     -- ignore abnormally large intervals as they will destabilize the math in here
-    if dt > 0.1 then return end
+    if dt<=0 or dt > 0.1 then 
+        return 
+    end
     
     local delta = self.target_level - self.base_level
 
@@ -67,22 +69,21 @@ function PoisonOver:OnUpdate(dt)
         end
     end
 
-    if self.level > 1 then self.level = 1 end
-    if self.level < 0 then self.level = 0 end
+    self.level = math.clamp(self.level,0,1)
 
     if self.flashing and self.level >= 1 and self.dir > 0 then
         self.dir = -self.dir
         self.flash_time = GetTime()
     end
 
-    if self.base_level > 0 and not IsSimPaused() then
+    if self.base_level > 0 and not TheNet:IsServerPaused() then
         self.time_since_pulse = self.time_since_pulse + dt
         if self.time_since_pulse > self.pulse_period then
             self.time_since_pulse = 0
             
-            -- if not self.owner.components.health:IsDead() then
-            --     TheInputProxy:AddVibration(VIBRATION_BLOOD_OVER, .2, .3, false)  
-            -- end
+            if not IsEntityDead(self.owner) then
+                TheInputProxy:AddVibration(VIBRATION_BLOOD_OVER, .2, .3, false)
+            end
         end
     end
 
@@ -98,8 +99,7 @@ end
 
 function PoisonOver:Flash()
     
-    -- TheInputProxy:AddVibration(VIBRATION_BLOOD_FLASH, .2, .7, false)    
-
+    TheInputProxy:AddVibration(VIBRATION_BLOOD_FLASH, .2, .7, false)
     self:StartUpdating()    
     self.flashing = true
     self.base_level = 0

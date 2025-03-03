@@ -13,6 +13,7 @@ require "map/ocean_gen"
 require "map/bunch_spawner"
 require "map/archive_worldgen"
 require "map/monkeyisland_worldgen"
+--require "postinit/map/maputil"
 
 local function pickspawnprefab(items_in, ground_type)
 --	if ground_type == WORLD_TILES.ROAD then
@@ -432,7 +433,7 @@ local function Generate(prefab, map_width, map_height, tasks, level, level_type)
     if current_gen_params.keep_disconnected_tiles ~= nil then
         story_gen_params.keep_disconnected_tiles = current_gen_params.keep_disconnected_tiles
     end
-
+	
     if current_gen_params.no_joining_islands ~= nil then
         story_gen_params.no_joining_islands = current_gen_params.no_joining_islands
     end
@@ -472,17 +473,22 @@ local function Generate(prefab, map_width, map_height, tasks, level, level_type)
                 ["medium"] = 400,
                 ["default"] = 425, -- default == large, at the moment...
                 ["large"] = 425,
-                ["huge"] = 550,
+                ["huge"] = 450,
             }
         end
 
         if sizes[current_gen_params.world_size] then
             min_size = sizes[current_gen_params.world_size]
+			----------改动010203
+			if prefab=="cave" then
+				min_size = min_size + 40
+			end
             print("New size:", min_size, current_gen_params.world_size)
         else
             print("ERROR: Worldgen preset had an invalid size: "..current_gen_params.world_size)
         end
 	end
+	
     map_width = min_size
     map_height = min_size
     WorldSim:SetWorldSize(map_width, map_height)
@@ -508,6 +514,7 @@ local function Generate(prefab, map_width, map_height, tasks, level, level_type)
 	if not WorldSim:WorldGen_Commit() then
         return nil
     end
+	
 
     topology_save.root:ApplyPoisonTag()
     WorldSim:ConvertToTileMap(min_size)
@@ -857,6 +864,25 @@ local function Generate(prefab, map_width, map_height, tasks, level, level_type)
 		PopulateOcean(SpawnFunctions, entities, map_width, map_height, storygen.ocean_population, translated_prefabs, ocean_gen_config.ocean_prefill_setpieces_min_land_dist, save.map.topology)
         MonkeyIsland_GenerateDocks(WorldSim, entities, map_width, map_height)
 	end
+	----------------改动：强制删除连接深渊的节点
+	if prefab=="cave" then
+		for idx,val in ipairs(save.map.topology.nodes) do
+			if string.find(save.map.topology.ids[idx], "REGION_LINK_SUB") then
+				local points_x, points_y, points_type = WorldSim:GetPointsForSite(save.map.topology.ids[idx])
+				if #points_x == 0 then
+					print(idx.." Cant process points")
+					
+				else
+					for current_pos_idx = 1, #points_x do
+						local type = points_type[current_pos_idx]
+						WorldSim:SetTile(points_x[current_pos_idx], points_y[current_pos_idx], WORLD_TILES.IMPASSABLE)
+					end
+				end
+			end
+		end
+		--Abyss_ForceDisConnected(save.map.topology, WorldSim)
+	end
+	
     topology_save.root:GlobalPostPopulate(entities, map_width, map_height)
 
     for k,ents in pairs(entities) do

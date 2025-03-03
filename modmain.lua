@@ -1,6 +1,6 @@
-GLOBAL.setmetatable(env, {__index = function(t, k) return GLOBAL.rawget(GLOBAL, k) end})
-
-
+-------------------------------------------------------------
+---加载资源
+-------------------------------------------------------------
 Assets = 
 {
     Asset("SOUNDPACKAGE", "sound/dontstarve_DLC002.fev"),
@@ -11,19 +11,14 @@ Assets =
     Asset("SOUND", "sound/DLC003_sfx.fsb"),
     Asset("SOUND","sound/wagstaff.fsb"),
     Asset("SOUNDPACKAGE","sound/wagstaff.fev"),
-    Asset("SOUND","sound/bossrush.fsb"),
-    Asset("SOUNDPACKAGE","sound/bossrush.fev"),
-    Asset("SOUND","sound/abyss_sound_bank.fsb"),
-    Asset("SOUNDPACKAGE","sound/abyss_sound.fev"),
-    
-    Asset("ATLAS", "images/inventoryimages/volcanoinventory.xml"),
-    Asset("IMAGE", "images/inventoryimages/volcanoinventory.tex" ),
-    Asset("ATLAS", "images/inventoryimages/newconstant_inventoryitems.xml"),
-    Asset("IMAGE", "images/inventoryimages/newconstant_inventoryitems.tex" ),
+
+    Asset("SOUND","sound/calamita_sound_bank.fsb"),
+    Asset("SOUNDPACKAGE","sound/calamita_sound.fev"),
+
+    Asset("ATLAS", "images/inventoryimages/newcs_inventoryitems.xml"),
+    Asset("IMAGE", "images/inventoryimages/newcs_inventoryitems.tex" ),
     Asset("ATLAS", "images/tabs.xml"),
     Asset("IMAGE", "images/tabs.tex" ),
-    Asset("IMAGE","images/inventoryimages/obsidian_hat.tex"),
-    Asset("ATLAS","images/inventoryimages/obsidian_hat.xml"),
     Asset("IMAGE","images/inventoryimages/quaker.tex"),
     Asset("ATLAS","images/inventoryimages/quaker.xml"),
     Asset("IMAGE","images/inventoryimages/lunarlight.tex"),
@@ -34,31 +29,34 @@ Assets =
     Asset("ATLAS","images/inventoryimages/sword_constant.xml"),
     Asset("IMAGE","images/inventoryimages/cs_potions.tex"),
     Asset("ATLAS","images/inventoryimages/cs_potions.xml"),
-    Asset("IMAGE","images/inventoryimages/apocalypse-of-the-constant.tex"),
-    Asset("ATLAS","images/inventoryimages/apocalypse-of-the-constant.xml"),
     Asset("ATLAS", "images/fx4te.xml"),
     Asset("IMAGE", "images/fx4te.tex"),
 
     Asset("ANIM", "anim/sword_buster.zip"),
     Asset("ANIM", "anim/swap_sword_buster.zip"),
 
+    Asset("ATLAS", "images/newcs_minimap.xml"),
+    Asset("IMAGE", "images/newcs_minimap.tex"),
 
     Asset("ANIM", "anim/player_actions_roll.zip"),
+    --Asset("ANIM", "anim/player_combo_wo.zip"),
+
+
     Asset("SHADER", "shaders/red_shader.ksh"),
-    Asset("SOUNDPACKAGE", "sound/calamita.fev"), 
-    Asset("SOUND", "sound/calamita_bank.fsb")
+    Asset("SHADER", "shaders/misc.ksh"),
+
+    --Asset("SHADER", "shaders/blues.ksh"),
+    Asset("SHADER", "shaders/auric.ksh"),
+    --Asset("SHADER", "shaders/adamantitepulse.ksh"),
+    --Asset("SHADER", "shaders/mirror.ksh"),
 }
 
 
 
-local function ProcessAtlas(atlas)
-    local path = GLOBAL.softresolvefilepath(atlas)
-    if path == nil then
-        print("[API]: The atlas \"" .. atlas .. "\" cannot be found.")
-        return
-    end
-    local success, file = pcall(io.open, path)
-    if not success or file == nil then
+local function RegisterAtlas(atlas)
+    local path = MODROOT..atlas
+    local file = GLOBAL.io.open(path,"r")
+    if file == nil then
         print("[API]: The atlas \"" .. atlas .. "\" cannot be opened.")
         return
     end
@@ -67,265 +65,107 @@ local function ProcessAtlas(atlas)
     local images = xml:gmatch("<Element name=\"(.-)\"")
     for tex in images do
         RegisterInventoryItemAtlas(path, tex)
-        RegisterInventoryItemAtlas(path, hash(tex))
     end
 end
 
-ProcessAtlas("images/inventoryimages/volcanoinventory.xml")
-ProcessAtlas("images/inventoryimages/cs_potions.xml")
-ProcessAtlas("images/inventoryimages/apocalypse-of-the-constant.xml")
-ProcessAtlas("images/inventoryimages/newconstant_inventoryitems.xml")
+----override image must has hash value!!!
+local function RegisterOverrideImage(image,atlas)
+    local path = atlas or "images/inventoryimages/newcs_inventoryitems.xml"
+    RegisterInventoryItemAtlas(path, GLOBAL.hash(image))
+end
 
+RegisterAtlas("images/inventoryimages/cs_potions.xml")
+RegisterAtlas("images/inventoryimages/newcs_inventoryitems.xml")
 
 RegisterInventoryItemAtlas("images/inventoryimages/quaker.xml", "quaker.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/lunarlight.xml", "lunarlight.tex")
 
-RegisterInventoryItemAtlas("images/inventoryimages/obsidian_hat.xml", "obsidian_hat.tex")
-
 RegisterInventoryItemAtlas("images/inventoryimages/sword_ancient.xml", "sword_ancient.tex")
 
 RegisterInventoryItemAtlas("images/inventoryimages/sword_constant.xml", "sword_constant.tex")
 
+RegisterOverrideImage("laser_generator.tex")
 
-AddMinimapAtlas("images/inventoryimages/armorvortexcloak.xml")
-AddMinimapAtlas("images/brightshade_queen.xml")
-AddMinimapAtlas("images/inventoryimages/cs_void_bag.xml")
+AddMinimapAtlas("images/newcs_minimap.xml")
+-----------------------------------------------------------------
 
-AddReplicableComponent("debuffable")
+AddReplicableComponent("statemeter")
+
+-----------------------------------------------------------------
+local locale = GLOBAL.LOC.GetLocaleCode()
+if locale == "zh" or locale == "zht" or locale=="zhr" then
+    require"languages.newstring.names"
+    require"languages.newstring.recipes"
+    require"languages.newstring.describes"
+    require"languages.newstring.others"
+else
+    require"languages.newstring_en.names"
+    require"languages.newstring_en.recipes"
+    require"languages.newstring_en.describes"
+    require"languages.newstring_en.others"
+end    
+
+-------------------------------------------
+
+local my_name = GLOBAL.ModInfoname(modname)
+
+function modimport_global(modulename)
+    print("modimport [global]: "..MODROOT..modulename)
+    modulename = modulename..".lua"
+    local result = GLOBAL.kleiloadlua(MODROOT..modulename)
+    if result == nil then
+        GLOBAL.error("Error in modimport [global]: "..modulename.." not found!")
+    elseif type(result) == "string" then
+        GLOBAL.error("Error in modimport [global]: "..my_name.." importing "..modulename.."!\n"..result)
+    else
+        GLOBAL.setfenv(result, GLOBAL)
+        result()
+    end
+end
 
 
-modimport("init/init_constants")
-modimport("init/newconstant_tuning")
+require("newcs_constants")
+require("newcs_tuning")
+require("newcs_standardcomponents")
+require("newcs_entitychange")
+
+GLOBAL.newcs_env = env
+
 modimport("init/containers")
 
-require("cs_standardcomponents")
+--modimport("init/CES_API")
+if not GLOBAL.TheNet:IsDedicated() then
+    modimport("init/shader_init")
+end
 
-require("cs_entitychange")
+--------------------------------------------
 
+
+-------------------------------------------
+----注册实体
+modimport("init/prefablist")
+
+-----------------------------------------
 
 modimport("init/actions")
 
 modimport("init/player")
+
 modimport("init/player_sg")
+
 modimport("init/ui")
 
-if LOC.GetLocaleCode() == "zh" then
-    modimport("init/newstring.lua")
-else
-    modimport("init/newstring_en.lua")
-end    
+modimport_global("init/newloot")
 
-
-
-modimport("init/newloot")
-
-modimport("init/prefablist")
-
-
---"dreadsword","nightmare_hat","dread_cloak","knightmare","sword_constant","cs_shadow_queen","lavaarena_heavyblade","them_shadow",
-if GetModConfigData("pig") then
-    modimport("postinit/epic/daywalker")
-end
-
-if GetModConfigData("twin") then
-    modimport("postinit/epic/eyeofterror")
-    modimport("postinit/epic/twinofterror")
-end
-
-if GetModConfigData("alter") then
-    modimport("postinit/epic/alterguardian")
-end
-
-if GetModConfigData("rook") then
-    modimport("postinit/epic/minotaur")
-end
-
-if GetModConfigData("dragon_fire") then
-    TUNING.FIRERAIN_ENABLE = true
-    modimport("postinit/epic/dragonfly")
-end
-
-if GetModConfigData("klaus") then
-    modimport("postinit/epic/klaus")
-end
-
-if GetModConfigData("stalker") then
-    modimport("postinit/epic/stalker")
-end
-
-if GetModConfigData("poison") then
-    modimport("postinit/epic/beequeen")
-    modimport("postinit/epic/toadstool")
-    modimport("postinit/mushroom_hat")
-    modimport("postinit/poison_creature")
-end
-
-if GetModConfigData("ruins") then
-    modimport("postinit/shadowmachine")
-end
-
-if GetModConfigData("gestalt") then
-    TUNING.ALLOW_LUNAR_QUEEN = true
-    TUNING.ALLOW_GESTALT_GUARD = true
-    modimport("postinit/gestalt")
-end
-
-
-if GetModConfigData("chess") then
-    modimport("postinit/epic/shadowchess")
-end
-
-if GetModConfigData("wardrobe") then
-    modimport("postinit/wardrobe")
-end
-
-
-modimport("postinit/town_portal")
-
-
---装备
-modimport("postinit/ruins_equip")
-modimport("postinit/normal_weapons")
-modimport("postinit/amulet")
-modimport("postinit/lunar_equip")
-modimport("postinit/planar_armor")
-
---霸体护甲
-modimport("postinit/nostun_armor")
-
---材料
-modimport("postinit/fuel")
-modimport("postinit/repairable")
------------------------------------
----
---深渊补充机制
-modimport("postinit/abyss_makedark")
-
-modimport("postinit/ironlord_spawner")
-
---暗影位面生物
-modimport("postinit/epic/shadowthrall")
-
---迷宫箱子
-modimport("postinit/scenario_change")
-
---龙鳞火炉
-modimport("postinit/dragonflyfurnace")
-
-
---抗击飞
-modimport("postinit/anti_knockback")
-
-
---愚蠢,非常愚蠢！
-modimport("postinit/stupid_stuff")
-
---月亮相关的位面前装备
-
-
-modimport("postinit/components/klausloot") --klaussackloot,stewer
-modimport("postinit/components/meteorshower")
-modimport("postinit/components/explosive")  --explosive,health
-
-if GetModConfigData("damagemultiplier") then
-    DAMAGEMULTIPLIER_CHANGE = true
-end    
-modimport("postinit/components/truedamage_system") --inventory
-modimport("postinit/components/cn_boatphysics")
-modimport("postinit/components/components_change1") --freezable,burnable,debuffable,rooted
-
-
-modimport("postinit/epic/deerclops")
-
-modimport('postinit/epic/mutated_bosses')
----------------------------------------
-
--------
-
---世界组件
-modimport("postinit/worldchange")
----------------------------------------------
-
---modimport("postinit/components/growable")
---modimport("postinit/components/ambientlighting")
-
---食物
-modimport("postinit/food")
-
-
-modimport("postinit/epic/lunarthrall_plant")
-
-
-modimport("postinit/anti_debuffs")
-
-
-modimport("postinit/farming")
-
-
-modimport("postinit/legion_medal")
-
---modimport("postinit/ranged_weapon")
---modimport("postinit/punchingbag")
-
-------------bossrush-----------------
-modimport("postinit/bossrush/entrance")
-modimport("postinit/bossrush/bossrush_protect")
-
--------------------------------------
 modimport("init/recipes")
+
+modimport_global("init/mod_rpc")
+----------------------------------------
+
+modimport("init/postinit")
 
 
 modimport("init/debugmode")
 
-----------------------------------------------------
-Popups = require("GUI/popups")
-
--- GLOBALS
-local server_name = TheNet:GetServerName()
-local welcome_message = [[
-在正式开始前请仔细查看mod设置
-注意洞穴开巨大，地表不开巨大
-]]	
-
-
-local has_selected_character = false
-local first_time_on_server = true
-
-
-local function ShowWelcomeMessage(player)
-
-	if not first_time_on_server then
-		
-		return
-	end
-	
-	first_time_on_server = false
-	
-	if not has_selected_character then
-		
-		return
-	end
-    local main = function()
-    local body = welcome_message
-        
-        Popups.CreateChoicePopup(server_name,body,nil,nil,"original","big","light")
-    end
-    player:DoTaskInTime(0.5, function() main() end)
-end
-
-
--- There is definitely a simpler way to detect if this is the first time the player spawns
--- but for now we will just assume that first_time_on_server = first_spawn and has_selected_character
-local function ListenForNewcomers(inst)
-    inst:ListenForEvent("entercharacterselect", 
-	function()
-		has_selected_character = true
-		inst:RemoveEventCallback("entercharacterselect", ListenForNewcomers)
-	end)
-end
---if not TheNet:GetIsMasterSimulation() then
-AddPrefabPostInit("world", ListenForNewcomers)
-
-
-AddPlayerPostInit(ShowWelcomeMessage)
+GLOBAL.newcs_env = nil

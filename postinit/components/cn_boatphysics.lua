@@ -1,3 +1,5 @@
+local AddComponentPostInit = AddComponentPostInit
+GLOBAL.setfenv(1,GLOBAL)
 AddComponentPostInit("boatphysics", function(self)
     self.oldOnUpdate=self.OnUpdate
     function self:OnUpdate(dt)

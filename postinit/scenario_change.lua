@@ -1,5 +1,3 @@
-chestfunctions = require("scenarios/chestfunctions")
-chest_openfunctions = require("scenarios/chest_openfunctions")
 local chest_scenario = require("scenarios/chest_labyrinth")
 chest_scenario.OnCreate = function (inst, scenariorunner)
 
@@ -30,6 +28,12 @@ chest_scenario.OnCreate = function (inst, scenariorunner)
 		{         
 			item = {"orangestaff","greenstaff","yellowstaff"},
 			chance = 0.1,
+			initfn = function(item)
+				local finiteuses = item.components.finiteuses
+				if finiteuses~=nil then
+					finiteuses:SetUses(math.random(0.3 * finiteuses.total, 0.5 * finiteuses.total))
+				end
+			end,
 		},
 		{
 			item = {"yellowgem", "orangegem", "greengem"},
@@ -54,6 +58,104 @@ chest_scenario.OnCreate = function (inst, scenariorunner)
 
 	chestfunctions.AddChestItems(inst, items)
 end
+
+
+require("scenarios/chest_labyrinth_mimic").OnCreate = function(inst, scenariorunner)
+local MIMIC_CHANCE = 0.33
+local items =
+{
+	{
+		--Body Items
+		item = {"armorruins", "ruinshat"},
+		chance = 0.15,
+		initfn = function(item)
+			local armor = item.components.armor
+			armor:SetCondition(math.random(0.33 * armor.maxcondition, 0.80 * armor.maxcondition))
+
+			if math.random() < MIMIC_CHANCE then
+				item:AddComponent("itemmimic")
+			end
+		end,
+	},
+	{
+		--Weapon Items
+		item = {"ruins_bat","multitool_axe_pickaxe"},
+		chance = 0.2,
+		initfn = function(item)
+			local finiteuses = item.components.finiteuses
+			finiteuses:SetUses(math.random(0.33 * finiteuses.total, 0.80 * finiteuses.total))
+
+			if math.random() < MIMIC_CHANCE then
+				item:AddComponent("itemmimic")
+			end
+		end,
+	},
+	{
+		item = "nightmarefuel",
+		count = math.random(1, 3),
+		chance = 0.2,
+	},
+	{
+		item = {"redgem", "bluegem", "purplegem"},
+		count = math.random(1,2),
+		chance = 0.15,
+	},
+	{
+		item = "thulecite_pieces",
+		count = math.random(2, 4),
+		chance = 0.2,
+	},
+	{
+		item = "thulecite",
+		count = math.random(1, 3),
+		chance = 0.1,
+	},
+	{
+		item = {"yellowgem", "orangegem", "greengem"},
+		count = 1,
+		chance = 0.07,
+	},
+	{
+		--Weapon Items
+		item =  {"greenstaff","yellowstaff","orangestaff"},
+		chance = 0.05,
+		initfn = function(item)
+			local finiteuses = item.components.finiteuses
+			if finiteuses~=nil then
+				finiteuses:SetUses(math.random(0.3 * finiteuses.total, 0.5 * finiteuses.total))
+			end
+			
+
+			if math.random() < MIMIC_CHANCE then
+				item:AddComponent("itemmimic")
+			end
+		end,
+	},
+	{
+		--Weapon Items
+		item = {"firestaff", "icestaff","telestaff"},
+		chance = 0.05,
+		initfn = function(item)
+			local finiteuses = item.components.finiteuses
+			if finiteuses then
+				finiteuses:SetUses(math.random(0.3 * finiteuses.total, 0.5 * finiteuses.total))
+			end
+
+			if math.random() < MIMIC_CHANCE then
+				item:AddComponent("itemmimic")
+			end
+		end,
+	},
+	{
+		item = {"constant_medal"},
+		count = math.random(1,2),
+		chance = 0.03,
+	},
+	}
+
+	chestfunctions.AddChestItems(inst, items)
+end
+
 
 local function AbleToAcceptTest(inst, item, giver)
     if item.prefab ~= "shadow_soul" then
@@ -104,7 +206,7 @@ local function ItemGet(inst, giver, item)
     end)
 end
 
-AddPrefabPostInit("chesspiece_twinsofterror",function (inst)
+newcs_env.AddPrefabPostInit("chesspiece_twinsofterror",function (inst)
     inst:AddTag("trader")
     inst:AddTag("alltrader")
     if not TheWorld.ismastersim then

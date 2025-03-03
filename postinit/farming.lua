@@ -1,4 +1,3 @@
-
 local function farm_expert(inst,data)
     if data.owner:HasTag("player") then
         data.owner:AddTag("quagmire_fasthands")
@@ -10,11 +9,7 @@ local function not_farm_expert(inst,data)
     end
 end
 
-AddPrefabPostInit("plantregistryhat",function(inst)
-    if not TheWorld.ismastersim then
-        return inst
-    end
-
+newcs_env.AddPrefabPostInit("plantregistryhat",function(inst)
     inst:ListenForEvent("equipped",farm_expert)
     inst:ListenForEvent("unequipped",not_farm_expert)
 
@@ -34,10 +29,7 @@ local function not_farm_master(inst,data)
     end
 end
 
-AddPrefabPostInit("nutrientsgoggleshat",function(inst)
-    if not TheWorld.ismastersim then
-        return inst
-    end
+newcs_env.AddPrefabPostInit("nutrientsgoggleshat",function(inst)
 
     inst:ListenForEvent("equipped",farm_master)
     inst:ListenForEvent("unequipped",not_farm_master)
@@ -47,7 +39,7 @@ end)
 
 
 
-AddComponentPostInit("farmtiller",function (self)
+newcs_env.AddComponentPostInit("farmtiller",function (self)
     function self:Till(pt, doer)
         if TheWorld.Map:CanTillSoilAtPoint(pt.x, 0, pt.z, false) then
             if doer~=nil and  doer:HasTag("quagmire_farmhand") then

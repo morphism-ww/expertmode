@@ -3,10 +3,10 @@ local function onhit1(inst, attacker)
     inst.SoundEmitter:PlaySound("dontstarve/common/blackpowder_explo")
 
     local x,y,z = inst.Transform:GetWorldPosition()
-    local ents = TheSim:FindEntities(x, y, z, 5, {"_combat"}, { "INLIMBO", "eyeofterror","flight", "invisible", "notarget", "noattack"})
+    local ents = TheSim:FindEntities(x, y, z, 5, {"_combat"}, { "INLIMBO", "calamita","flight", "invisible", "notarget", "noattack"})
     for i, v in ipairs(ents) do
         if v:IsValid() and v.components.health ~= nil and not v.components.health:IsDead() then
-            v:AddDebuff("vulnerability_hex","vulnerability_hex",{duration = 10})
+            v:AddDebuff("buff_vulnerability_hex","buff_vulnerability_hex",{duration = 10})
             v.components.combat:GetAttacked(attacker,300,nil,nil,{["planar"] = 40})
         end
     end
@@ -159,7 +159,8 @@ local function MakeProjectile(name, bank, build,anim, data, onhit)
         inst.components.linearprojectile:SetRange(28)
         inst.components.linearprojectile:SetOnHit(onhit)
         inst.components.linearprojectile:SetOnMiss(onhit)
-        table.insert(inst.components.linearprojectile.notags,"eyeofterror")
+        inst.components.linearprojectile:AddNoHitTag("eyeofterror")
+
         
         inst:DoTaskInTime(5,inst.Remove)
 		

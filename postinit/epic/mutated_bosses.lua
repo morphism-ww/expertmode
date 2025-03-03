@@ -1,14 +1,14 @@
-AddPrefabPostInit("mutatedwarg",function (inst)
-    if not TheWorld.ismastersim then return end
+newcs_env.AddPrefabPostInit("mutatedwarg",function (inst)
+    
     MakePlayerOnlyTarget(inst)
 end)
 
-AddPrefabPostInit("mutatedbearger",function (inst)
-    if not TheWorld.ismastersim then return end
+newcs_env.AddPrefabPostInit("mutatedbearger",function (inst)
+    
     MakePlayerOnlyTarget(inst)
 end)
 
-AddPrefabPostInit("mutateddeerclops",function (inst)
-    if not TheWorld.ismastersim then return end
+newcs_env.AddPrefabPostInit("mutateddeerclops",function (inst)
+    
     MakePlayerOnlyTarget(inst)
 end)

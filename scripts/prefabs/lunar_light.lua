@@ -28,11 +28,11 @@ local function onextinguish(inst)
     if inst.components.fueled ~= nil then
         inst.components.fueled:InitializeFuelLevel(0)
     end
-    inst:RemoveTag("no_queen")
+    inst:RemoveTag("lunarthall_plant_blocker")
 end
 
 local function onignite(inst)
-	inst:AddTag("no_queen")
+	inst:AddTag("lunarthall_plant_blocker")
 end
 local function CalcSanityAura(inst, observer)
     local lightRadius = inst.components.burnable ~= nil and inst.components.burnable:GetLargestLightRadius() or 0
@@ -95,6 +95,7 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
+    inst:SetDeploySmartRadius(0.75) --recipe min_spacing/2
     MakeObstaclePhysics(inst, .1)
 
 
@@ -117,7 +118,6 @@ local function fn()
     inst:AddComponent("burnable")
     inst.components.burnable:AddBurnFX("lunarlight_flame", Vector3(0, 0, 0),"fire_marker")
     inst.components.burnable.canlight = false
-
     inst:ListenForEvent("onextinguish", onextinguish)
     inst:ListenForEvent("onignite", onignite)
 

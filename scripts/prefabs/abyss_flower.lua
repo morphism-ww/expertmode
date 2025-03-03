@@ -115,13 +115,11 @@ local dropassets =
     Asset("ANIM", "anim/lifeplant.zip"),
 }
 
-local canheal = {poison=true,poison_2=true,exhaustion=true,food_sick=true,vulnerable=true,weak=true,curse_fire = true}
-
 local function oneat(inst, eater)
     local debuffable = eater.components.debuffable
     if debuffable~=nil then
         for k, v in pairs(debuffable.debuffs) do
-            if canheal[v.inst.prefab] then
+            if v.inst.newcs_debuff then
                 debuffable:RemoveDebuff(k)
             end
         end
@@ -166,7 +164,7 @@ local function dropfn()
     inst:AddComponent("perishable")
     inst.components.perishable:SetPerishTime(TUNING.PERISH_SLOW)
     inst.components.perishable:StartPerishing()
-    --inst.components.perishable.onperishreplacement = "petals_evil"
+    inst.components.perishable:SetOnPerishFn(inst.Remove)
 
     inst:AddComponent("edible")
     inst.components.edible.foodtype = FOODTYPE.GOODIES  
@@ -184,10 +182,12 @@ local function dropfn()
     return inst
 end
 
+local regenprefabs = {"abyss_flower"}
+
 local function TrackFlower(inst,flower)
     local function onremove()
         inst.flower = nil
-        inst.components.timer:StartTimer("regrowth",TUNING.ABYSS_FLOWER_REGROWTH)
+        inst.components.worldsettingstimer:StartTimer("regen",TUNING.ABYSS_FLOWER_REGROWTH)
     end
     inst.flower = flower
     inst:ListenForEvent("onremove", onremove, flower)
@@ -199,28 +199,19 @@ local function spawnflower(inst)
     TrackFlower(inst,flower)
 end
 
-local function firstspawnflower(inst)
-    if not inst.first then
-        inst.first = true
-        spawnflower(inst)
-    end
-end
 
 local function OnSave(inst,data)
-    local ents = {}
-    data.first = inst.first
     if inst.flower then
         data.flower = inst.flower.GUID
-        table.insert(ents, inst.flower.GUID)
+        return {inst.flower.GUID}
     end
-    return ents
 end
 
 local function OnLoadPostPass(inst,newents, savedata)
-    if savedata~=nil then
-        inst.first = savedata.first
-        if savedata.flower and newents[savedata.flower] then
-            TrackFlower(inst,newents[savedata.flower].entity)
+    if savedata~=nil and savedata.flower then
+        local flower = newents[savedata.flower]
+        if flower~=nil then
+            TrackFlower(inst,flower.entity)
         end
     end
 end
@@ -232,14 +223,23 @@ local function spawnerfn()
     --[[Non-networked entity]]
 
     inst:AddTag("CLASSIFIED")
-    inst:AddComponent("timer")
-    
+
+    inst:AddComponent("worldsettingstimer")
+    inst.components.worldsettingstimer:AddTimer("regen", TUNING.ABYSS_FLOWER_REGROWTH, true)
 
     inst.OnSave = OnSave
     inst.OnLoadPostPass = OnLoadPostPass
 
-    inst:DoTaskInTime(0.2,firstspawnflower)
     inst:ListenForEvent("timerdone",spawnflower)
+
+    return inst
+end
+
+local function worldspawnerfn()
+    local inst = spawnerfn()
+    inst:SetPrefabName("abyss_flower_spawner")
+
+    inst:DoTaskInTime(0,spawnflower)
 
     return inst
 end
@@ -247,5 +247,6 @@ end
 
 return Prefab("abyss_flower", fn, assets, prefabs),
     Prefab("cs_waterdrop",dropfn,dropassets),
-    Prefab("abyss_flower_spawner",spawnerfn),
+    Prefab("abyss_flower_spawner",spawnerfn,nil,regenprefabs),
+    Prefab("abyss_flower_spawner_worldgen",worldspawnerfn,nil,regenprefabs),
     MakePlacer("cs_waterdrop_placer", "lifeplant", "lifeplant", "idle_loop")

@@ -51,11 +51,6 @@ local states=
         onenter = function(inst)
             inst.components.lootdropper:DropLoot(inst:GetPosition())
             RemovePhysicsColliders(inst)
-            
-            for i= 1, inst.power do
-                inst.components.lootdropper:SpawnLootPrefab("shadowheart")
-            end
-            
         end,
 
         timeline =

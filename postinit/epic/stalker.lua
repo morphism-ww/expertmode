@@ -1,4 +1,4 @@
-AddPrefabPostInit("shadowheart",function(inst)
+newcs_env.AddPrefabPostInit("shadowheart",function(inst)
     if not TheWorld.ismastersim then return end
     inst:AddComponent("fueled")
     inst.components.fueled.fueltype = FUELTYPE.NIGHTMARE
@@ -15,9 +15,8 @@ end
 
 local STARGET_TAGS = { "stargate" }
 local STALKER_TAGS = { "stalker" }
-local SHADOWHEART_TAGS = {"shadowheart"}
 local function ItemTradeTest(inst, item, giver)
-    if item == nil or not (item.prefab == "shadowheart" or item.prefan=="shadow_soul") or
+    if item == nil or item.prefab ~= "shadowheart" or
         giver == nil or giver.components.areaaware == nil then
         return false
     elseif inst.form ~= 1 then
@@ -33,44 +32,11 @@ local function ItemTradeTest(inst, item, giver)
     return true
 end
 
-local function OnAccept(inst, giver, item)
-    if item.prefab == "shadowheart" then
-        local stalker
-        if not TheWorld:HasTag("cave") then
-            stalker = SpawnPrefab("stalker_forest")
-        elseif not giver.components.areaaware:CurrentlyInTag("Atrium") then
-            stalker = SpawnPrefab("stalker")
-        else
-            local stargate = FindEntity(inst, ATRIUM_RANGE, ActiveStargate, STARGET_TAGS)
-            if stargate ~= nil then
-                stalker = SpawnPrefab("stalker_atrium")
-                -- override the spawn point so stalker stays around the gate
-                stalker.components.entitytracker:TrackEntity("stargate", stargate)
-                stargate:TrackStalker(stalker)
-            else
-                --should not be possible
-                stalker = SpawnPrefab("stalker")
-            end
-        end
 
-        local x, y, z = inst.Transform:GetWorldPosition()
-        local rot = inst.Transform:GetRotation()
-        inst:Remove()
 
-        stalker.Transform:SetPosition(x, y, z)
-        stalker.Transform:SetRotation(rot)
-        stalker.sg:GoToState("resurrect")
-
-        giver.components.sanity:DoDelta(TUNING.REVIVE_SHADOW_SANITY_PENALTY)
-    elseif item.prefab == "shadowsoul" then
-        
-    end
-end
-
-AddPrefabPostInit("fossil_stalker",function (inst)
+newcs_env.AddPrefabPostInit("fossil_stalker",function (inst)
     if not TheWorld.ismastersim then return end
     inst.components.trader:SetAbleToAcceptTest(ItemTradeTest)
-    inst.components.trader.onaccept = OnAccept
 end)
 
 ---------------------------------------------------------------------
@@ -92,7 +58,7 @@ local function Killvortexes(inst)
     end
 end
 
-AddPrefabPostInit("stalker_atrium",function (inst)
+newcs_env.AddPrefabPostInit("stalker_atrium",function (inst)
     inst:AddTag("toughworker")
     inst:AddTag("electricdamageimmune")
     inst:AddTag("no_rooted")
@@ -106,11 +72,13 @@ AddPrefabPostInit("stalker_atrium",function (inst)
     inst:SetBrain(brain)
 
     inst:ListenForEvent("death",Killvortexes)
+
+    MakeHitstunAndIgnoreTrueDamageEnt(inst)
 end)
 
 
 
-AddStategraphPostInit("SGstalker",function (sg)
+newcs_env.AddStategraphPostInit("SGstalker",function (sg)
     table.insert(sg.states.death3_pst.timeline,
         TimeEvent(305 * FRAMES, function(inst)
             local heart = SpawnPrefab("shadowheart")
@@ -119,20 +87,20 @@ AddStategraphPostInit("SGstalker",function (sg)
         end))  
 end)
 
-AddStategraphEvent("SGstalker",
+newcs_env.AddStategraphEvent("SGstalker",
 EventHandler("vortex", function(inst)
     if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
         inst.sg:GoToState("summon_vortex")
     end        
 end))
-AddStategraphEvent("SGstalker",
+newcs_env.AddStategraphEvent("SGstalker",
 EventHandler("shadowball", function(inst,data)
     if not (inst.sg:HasStateTag("busy") or inst.components.health:IsDead()) then
         inst.sg:GoToState("shadowball_loop",data.crazy)
     end        
 end))
 
-AddStategraphState("SGstalker",State{
+newcs_env.AddStategraphState("SGstalker",State{
     name = "shadowball_loop",
     tags = { "busy", "mindcontrol" },
 
@@ -192,7 +160,7 @@ AddStategraphState("SGstalker",State{
     },
 })
 
-AddStategraphState("SGstalker",State{
+newcs_env.AddStategraphState("SGstalker",State{
     name = "summon_vortex",
     tags = { "attack", "busy" },
 

@@ -1,0 +1,24 @@
+STRINGS.UI.BUFFPANEL_TIP = "右键拖动"
+STRINGS.FIRERAIN_COMING = "空气变得燥热"
+STRINGS.FIRE_ERA_COME = "古老的龙与火已苏醒"
+STRINGS.WAGSTAFF_NPC_GET_IRONSOUL = {"不可思议的物质，这对机器人研究大有帮助"}
+
+STRINGS.ACTIONS.CASTAOE.RUINS_BAT = "格挡"
+STRINGS.ACTIONS.CASTAOE.DREADSWORD = "格挡"
+STRINGS.ACTIONS.CASTAOE.LASER_CANNON = "发射"
+STRINGS.ACTIONS.CASTAOE.IOKHEIRA = "投掷"
+
+
+STRINGS.ACTIONS.TOWNPORTAL = "使用传送塔"
+STRINGS.ACTIONS.LUNGE = "突刺"
+STRINGS.ACTIONS.SHADOWDODGE = "影走"
+
+STRINGS.BOSSRUSH = 
+{
+    "你享受地狱之旅吗",
+    "无足轻重的表现",     --2
+    "有趣，很少有人能击败这些巨兽",   --3
+    "你是一位可敬的战士",  --4
+    "你的最终试炼开始了",      --5
+    "奖励？继续前进吧，"
+}

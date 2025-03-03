@@ -1,12 +1,12 @@
 require "behaviours/chaseandram"
 local function shadowremains(inst)
-    local pct=inst.components.health:GetPercent()
+    local pct = inst.components.health:GetPercent()
     if  pct< 0.3 and not inst.atphase3 then
         inst.atphase3 = true
     end
-    if pct<0.6 and inst.shadow==nil then
-        inst.shadow = SpawnPrefab("leechterror")
-        inst.shadow:SetHost(inst,"innerds")
+    if pct<0.6 and inst.leech==nil then
+        inst.leech = SpawnPrefab("leechterror")
+        inst.leech:SetHost(inst,"innerds")
     end
 end
 
@@ -61,31 +61,33 @@ local function TryShadowFire(inst, doer,pos)
     elseif pct<0.2 then
         burst=6
     end]]
+    local target = inst.components.combat.target
     for i=1,burst do
         local radius = 2
         local theta = startangle + (PI*2/burst*i) - (PI*2/burst)
         local offset = Vector3(radius * math.cos( theta ), 0, -radius * math.sin( theta ))
 
         local newpos = Vector3(inst.Transform:GetWorldPosition()) + offset
-        local fire = SpawnPrefab("shadow_flame")
+        local fire = SpawnPrefab("newcs_shadowflame")
         fire.Transform:SetRotation(theta/DEGREES)
         fire.Transform:SetPosition(newpos.x,newpos.y,newpos.z)
-        fire:settarget(nil,30,doer)
+        fire:settarget(target, 30, doer)
     end
 end
 
 
-local function OnHitOther(inst, data)
+local function KnockbackOther(inst, data)
 	if data.target ~= nil and inst.sg:HasStateTag("runningattack") then
-        data.target:PushEvent("knockback", { knocker = inst, radius = 1, strengthmult = 2})
+        data.target:PushEvent("knockback", { knocker = inst, radius = 2, strengthmult = 1.5})
     end
 
 end
 
 
-AddPrefabPostInit("minotaur",function(inst)
+newcs_env.AddPrefabPostInit("minotaur",function(inst)
 
     if not TheWorld.ismastersim then return end
+    
     inst.components.freezable:SetResistance(8)
     inst.components.sleeper:SetResistance(12)
 
@@ -93,10 +95,10 @@ AddPrefabPostInit("minotaur",function(inst)
 
     inst:DoTaskInTime(0, shadowremains)
     inst:ListenForEvent("attacked", shadowremains)
-    inst:ListenForEvent("onhitother",OnHitOther)
+    inst:ListenForEvent("onattackother",KnockbackOther)
 end)
 
-AddStategraphState("minotaur",
+newcs_env.AddStategraphState("minotaur",
 State{
         name = "stun2",
         tags = {"busy","stunned"},
@@ -128,7 +130,7 @@ State{
             end),
         },
     })
-AddStategraphState("minotaur",
+newcs_env.AddStategraphState("minotaur",
     State{
         name = "shadowfire_loop",
         tags = {"busy","stunned"},
@@ -153,7 +155,7 @@ AddStategraphState("minotaur",
             inst.sg:GoToState("shadowfire_loop")
         end
     })
-AddStategraphState("minotaur",
+newcs_env.AddStategraphState("minotaur",
     State{
         name = "leap_attackloop_pre",
         tags = {"attack", "busy","leapattack"},
@@ -182,7 +184,7 @@ AddStategraphState("minotaur",
             inst.sg:GoToState("leap_attackloop", inst.sg.statemem.targetpos)
         end    
     })
-AddStategraphState("minotaur",
+newcs_env.AddStategraphState("minotaur",
         State{
         name = "leap_attackloop",
         tags = {"attack", "busy", "leapattack"},
@@ -250,7 +252,7 @@ AddStategraphState("minotaur",
         },
     }
 )
-AddStategraphPostInit("minotaur",function(sg)
+newcs_env.AddStategraphPostInit("minotaur",function(sg)
     sg.events["collision_stun"].fn=function(inst,data)
         if data.light_stun == true then
             inst.sg:GoToState("hit")
@@ -387,7 +389,7 @@ local function OnLoadChest(inst)
 end
 
 
-AddPrefabPostInit("minotaurchestspawner",function (inst)
+newcs_env.AddPrefabPostInit("minotaurchestspawner",function (inst)
     if inst.task ~= nil then
         inst.task:Cancel()
         inst.task = nil
@@ -433,7 +435,7 @@ local function onload(inst, data)
     end
 end
 
-AddPrefabPostInit("pandoraschest",function(inst)
+newcs_env.AddPrefabPostInit("pandoraschest",function(inst)
     if not TheWorld.ismastersim then
         return inst
     end
@@ -458,5 +460,35 @@ AddPrefabPostInit("pandoraschest",function(inst)
             inst:AddComponent("klaussacklock")
 	        inst.components.klaussacklock:SetOnUseKey(OnUseKey)
         end    
-    end,TheWorld)    
+    end,TheWorld)
+    
+end)
+
+newcs_env.AddPrefabPostInit("chest_mimic",function(inst)
+    if not TheWorld.ismastersim then
+        return inst
+    end
+
+    
+    inst.components.container.canbeopened = false
+
+
+    inst:AddComponent("klaussacklock")
+	inst.components.klaussacklock:SetOnUseKey(OnUseKey)
+
+    inst.keyid = "maze_key"
+
+    inst.OnSave = onsave    
+    inst.OnLoad = onload
+
+    inst:ListenForEvent("resetruins", function()
+        inst._isunlocked = false
+        inst.components.container.canbeopened = false
+
+        if inst.components.klaussacklock==nil then
+            inst:AddComponent("klaussacklock")
+	        inst.components.klaussacklock:SetOnUseKey(OnUseKey)
+        end    
+    end,TheWorld)
+    
 end)

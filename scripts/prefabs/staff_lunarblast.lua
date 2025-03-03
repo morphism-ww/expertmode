@@ -5,8 +5,9 @@ local assets =
 
 local prefabs =
 {
-	"superbrilliance_projectile_fx",
+	"brilliance_projectile_fx",
 	"staff_lunarblast_fx",
+	"bomb_lunarplant_explode_fx"
 }
 
 local function SetFxOwner(inst, owner)
@@ -58,9 +59,9 @@ local function onunequip(inst, owner)
 end
 
 local function OnAttack(inst, attacker, target, skipsanity)
-	if inst.skin_sound then
+	--[[if inst.skin_sound then
 		attacker.SoundEmitter:PlaySound(inst.skin_sound)
-	end
+	end]]
 
 	if not target:IsValid() then
 		--target killed or removed in combat damage phase
@@ -76,6 +77,40 @@ local function OnAttack(inst, attacker, target, skipsanity)
 	target:PushEvent("attacked", { attacker = attacker, damage = 0, weapon = inst })
 end
 
+local function explode(inst, attacker, target)
+	local x, y, z = inst.Transform:GetWorldPosition()
+
+	SpawnPrefab("bomb_lunarplant_explode_fx").Transform:SetPosition(x, y, z)
+
+	local at_combat = attacker~=nil and attacker.components.combat or nil
+	
+	if at_combat == nil then
+		return
+	end
+
+
+	--using explosive mode attack everything!
+	local ents = TheSim:FindEntities(x, 0, z, 6, P_AOE_TARGETS_MUST, P_AOE_TARGETS_CANT)
+    for i, v in ipairs(ents) do
+        if at_combat:P_AOECheck(v) then
+			local range = 3 + v:GetPhysicsRadius(0)
+			if v:GetDistanceSqToPoint(x, 0, z) < range * range then
+				---WARNING!!!  inst missing weapon!!! 
+				v.components.combat:GetAttacked(attacker, 0, inst, nil,{["planar"] = TUNING.TRUE_STAFF_EXPLOSIVE})
+			end
+        end
+    end
+end
+
+local function OnProjectileLaunched(inst, attacker, target, proj)
+	proj:AddTag("explosive")
+    local hat = attacker ~= nil and attacker.components.inventory ~= nil and attacker.components.inventory:GetEquippedItem(EQUIPSLOTS.HEAD) or nil
+	proj.bounces = hat ~= nil and hat.prefab == "lunarplanthat" and TUNING.TRUE_STAFF_SETBONUS_BOUNCES or TUNING.TRUE_STAFF_BOUNCES
+	
+	proj.components.projectile.custom_onhit = explode
+	inst.components.finiteuses:Use(1)
+end
+
 local function SetupComponents(inst)
 	inst:AddComponent("equippable")
 	inst.components.equippable:SetOnEquip(onequip)
@@ -85,8 +120,9 @@ local function SetupComponents(inst)
 	inst:AddComponent("weapon")
 	inst.components.weapon:SetDamage(0)
 	inst.components.weapon:SetRange(8, 10)
-	inst.components.weapon:SetOnAttack(OnAttack)
-	inst.components.weapon:SetProjectile("superbrilliance_projectile_fx")
+	--inst.components.weapon:SetOnAttack(OnAttack)
+	inst.components.weapon:SetProjectile("brilliance_projectile_fx")
+	inst.components.weapon:SetOnProjectileLaunched(OnProjectileLaunched)
 end
 
 local function DisableComponents(inst)
@@ -173,7 +209,7 @@ local function fn()
 	inst:AddTag("rangedweapon")
 	inst:AddTag("magicweapon")
 	inst:AddTag("show_broken_ui")
-	inst:AddTag("pure")
+	inst:AddTag("mythical")
 	inst:AddTag("nosteal")
 	--weapon (from weapon component) added to pristine state for optimization
 	inst:AddTag("weapon")
@@ -183,6 +219,8 @@ local function fn()
 	inst:AddComponent("floater")
 	inst.isbroken = net_bool(inst.GUID, "staff_lunarblast.isbroken", "isbrokendirty")
 	SetIsBroken(inst, false)
+
+	inst.itemtile_colour = DEFAULT_MYTHICAL_COLOUR
 
 	inst.entity:SetPristine()
 

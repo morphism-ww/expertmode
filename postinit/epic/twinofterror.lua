@@ -1,8 +1,10 @@
+
+
 local brain = require "brains/twinofterror2brain"
 ----------------------------------------------------------------
 local RETARGET_MUST_TAGS = { "_combat" }
-local RETARGET_CANT_TAGS = { "decor", "eyeofterror", "FX", "INLIMBO", "NOCLICK", "notarget", "playerghost", "wall" }
-local RETARGET_ONEOF_TAGS = { "player" }
+local RETARGET_CANT_TAGS = { "decor", "eyeofterror", "FX", "INLIMBO", "NOCLICK", "notarget", "playerghost", "wall"}
+local RETARGET_ONEOF_TAGS = { "player"}
 local function update_targets(inst)
     local to_remove = {}
     local pos = inst:GetPosition()
@@ -106,11 +108,7 @@ end]]
 local function nofreeze()
     return true
 end
-local function OnNewTarget(inst, data)
-	if data.target ~= nil then
-		inst:SetStalking(data.target)
-	end
-end
+
 
 local function SetStalking(inst, stalking)
 	if stalking ~= inst._stalking then
@@ -130,7 +128,9 @@ local function IsStalking(inst)
 	return inst._stalking ~= nil
 end
 
-AddPrefabPostInit("twinofterror1",function(inst)
+
+
+newcs_env.AddPrefabPostInit("twinofterror1",function(inst)
     inst:AddTag("no_rooted")
     inst:AddTag("nosinglefight_l")
     if not TheWorld.ismastersim then return end
@@ -144,15 +144,12 @@ AddPrefabPostInit("twinofterror1",function(inst)
 	inst.components.planardamage:SetBaseDamage(30)
 
     MakePlayerOnlyTarget(inst)
-    inst.components.damagetyperesist:AddResist("aoeweapon_leap", inst, 0.6)
-    inst.components.damagetyperesist:AddResist("wathom", inst, 0.2)
+
     
     if inst.components.shockable then
         inst:RemoveComponent("shockable") 
      end
 
-    
-    
 
     inst.components.sleeper:SetResistance(500)
 
@@ -179,9 +176,13 @@ AddPrefabPostInit("twinofterror1",function(inst)
     inst:SetStateGraph("SGtwinofterror")
     inst:SetBrain(brain)
 
+
+
+    MakeSmartAbsorbDamageEnt(inst)
+
 end)
 
-AddPrefabPostInit("twinofterror2",function(inst)
+newcs_env.AddPrefabPostInit("twinofterror2",function(inst)
     inst:AddTag("no_rooted")
     inst:AddTag("nosinglefight_l")
     if not TheWorld.ismastersim then return end
@@ -206,8 +207,7 @@ AddPrefabPostInit("twinofterror2",function(inst)
 	inst.components.planardamage:SetBaseDamage(30)
 
     MakePlayerOnlyTarget(inst)
-    inst.components.damagetyperesist:AddResist("aoeweapon_leap", inst, 0.6)
-    inst.components.damagetyperesist:AddResist("wathom", inst, 0.2)
+
 
     if inst.components.shockable then
         inst:RemoveComponent("shockable") 
@@ -226,8 +226,12 @@ AddPrefabPostInit("twinofterror2",function(inst)
     inst:SetStateGraph("SGtwinofterror")
     inst:SetBrain(brain)
 
+
+
     inst.attackerUSERIDs = {}
     inst:ListenForEvent("attacked", warning)
+
+    MakeSmartAbsorbDamageEnt(inst)
     --inst.OnSave = OnSave
     --inst.OnLoad = OnLoad
 end)
@@ -244,7 +248,7 @@ local function AbleToAcceptTest(inst, item, giver)
     end
 end
 
-AddPrefabPostInit("terrarium",function(inst)
+newcs_env.AddPrefabPostInit("terrarium",function(inst)
     if not TheWorld.ismastersim then return end
     inst.components.trader:SetAbleToAcceptTest(AbleToAcceptTest)
 end)
@@ -356,7 +360,7 @@ end
 
 
 
-AddPrefabPostInit("twinmanager",function(inst)
+newcs_env.AddPrefabPostInit("twinmanager",function(inst)
     if not TheWorld.ismastersim then return end
     inst:ListenForEvent("set_spawn_target", make_team)
 

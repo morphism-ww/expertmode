@@ -5,6 +5,15 @@ local assets =
     Asset("ANIM", "anim/calamityeye.zip"),
 }
 
+
+
+local prefabs = {
+    "brimstone_fire",
+    "hellblasts",
+    "twinofterror1",
+    "twinofterror2"
+}
+
 local brain = require("brains/calamityeyebrain")
 
 local MODE = {
@@ -59,7 +68,7 @@ local function PushMusic(inst)
         inst._playingmusic = false
     elseif ThePlayer:IsNear(inst, inst._playingmusic and 60 or 20) then
         inst._playingmusic = true
-        ThePlayer:PushEvent("triggeredevent", { name = "calamitas_clone", duration = 5 })
+        ThePlayer:PushEvent("triggeredevent", { name = "calamitas_clone", duration = 5 ,level = 10 })
     elseif inst._playingmusic and not ThePlayer:IsNear(inst, 64) then
         inst._playingmusic = false
     end
@@ -91,9 +100,10 @@ local function RetargetFn(inst)
 
 	--V2C: WARNING: FindClosestPlayerInRange returns 2 values, which
 	--              we don't want to return as our 2nd return value.  
-	local player--[[, rangesq]] = FindClosestPlayerInRange(x, y, z, 40, true)
+	local player = FindClosestPlayerInRange(x, y, z, 40, true)
 	return player
 end
+
 
 local function KeepTargetFn(inst, target)
 	if not inst.components.combat:CanTarget(target) then
@@ -101,7 +111,7 @@ local function KeepTargetFn(inst, target)
 	end
 	local x, y, z = inst.Transform:GetWorldPosition()
 	local rangesq = 40*40
-    return target:GetDistanceSqToPoint(x, y, z) < rangesq
+    return target:GetDistanceSqToPoint(x, y, z) < rangesq and not target:HasTag("calamita")
 end
 
 
@@ -146,7 +156,7 @@ local function ChooseAttack(inst,data)
             proj.components.projectile:Throw(inst, data.target, inst)
         elseif inst.mode == MODE.SPIN_SHOOT then
             inst.formation = inst.formation + 180*math.random()-90
-            inst.components.combat:RestartCooldown()  ---DEFAULT 
+            inst.components.combat:OverrideCooldown(1.5)
             local proj = SpawnPrefab("brimstone_fire")
             proj.Transform:SetPosition(inst.Transform:GetWorldPosition())
             proj.components.linearprojectile:LineShoot(data.target:GetPosition(),inst)
@@ -181,7 +191,7 @@ local function OnCollide(inst, other)
     end
     inst._recentlycharged[other] = current_time
 
-    other:AddDebuff("vulnerability_hex","vulnerability_hex")
+    other:AddDebuff("buff_vulnerability_hex","buff_vulnerability_hex")
     inst.components.combat:DoAttack(other)
 end
 ------------------------------------------------------
@@ -199,23 +209,24 @@ local function DoWave(inst)
     end
     
     if x_rot then
-        for i = 1, math.random(12,15) do
-            local offset = Hell_Size*math.random()-Hell_Size_Half
-
+        for i = 1, math.random(14,16) do
+            local x_offset = Hell_Size*math.random()-Hell_Size_Half    -----x轴均匀分布，z为+-
+            local z_offset = -2 + 4*math.random()
+            local z_sign = math.random()>0.5 and 1 or -1
             local proj = SpawnPrefab("hellblasts")
             inst.bullethell[proj] = true 
-            proj.Transform:SetPosition(centerpos.x+offset,0,centerpos.z+(i>6 and 1 or -1)*(Hell_Size_Half + math.random()))
-            proj:Trigger(i>6 and 90 or -90)
-                     
+            proj.Transform:SetPosition(centerpos.x+x_offset,0,centerpos.z+z_sign*(Hell_Size_Half + z_offset))
+            proj:Trigger(90*z_sign)  
         end
     else
-        for i = 1, math.random(12,15) do
-            local offset = Hell_Size*math.random()-Hell_Size_Half
-            
+        for i = 1, math.random(14,16) do
+            local z_offset = Hell_Size*math.random()-Hell_Size_Half
+            local x_offset = -2 + 4*math.random()
+            local x_sign = math.random()>0.5 and 1 or -1
             local proj = SpawnPrefab("hellblasts")
             inst.bullethell[proj] = true 
-            proj.Transform:SetPosition(centerpos.x+(i>6 and 1 or -1)*(Hell_Size_Half + math.random()),0,centerpos.z+offset)
-            proj:Trigger(i>6 and -180 or 0)
+            proj.Transform:SetPosition(centerpos.x+x_sign*(Hell_Size_Half +x_offset),0,centerpos.z+z_offset)
+            proj:Trigger(-90-90*x_sign)
         end
     end
     x_rot = not x_rot
@@ -300,7 +311,7 @@ local function SummonTwins(inst)
     twin1.sg:GoToState("flyback")
     --twin1:PushEvent("health_transform")
     twin1.Transform:SetPosition(twin1spawnpos:Get())
-    
+    twin1:AddTag("calamita")
     hookup_twin_listeners(inst, twin1)
 
     local twin2 = SpawnPrefab("twinofterror2")
@@ -310,6 +321,7 @@ local function SummonTwins(inst)
     twin2.sg:GoToState("flyback")
 	twin2:PushEvent("health_transform")
     inst.components.entitytracker:TrackEntity("twin2", twin2)
+    twin2:AddTag("calamita")
     twin2.Transform:SetPosition(twin2spawnpos:Get())
     
     inst.hastwins = true
@@ -366,7 +378,7 @@ local function SetHealthVal(self,val, cause, afflicter)
         
         self.inst:AddTag("NOCLICK")
         self.inst.persists = false
-        self.inst:DoTaskInTime(self.destroytime or 2, ErodeAway)
+        self.inst:DoTaskInTime(self.destroytime or 3, ErodeAway)
         
     end
 end
@@ -440,6 +452,13 @@ local function ChangeTail(inst)
         end
     end    
 end
+
+local function EnableTail(inst,enable)
+    if inst._tail:value()~=enable then
+        inst._tail:set(enable)
+        ChangeTail(inst)
+    end
+end
 ---------------------------------------------------------------
 local function OnEntityWake(inst)
     if inst._despawntask ~= nil then
@@ -486,12 +505,15 @@ local function OnDeath(inst)
         t2 = nil
     end
     inst.components.circlecenter:Kill()
-    TheWorld:PushEvent("overrideambientlighting", nil)
+    if not TheNet:IsDedicated() then
+		TheWorld:PushEvent("overrideambientlighting", nil)
+	end
 end
 
 local function ClientResetLight(inst)
     TheWorld:PushEvent("overrideambientlighting", nil)
 end
+
 
 
 local function fn()
@@ -537,26 +559,28 @@ local function fn()
     inst:AddTag("largecreature")
     inst:AddTag("noteleport")
     inst:AddTag("noepicmusic")
-    inst:AddTag("eyeofterror")
-    inst:AddTag("shadow_aligned")
     
-    if not TheNet:IsDedicated() then
-        inst:ListenForEvent("taildirty",ChangeTail)
-    end
+    --inst:AddTag("shadow_aligned")
 
-    inst._tail = net_bool(inst.GUID,"calamityeye_tail","taildirty")
+    inst._tail = net_bool(inst.GUID,"calamityeye._tail","taildirty")
     
     inst._playingmusic = false
     inst._musictask = nil
     OnMusicDirty(inst)
 
-    inst._lightreset = net_event(inst.GUID,"calamityeye._lightset")
-    TheWorld:PushEvent("overrideambientlighting", Point(1, 69 / 255, 0))
+    inst._lightreset = net_event(inst.GUID,"calamityeye._lightreset")
+    if not TheNet:IsDedicated() then
+		TheWorld:PushEvent("overrideambientlighting", Point(1, 69 / 255, 0))
+        
+	end
+    
 
     inst.entity:SetPristine()
     if not TheWorld.ismastersim then
+        inst:ListenForEvent("taildirty",ChangeTail)
         --inst:ListenForEvent("musicdirty", OnMusicDirty)
-        inst:ListenForEvent("calmityeye._lightreset",ClientResetLight)
+        inst:ListenForEvent("calamityeye._lightreset", ClientResetLight)
+        --inst:DoTaskInTime(0, inst.ListenForEvent, "calmityeye._lightreset", ClientResetLight)
         return inst
     end
 
@@ -615,7 +639,7 @@ local function fn()
     inst:AddComponent("planarentity")
 
     inst:AddComponent("planardamage")
-	inst.components.planardamage:SetBaseDamage(40)
+	inst.components.planardamage:SetBaseDamage(50)
 
     inst.mode = 1
     inst.formation = 0
@@ -636,12 +660,14 @@ local function fn()
 
     inst.OnEntityWake = OnEntityWake
     inst.OnEntitySleep = OnEntitySleep
+    inst.EnableTail = EnableTail
     ------------------------------------------
     -- Events here.
     inst:ListenForEvent("attacked", OnAttacked)
     inst:ListenForEvent("doattack", ChooseAttack)
     inst:ListenForEvent("death", OnDeath)
-    inst:ListenForEvent("onremove",OnDeath)
+
+    --inst:ListenForEvent("onremove",OnDeath)
 
     inst:SetStateGraph("SGcalamityeye")
     inst:SetBrain(brain)
@@ -649,9 +675,11 @@ local function fn()
     inst.OnSave = OnSave
     inst.OnLoad = OnLoad
 
+    MakeSmartAbsorbDamageEnt(inst)
+
     return inst
 end
 
 
 
-return Prefab("calamityeye",fn,assets)
+return Prefab("calamityeye",fn,assets,prefabs)

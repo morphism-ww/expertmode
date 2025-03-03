@@ -1,65 +1,49 @@
 AddClassPostConstruct("screens/playerhud",function(self)
 	local PoisonOver = require("widgets/poisonover")
-	local fn =self.CreateOverlays
+	local old_CreateOverlays = self.CreateOverlays
 	function self:CreateOverlays(owner)
-		fn(self, owner)
+		old_CreateOverlays(self, owner)
 		self.poisonover = self.overlayroot:AddChild(PoisonOver(owner))
-	end
-	
+	end	
 end)
 
 
 if GetModConfigData("buff_info") then
-	AddClassPostConstruct("widgets/redux/craftingmenu_hud", function(self)
-		local BuffPanel = require("widgets/cs_buffpanel")
-		self.newconstant_BuffPanel = self:AddChild(BuffPanel(self.owner))
-		local oldOpen = self.Open
-		self.Open = function(self)
-			oldOpen(self)
-			self.newconstant_BuffPanel:Hide()
+	local BuffPanel = require("widgets/newcs_buffpanel")
+	AddClassPostConstruct("widgets/statusdisplays", function(self)
+		self.newcs_statepanel = self:AddChild(BuffPanel(self.owner))
+
+		local old_Show = self.ShowStatusNumbers
+		function self:ShowStatusNumbers()
+			old_Show(self)
+			self.newcs_statepanel:Show()
 		end
-	
-		local oldClose=self.Close
-		self.Close = function(self)
-			oldClose(self)
-			self.newconstant_BuffPanel:Show()
+
+		local old_Hide = self.HideStatusNumbers
+		function self:HideStatusNumbers()
+			old_Hide(self)
+			self.newcs_statepanel:Hide()
+		end
+
+		local old_ghostMode = self.SetGhostMode
+		function self:SetGhostMode(ghostmode)
+			if not self.isghostmode == not ghostmode then --force boolean
+				return
+			end
+			old_ghostMode(self,ghostmode)
+			if ghostmode then
+				self.newcs_statepanel:Hide()
+			else
+				self.newcs_statepanel:Show()
+			end
 		end
 	end)
 end
 
-
-local function OnPoisonOverDirty(inst)
-	if inst._parent and inst._parent.HUD then
-		inst._parent.HUD.poisonover:Flash()
-	end
-end
-
-AddPrefabPostInit("player_classified", function(inst)
-	inst.poisonover = net_event(inst.GUID, "cs_poison.poisonover")
-
-	inst:ListenForEvent("cs_poison.poisonover", OnPoisonOverDirty)	
-end)
-
-
-AddClassPostConstruct("widgets/itemtile",function (self)
-	function self:UpdateTooltip()
-		local str = self:GetDescriptionString()
-		self:SetTooltip(str)
-		if self.item:HasTag("pure") then
-			self:SetTooltipColour(64/255,224/255,208/255,1)
-		elseif self.item:HasTag("ancient") then
-			self:SetTooltipColour(218/255,165/255,32/255,1)	
-		elseif self.item:GetIsWet() then
-			self:SetTooltipColour(unpack(WET_TEXT_COLOUR))
-		else
-			self:SetTooltipColour(unpack(NORMAL_TEXT_COLOUR))
-		end
+local EMPTY_FUNC = function ()end
+AddClassPostConstruct("widgets/itemtile",function (self,invitem)
+	if invitem.itemtile_colour then
+		self.tooltipcolour = invitem.itemtile_colour
+		self.SetTooltipColour = EMPTY_FUNC
 	end
 end)
-
-
---[[AddClassPostConstruct("widgets/craftingmenu_details",function (self)
-	
-end)]]
-
-

@@ -39,7 +39,7 @@ local function onattack(inst, attacker, target)
 end
 
 
-AddPrefabPostInit("nightstick",function (inst)
+newcs_env.AddPrefabPostInit("nightstick",function (inst)
     if not TheWorld.ismastersim then
         return inst
     end

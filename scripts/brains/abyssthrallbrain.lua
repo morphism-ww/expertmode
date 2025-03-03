@@ -39,6 +39,26 @@ function AbyssThrallBrain:ShouldUseSpecialMove()
     return self._special_move~=nil
 end
 
+local BASEDESTROY_CANT_TAGS = {"wall","shadow"}
+
+local function BaseDestroy(inst)
+    
+    local target = FindEntity(inst, 30, function(item)
+            if item.components.workable and item:HasTag("structure")
+                    and item.components.workable.tough
+                    and item.components.workable.action == ACTIONS.HAMMER
+                    and item:IsOnValidGround() then
+                return true
+            end
+        end, nil, BASEDESTROY_CANT_TAGS)
+    if target then
+        local action = BufferedAction(inst, target, ACTIONS.HAMMER)
+        action.distance = 12
+        return action
+    end
+    
+end
+
 function AbyssThrallBrain:OnStart()
 
     local root =
@@ -49,6 +69,7 @@ function AbyssThrallBrain:OnStart()
                 ),    
 
             ChaseAndAttack(self.inst, CHASE_TIME, CHASE_DIST),
+            DoAction(self.inst, BaseDestroy, "DestroyBase"),
             Wander(self.inst, GetWanderPoint, MAX_WANDER_DIST)
         },0.5)
     

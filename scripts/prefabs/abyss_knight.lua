@@ -25,9 +25,7 @@ SetSharedLootTable("abyss_knight",
 {
     {"horrorfuel", 1.00},
     {"horrorfuel", 1.00},
-    {"horrorfuel", 1.00},
     {"horrorfuel", 0.50},
-    {"dreadstone", 1.00},
     {"dreadstone", 1.00},
     {"dreadstone", 0.50},
     {"shadow_soul",1.00}
@@ -36,30 +34,28 @@ SetSharedLootTable("abyss_knight",
 
 ------------------------------------------------------------------------------------------------------------------------------------
 
-local RETARGET_MUST_TAGS = { "character" }
-local RETARGET_CANT_TAGS = { "INLIMBO", "notarget", "noattack", "flight", "invisible", "playerghost" }
+
 
 local function RetargetFn(inst)
-    return FindEntity(inst,
-        TUNING.ABYSS_CREATURE_TARGET_DIST,
-        function(guy)
-            return inst.components.combat:CanTarget(guy)
-        end,
-        RETARGET_MUST_TAGS,
-        RETARGET_CANT_TAGS
-    )
+	local x, y, z = inst.Transform:GetWorldPosition()
+	local target = inst.components.combat.target
+	if target then
+		local range = TUNING.ABYSS_KNIGHT_MELEE_RANGE
+		if target.isplayer and target:GetDistanceSqToPoint(x, y, z) < range * range then
+			--Keep target
+			return
+		end
+	end
+
+	--V2C: WARNING: FindClosestPlayerInRange returns 2 values, which
+	--              we don't want to return as our 2nd return value.  
+	local player= FindClosestPlayerInRange(x, y, z, TUNING.ABYSS_CREATURE_TARGET_DIST, true)
+	return player
 end
 
-local function ShareTargetFn(guy)
-    return
-        guy:HasTag("shadow_aligned") and
-        guy.components.health ~= nil and
-        not guy.components.health:IsDead()
-end
 
 local function OnAttacked(inst, data)
     inst.components.combat:SetTarget(data.attacker)
-    inst.components.combat:ShareTarget(data.attacker, SHARE_TARGET_DIST, ShareTargetFn, MAX_TARGET_SHARES)
     inst.SoundEmitter:PlaySound("dontstarve/creatures/together/stalker/hit")
 end
 
@@ -69,7 +65,6 @@ local function KeepTargetFn(inst, target)
         target:IsValid() and
         target.components.combat ~= nil and
         target.components.health ~= nil and
-        inst.components.combat:CanTarget(target) and
         not target.components.health:IsDead()
  end
 
@@ -99,10 +94,7 @@ local function fn()
     inst.entity:AddSoundEmitter()
     inst.entity:AddNetwork()
 
-    MakeCharacterPhysics(inst, 1000, .75)
-    RemovePhysicsColliders(inst)
-    inst.Physics:SetCollisionGroup(COLLISION.SANITY)
-    inst.Physics:CollidesWith(COLLISION.SANITY)
+	MakeCharacterPhysics(inst, 1000, 0.5)
 
     inst.Transform:SetSixFaced()
     inst.Transform:SetScale(KNIGHT_SCALE, KNIGHT_SCALE, KNIGHT_SCALE)
@@ -124,20 +116,17 @@ local function fn()
     
 
     inst:AddTag("hostile")
+    inst:AddTag("notaunt")
     inst:AddTag("shadow_aligned")
     inst:AddTag("abysscreature")
-    inst:AddTag("scarytoprey")
     inst:AddTag("largecreature")
     inst:AddTag("shadowthrall")
-    inst:AddTag("monster")
-    inst:AddTag("notraptrigger")
 
     inst.entity:SetPristine()
 
     if not TheWorld.ismastersim then
         return inst
     end
-
 
     inst.PlaySound = PlaySound -- Used in the stategraph.
 
@@ -148,7 +137,7 @@ local function fn()
     inst.components.lootdropper:SetChanceLootTable("abyss_knight")
 
     inst:AddComponent("sanityaura")
-    inst.components.sanityaura.aura = -TUNING.SANITYAURA_HUGE
+    inst.components.sanityaura.aura = -TUNING.SANITYAURA_LARGE
 
     inst:AddComponent("locomotor")
     inst.components.locomotor.walkspeed = 3
@@ -186,6 +175,8 @@ local function fn()
 
     inst:ListenForEvent("attacked", OnAttacked)
     inst:ListenForEvent("timerdone", ShowAgain)
+
+    MakeHitstunAndIgnoreTrueDamageEnt(inst)
 
     return inst
 end

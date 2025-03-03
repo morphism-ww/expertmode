@@ -4,32 +4,24 @@ local assets =
 }
 
 local function buff_OnAttached(inst, target)
-    target:AddTag("lunar_protect")
-	--target:AddTag("stun_immune")
-	if target.components.stunprotecter == nil then
-        target:AddComponent("stunprotecter")
-    end
-    target.components.stunprotecter:AddSource(inst)
+	inst.entity:SetParent(target.entity)
+	inst.Transform:SetPosition(0, 0, 0)
+	
+	if target.isplayer then
+		target._stunprotecter:SetModifier(inst, true)
+	end
 	if target.components.health ~= nil then
 	    target.components.health.externalabsorbmodifiers:SetModifier(inst, 0.8, "lunar_protect")
 	end
 
-	inst.entity:SetParent(target.entity)
-	inst.Transform:SetPosition(0, -1, 0)
-
     inst:ListenForEvent("death", function()
         inst.components.debuff:Stop()
     end, target)
-	--local fx = SpawnPrefab("ghostlyelixir_shield_fx")
-	--fx.entity:SetParent(target.entity)
 end
 
 local function buff_OnDetached(inst, target)
-	if target ~= nil and target:IsValid() then
-		target:RemoveTag("lunar_protect")
-		if target.components.stunprotecter ~= nil then
-			target.components.stunprotecter:RemoveSource(inst)
-		end
+	if target.isplayer then
+		target._stunprotecter:RemoveModifier(inst)
 	end
     inst:Remove()
 end
@@ -43,7 +35,6 @@ local function fn(anim)
 
 	inst.entity:AddTransform()
 	inst.entity:AddAnimState()
-	inst.entity:AddSoundEmitter()
 	inst.entity:AddNetwork()
 
 	inst.AnimState:SetBank("abigail_shield")
@@ -62,7 +53,7 @@ local function fn(anim)
 
 	inst.persists = false
 
-	--inst:DoTaskInTime(2,expire)
+
 	inst:ListenForEvent("animover", expire)
 	return inst
 end

@@ -1,11 +1,10 @@
+local commonfn = require("bossrush/bossrush_program").commonfn
+
 local assets =
 {	
 	Asset("ANIM", "anim/lavaarena_portal.zip"),
     Asset("ANIM", "anim/lavaarena_portal_fx.zip"),
 }
-
-
-
 
 ----------------------------------------------------------------
 local function OpenPortal(inst)
@@ -21,34 +20,39 @@ local function ClosePortal(inst)
 	inst.portalfx.AnimState:PlayAnimation("portal_pst")
 end
 
+----------------------------------------------------------------
+
 
 local function IsEntInLand(x,z,ent)
 	local px,py,pz = ent.Transform:GetWorldPosition()
-	return math.abs(x-px)<16 and math.abs(z-pz)<16
+	return math.abs(x-px)<64 and math.abs(z-pz)<64
 end
 
-local function togglebossrush(inst,restart)
+local function startbossrush(inst,restart)
+	ClosePortal(inst)
 	if not restart then
 		local x,y,z = inst.Transform:GetWorldPosition()
 		local mode = 1
 		for i, v in ipairs(AllPlayers) do
-			if v.entity:IsVisible() and
-				IsEntInLand(x,z,v) then
+			if v.entity:IsValid() and IsEntInLand(x,z,v) then
 				TheWorld.components.voidland_manager:RegisterPlayer(v)
-				if v:HasTag("strongman") or MODCHARACTERMODES[v] then
-					mode = mode + 0.7
+				if MODCHARACTERMODES[v.prefab] then
+					mode = mode + 0.5
 				elseif i~=1 then
 					mode = mode + (i>4 and 0.3 or 0.2)
 				end
 			end
 		end
+
 		inst.components.battlemanager:Init(mode)	
 	end
-	ClosePortal(inst)	
 	inst.components.battlemanager:Start()
+	--inst:CheckForPlayerAlive()
 end
 
 local function KillProgram(inst)
+
+	commonfn.clearland(inst)
 
 	inst.components.battlemanager:KillProgram()
 	
@@ -68,23 +72,50 @@ local function togglevictory(inst)
 	KillProgram(inst)
 end
 
+local function MinHealthHandle(inst,boss)
+	inst:RemoveEventCallback("minhealth",inst.OnMinHealth,boss)
+	inst.components.battlemanager:Next()
+end
 
-local function OnActivate(inst, doer)
+local function toggleprogram(inst,program)
+	commonfn.clearland(inst)
 
-    --[[if doer.components.playercontroller == nil then
-        inst.components.playeractionpicker:PushActionFilter(PlayerActionFilter, -99)
-    end]]
-	if doer:HasTag("player") then
-		if doer.player_classified~=nil then
-			doer.player_classified.MapExplorer:EnableUpdate(false)
-		end
-		if doer.components.playercontroller ~= nil then
-			doer.components.playercontroller:EnableMapControls(false)
-		end
+	if program.type_special then
+		program.initfn(inst)
+	else
 		
-		--TheWorld.components.voidland_manager:RegisterPlayer(doer)
+		if program.scenery_postinit~=nil then
+			program.scenery_postinit(inst)
+		end
+
+		local boss = SpawnPrefab(program.boss)	
+
+		local x,y,z = inst.Transform:GetWorldPosition()
+		boss.Transform:SetPosition(x,0,z)
+
+		--boss.entity:SetCanSleep(false)----危险
+		if program.postinitfn~=nil then
+			program.postinitfn(boss)
+		end
+
+		commonfn.bosscombat_handle(boss)
+
+		boss.components.combat:TryRetarget()
+		inst:ListenForEvent("minhealth",inst.OnMinHealth,boss)
 	end
-	
+end
+
+
+
+local function OnLevelStart(inst,level)
+	local LEVEL_MUSIC_MAP = {1,1,2,2,3}
+	inst._musicdirty:set(LEVEL_MUSIC_MAP[level])
+end
+-----------------------------------------------------------------
+local function OnActivate(inst, doer)
+	if doer.isplayer~=nil then
+		doer.components.transformlimit:SetState(false)
+	end	
 end
 
 local function CheckForPlayer(inst)
@@ -115,32 +146,24 @@ local function PushMusic(inst,value)
 	local SoundEmitter = TheFocalPoint.SoundEmitter
     if ThePlayer ~= nil and ThePlayer:IsNear(inst, 50) then
 		TheWorld:PushEvent("enabledynamicmusic", false)
-		if value==1 then
-			SoundEmitter:PlaySound("bossrush/bossrush1/Stained, Brutal Calamity","bossrush")
-		elseif value==2 then
-			SoundEmitter:PlaySound("bossrush/bossrush1/bossrush2","bossrush")
-		elseif value==3 then
-			SoundEmitter:PlaySound("bossrush/bossrush1/bossrush3","bossrush")
-		end
-		SoundEmitter:SetVolume("bossrush", 0.5)
-		SoundEmitter:KillSound("AbyssPressure")	
+		SoundEmitter:PlaySound("calamita_sound/bossrush/BossRush"..value,"bossrush")
+		--SoundEmitter:SetVolume("bossrush", 0.5)
     end
 end
 
 local function OnMusicDirty(inst)
-	
 	if inst._musictask ~= nil then
 		inst._musictask:Cancel()
+		inst._musictask = nil
 	end
 	TheFocalPoint.SoundEmitter:KillSound("bossrush")
-	if inst._musicdirty:value()>=1 then
+	if inst._musicdirty:value()>0 then
 		inst._musictask = inst:DoPeriodicTask(2, PushMusic,0.5,inst._musicdirty:value())
 	else
 		if ThePlayer ~= nil and not ThePlayer:HasTag("playerghost") then
 			TheWorld:PushEvent("enabledynamicmusic", true)
 		end
 	end				
-	
 end
 
 local function OnTalkDirty(inst)
@@ -150,7 +173,7 @@ end
 
 local function OnMiasDirty(inst)
 	if inst._miastrigger:value() then
-		TheWorld:PushEvent("overrideambientlighting", Point(0, 0, 0))
+		TheWorld:PushEvent("overrideambientlighting", Vector3(0, 0, 0))
 		
 		
 		--[[inst.mist = SpawnPrefab("miasama_abyss_fx")
@@ -195,45 +218,20 @@ local function CreateDropShadow(parent)
     return inst
 end
 
-local TERRAFORM_BLOCKER_RADIUS = 16
 
-local function CreateTerraformBlocker(parent)
-    local inst = CreateEntity()
-
-    inst:AddTag("FX")
-    --[[Non-networked entity]]
-    inst.entity:SetCanSleep(false)
-    inst.persists = false
-
-    inst.entity:AddTransform()
-
-    inst:SetTerraformExtraSpacing(TERRAFORM_BLOCKER_RADIUS)
-
-    return inst
-end
-
-local function AddTerraformBlockers(inst)
-    local diameter = 2 * TERRAFORM_BLOCKER_RADIUS
-    local rowoffset = 2 * TERRAFORM_BLOCKER_RADIUS
-    for row = -rowoffset, rowoffset, diameter do
-        for col = -diameter, diameter, diameter do
-            local blocker = CreateTerraformBlocker(inst)
-            blocker.entity:SetParent(inst.entity)
-            blocker.Transform:SetPosition(row, 0, col)
-
-            blocker = CreateTerraformBlocker(inst)
-            blocker.entity:SetParent(inst.entity)
-            blocker.Transform:SetPosition(col, 0, row)
-        end
-    end
-end
-
-local function TrySpawnKeyhole(inst)
+local function SpawnKeyhole(inst)
 	if inst.components.entitytracker:GetEntity("keyhole")==nil then
 		local x,y,z = inst.Transform:GetWorldPosition()
 		local keyhole = SpawnPrefab("voidkeyhole")
 		keyhole.Transform:SetPosition(x,0,z+6)
 		inst.components.entitytracker:TrackEntity("keyhole",keyhole)
+	end
+end
+
+local function debugreset(inst)
+	local keyhole = inst.components.entitytracker:GetEntity("keyhole")
+	if keyhole~=nil then
+		keyhole.components.worldsettingstimer:StopTimer("cooldown")
 	end
 end
 ------------------------------------
@@ -243,8 +241,8 @@ local function fn()
 	inst.entity:AddNetwork()
 	inst.entity:AddAnimState()
 
-	inst.entity:SetCanSleep(false)
 
+	inst.entity:SetCanSleep(false)
 	
 	inst.Transform:SetEightFaced()
 	inst.AnimState:SetBuild("lavaarena_portal")
@@ -263,7 +261,7 @@ local function fn()
     inst.Light:SetIntensity(0.4)
     inst.Light:SetColour(1,1,1)
 
-	AddTerraformBlockers(inst)
+
 	inst:AddComponent("temperatureoverrider")
 	
 
@@ -283,7 +281,7 @@ local function fn()
 	
 	inst:AddTag("moistureimmunity")
 	inst:AddTag("irreplaceable")
-	inst:AddTag("portal")
+	inst:AddTag("abyss_saveteleport")
 
 
 	inst.entity:SetPristine()
@@ -302,26 +300,33 @@ local function fn()
 	inst:AddComponent("entitytracker")
 
 	inst:AddComponent("teleporter")
-    inst.components.teleporter.offset = 0
-	inst.components.teleporter.OnDoneTeleporting= OnActivate
+	inst.components.teleporter.onActivate = OnActivate
+
 
 	inst.components.temperatureoverrider:SetRadius(40)
 	inst.components.temperatureoverrider:Enable()
-    --inst.components.temperatureoverrider:SetTemperature(TUNING.DEERCLOPSEYEBALL_SENTRYWARD_TEMPERATURE_OVERRIDE)
 
-	--inst:AddComponent("inspectable")
 
 	inst:AddComponent("battlemanager")
 
-	inst.ToggleBossRush = togglebossrush
+	inst.StartBossRush = startbossrush
+	inst.ToggleProgram = toggleprogram
 	inst.ToggleVictory = togglevictory
 	inst.CheckForPlayerAlive = CheckForPlayerAlive
 
 
-	inst:ListenForEvent("bossrush_start",function(_,restart) inst:ToggleBossRush(restart) end, TheWorld)
+	inst.OnLevelStart = OnLevelStart
 
-	inst:DoTaskInTime(0,TrySpawnKeyhole)
+	inst.OnMinHealth = function (boss)	MinHealthHandle(inst,boss) end
+
+	inst:ListenForEvent("bossrush_start",function(_,restart) inst:StartBossRush(restart) end, TheWorld)
+
+	inst:DoTaskInTime(0,SpawnKeyhole)
 	TheWorld:PushEvent("ms_registerBossRushManager", inst)
+
+	inst.KillProgram = KillProgram
+
+	inst.DebugResetTime = debugreset
 
 	return inst
 end
@@ -349,8 +354,6 @@ local function OnUseKey(inst, key, doer)
 	end
 	return true, nil, false
 end
-
-
 
 
 local function keyhole_fn()

@@ -296,14 +296,17 @@ local function fn()
 	inst:AddTag("sharp")
 	inst:AddTag("show_broken_ui")
 	inst:AddTag("sword_shoot")
-	inst:AddTag("pure")
+	inst:AddTag("mythical")
 	inst:AddTag("nosteal")
+	inst:AddTag("rangedweapon")
+
+	inst.itemtile_colour = DEFAULT_MYTHICAL_COLOUR
 
 	--weapon (from weapon component) added to pristine state for optimization
 	inst:AddTag("weapon")
 
 	inst:AddComponent("floater")
-	inst.isbroken = net_bool(inst.GUID, "sword_lunarplant.isbroken", "isbrokendirty")
+	inst.isbroken = net_bool(inst.GUID, "sword_lunarblast.isbroken", "isbrokendirty")
 	SetIsBroken(inst, false)
 
 	inst.entity:SetPristine()

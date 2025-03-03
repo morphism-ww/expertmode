@@ -38,20 +38,19 @@ local skullassets =
 {
 	Asset("ANIM", "anim/skulls.zip"),
 }
-local notags = {"FX", "INLIMBO","playerghost","invisible", "notarget", "noattack","eyeofterror" }
+local notags = {"FX", "INLIMBO","playerghost","invisible", "notarget", "noattack","calamita" }
 local musttag = {"_combat","_health"}
 local function CheckForHit(inst,dt)
     inst.life = inst.life + dt
-    if inst.life<5 then
-        if inst.life>2.5 then
-            inst.Physics:SetMotorVelOverride(10,0,0)
-        end
+    if inst.life<6 then
+        inst.speed = inst.speed + dt*inst.speedrate 
+        inst.Physics:SetMotorVel(inst.speed,0,0)
         local x,y,z = inst.Transform:GetWorldPosition()
         local ents = TheSim:FindEntities(x, 0, z, 1, musttag, notags)
         for _,v in ipairs(ents) do
             -- The owner/attacker is not a valid target.
             if v.entity:IsValid() and v.components.health~=nil and not v.components.health:IsDead() then
-                v:AddDebuff("vulnerability_hex","vulnerability_hex")
+                v:AddDebuff("buff_vulnerability_hex","buff_vulnerability_hex")
                 v.components.combat:GetAttacked(inst,200,nil,nil,{["planar"] = 40})
                 inst:RemoveComponent("updatelooper")
                 inst:Remove()
@@ -67,7 +66,9 @@ end
 local function Trigger(inst,rot)
     inst.components.spawnfader:FadeIn()
     inst.Transform:SetRotation(rot)
-    inst.Physics:SetMotorVel(6+2*math.random(),0,0)
+    inst.speedrate = 2+2*math.random()
+    inst.speed = 7 + inst.speedrate
+    inst.Physics:SetMotorVel(inst.speed,0,0)
     inst.Physics:ClearCollidesWith(COLLISION.LIMITS)
     inst:AddTag("activeprojectile")
     inst.life = 0
@@ -79,7 +80,7 @@ end
 
 local function OnHit(inst,attacker,target)
     if target:IsValid() and target.components.health~=nil and not target.components.health:IsDead() then
-        target:AddDebuff("vulnerability_hex","vulnerability_hex")
+        target:AddDebuff("buff_vulnerability_hex","buff_vulnerability_hex")
     end
     inst:Remove()
 end

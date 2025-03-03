@@ -6,12 +6,11 @@ end
 
 
 
-AddPrefabPostInit("eyeofterror",function(inst)
+newcs_env.AddPrefabPostInit("eyeofterror",function(inst)
 
     if not TheWorld.ismastersim then return end
 
     inst._chargedata.mouthchargetimeout = 0.7
-    inst.components.lootdropper:SetLoot({ "shieldofterror" })
 
     inst.components.sleeper:SetResistance(12)
 
@@ -42,7 +41,7 @@ local function get_rng_cooldown(cooldown)
     return GetRandomWithVariance(cooldown, cooldown/3)
 end
 
-AddStategraphState("eyeofterror",
+newcs_env.AddStategraphState("eyeofterror",
 State {
         name = "crazycharge_loop",
         tags = {"busy", "canrotate", "charge"},
@@ -127,7 +126,7 @@ State {
         end,
     })
 
-AddStategraphPostInit("eyeofterror",function(sg)
+newcs_env.AddStategraphPostInit("eyeofterror",function(sg)
     sg.states.transform.timeline[5]=
     TimeEvent(30*FRAMES, function(inst)
         local eye_position = inst:GetPosition()
@@ -270,7 +269,7 @@ local function TryFocusMiniEyesOnTarget(inst)
 end
 
 
-AddBrainPostInit("eyeofterrorbrain",function(self)
+newcs_env.AddBrainPostInit("eyeofterrorbrain",function(self)
     function self:ShouldUseSpecialMove()
     self._special_move = TrySpawnMiniEyes(self.inst)
         or TryFocusMiniEyesOnTarget(self.inst)
@@ -285,7 +284,7 @@ AddBrainPostInit("eyeofterrorbrain",function(self)
 end
 end)
 
-AddPrefabPostInit("eyemaskhat",function (inst)
+newcs_env.AddPrefabPostInit("eyemaskhat",function (inst)
     if not TheWorld.ismastersim then return end
     inst.components.armor:InitCondition(2*TUNING.ARMOR_FOOTBALLHAT, 0.85)
     inst.components.equippable.walkspeedmult = 1.1

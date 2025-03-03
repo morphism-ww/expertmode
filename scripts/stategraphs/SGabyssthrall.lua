@@ -1,6 +1,9 @@
 require("stategraphs/commonstates")
 
-  
+local actionhandlers =
+{
+    ActionHandler(ACTIONS.HAMMER, "meteor"),
+}
 local function SpawnInRange(inst, prefabs, count, player)
 	
 	local x,y,z = inst.Transform:GetWorldPosition()
@@ -18,17 +21,15 @@ local function SpawnInRange(inst, prefabs, count, player)
 			
         local ent = SpawnPrefab(prefabs[math.random(1, types)])
 
-        if ent.Physics then
-            ent.Physics:Teleport(spawn_pt:Get())
-        else
-            ent.Transform:SetPosition(spawn_pt.x, 0, spawn_pt.z)
-        end
+        
+        ent.Transform:SetPosition(spawn_pt.x, 0, spawn_pt.z)
+        
 
         ent:AddTag("nosinglefight_l")
         ent:AddTag("notaunt")
         
         if player~=nil then
-            ent.components.combat:SuggestTarget(player)
+            ent.components.combat:SetTarget(player)
         end
 
         ent.persists =  false
@@ -49,13 +50,13 @@ local function SpawnNightmares(inst, player)
             num = num + 1
         end
     end
-    SpawnInRange(inst,{"shadowdragon","nightmarebeak"},num,player)
+    SpawnInRange(inst,{"shadowdragon","nightmarebeak","ruinsnightmare"},num,player)
 end
 
 
 local AOE_RANGE_PADDING = 3
 local AOE_TARGET_MUSTHAVE_TAGS = { "_combat" }
-local AOE_TARGET_CANT_TAGS = { "INLIMBO", "notarget", "noattack", "flight", "invisible", "playerghost","abysscreature","shadowcreature","shadowthrall","shadow","laser_immune" }
+local AOE_TARGET_CANT_TAGS = { "INLIMBO", "notarget", "noattack", "flight", "invisible", "playerghost","shadowcreature","shadowthrall","shadow","laser_immune" }
 
 local function AOEAttack(inst, dist, radius, targets, mult)
     inst.components.combat.ignorehitrange = true
@@ -251,7 +252,7 @@ local states =
         {
             FrameEvent(1, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/ancient_herald/attack_2d") end),
             FrameEvent(20, function(inst)
-                local ring = SpawnPrefab("laser_ring")
+                local ring = SpawnPrefab("newcs_laser_ring")
                 ring.Transform:SetPosition(inst.Transform:GetWorldPosition())
                 ring.Transform:SetScale(1.1, 1.1, 1.1)
                 AOEAttack(inst,0,6,nil,1.2)
@@ -271,9 +272,16 @@ local states =
             inst.components.combat:StartAttack()
             
             inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/ancient_herald/summon")
-            inst.components.timer:StartTimer("meteor_cd",TUNING.ABYSS_THRALL_CD*0.75)
             
-            inst.sg.statemem.target = inst.components.combat.target
+            
+            if inst.bufferedaction ~= nil and inst.bufferedaction.action == ACTIONS.HAMMER then
+                inst.sg.statemem.target = inst.bufferedaction.target
+                
+            else
+                inst.components.timer:StartTimer("meteor_cd",TUNING.ABYSS_THRALL_CD*0.75)
+                inst.sg.statemem.target = inst.components.combat.target
+            end
+
         end,
 
         timeline=
@@ -281,20 +289,26 @@ local states =
             FrameEvent(1, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/ancient_herald/summon_2d") end),
             FrameEvent(30, function (inst)
                 if inst.sg.statemem.target ~= nil and inst.sg.statemem.target:IsValid() then
+                    
                     local tx, y, tz = inst.sg.statemem.target.Transform:GetWorldPosition()
+                    local firerain = SpawnPrefab("shadowfireball")
+                    firerain.Transform:SetPosition(tx, 0, tz)
                     local delay = 0
-                    for i = 1, 3 do
+                    for i = 1, 2 do
             
-                        local x, z = 2* UnitRand() + tx, 2* UnitRand() + tz
+                        local x, z = 4* UnitRand() + tx, 4* UnitRand() + tz
                         inst:DoTaskInTime(delay, function()
                             local firerain = SpawnPrefab("shadowfireball")
                             firerain.Transform:SetPosition(x, 0, z)
                         end)
-                        delay = delay + 0.2
+                        delay = delay + 0.3
                     end
                 end
             end),
         },
+        onexit = function (inst)
+            inst:ClearBufferedAction()
+        end,
         events = OnAnimOver("idle"),
     },
 
@@ -352,6 +366,7 @@ local states =
 
             inst:DoTaskInTime(20, function (inst2)
                 inst2.hasshield = false
+                
             end)
             --inst.components.timer:StartTimer("shield_end",30)
             inst.components.timer:StartTimer("shield_cd",TUNING.ABYSS_SHIELD_CD)
@@ -361,7 +376,7 @@ local states =
         {
             FrameEvent(1, function(inst) inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/ancient_herald/attack_2d") end),
             FrameEvent(20, function(inst)
-                local ring = SpawnPrefab("laser_ring")
+                local ring = SpawnPrefab("newcs_laser_ring")
                 ring.Transform:SetPosition(inst.Transform:GetWorldPosition())
                 ring.Transform:SetScale(1.1, 1.1, 1.1)
                 inst.hasshield = true
@@ -376,7 +391,7 @@ local states =
         name = "summon",
         tags = {"busy", "summon","attack","canrotate"},
         onenter = function(inst)
-            inst.Physics:Stop()
+            inst.components.locomotor:StopMoving()
             inst.AnimState:PlayAnimation("summon")
             inst.SoundEmitter:PlaySound("dontstarve_DLC003/creatures/boss/ancient_herald/summon")
             inst.components.timer:StartTimer("summon_cd",TUNING.ABYSS_THRALL_CD)
@@ -409,4 +424,4 @@ CommonStates.AddWalkStates(states,
     }
 })
     
-return StateGraph("abyss_thrall", states, events, "idle")
+return StateGraph("abyss_thrall", states, events, "idle",actionhandlers)

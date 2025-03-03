@@ -219,7 +219,7 @@ return {
         },
         {
           name = "",
-          type = "shadoweyeturret",
+          type = "shadoweyeturret2",
           shape = "rectangle",
           x = 368,
           y = 374,
@@ -274,7 +274,7 @@ return {
         },
         {
           name = "",
-          type = "shadoweyeturret",
+          type = "shadoweyeturret2",
           shape = "rectangle",
           x = 370,
           y = 275,

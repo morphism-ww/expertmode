@@ -180,9 +180,9 @@ local function fn()
 	end
 
     inst:AddTag("hostile")
-    inst:AddTag("eyeofterror")
+    inst:AddTag("calamita")
     inst:AddTag("notraptrigger")
-	inst:AddTag("shadow_aligned")
+	
     inst.controller_priority_override_is_targeting_player = true
 
     inst.entity:SetPristine()

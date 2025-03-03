@@ -1,6 +1,6 @@
 require("stategraphs/commonstates")
 
-local AREAATTACK_EXCLUDETAGS = { "INLIMBO", "notarget", "invisible", "noattack", "flight", "playerghost", "shadow", "shadowthrall", "shadowcreature" }
+--local AREAATTACK_EXCLUDETAGS = { "INLIMBO", "notarget", "invisible", "noattack", "flight", "playerghost", "shadow", "shadowthrall", "shadowcreature" }
 
 
 
@@ -15,7 +15,7 @@ local events=
             local attacker = data.attacker or data.thrower
             if attacker and attacker:IsValid() then
                 inst:ForceFacePoint(attacker.Transform:GetWorldPosition())
-                if not inst:HasTag("parrying") and not inst:IsNear(attacker,4) then
+                if not inst:HasTag("parrying") and not inst:IsNear(attacker,3) then
                     inst.sg:GoToState("parry_pre")
                 end
             end
@@ -31,20 +31,18 @@ local events=
             elseif not CommonHandlers.HitRecoveryDelay(inst,4) then
                 inst.sg:GoToState("hit")  
             end    
-            
-        
         end
     end),
 
     EventHandler("doattack", function(inst, data)
         if not (inst.components.health:IsDead() or inst.sg:HasStateTag("busy"))
                 and (data.target ~= nil and data.target:IsValid()) then
-            if inst:HasTag("parrying") then
+            --[[if inst:HasTag("parrying") then
                 inst.sg:GoToState("parry_pst","attack")
             else
                 inst.sg:GoToState("attack",data.target)  
-            end    
-                           
+            end    ]]
+            inst.sg:GoToState("attack",data.target)  
         end            
     end),
 }
@@ -203,15 +201,15 @@ local states =
             inst.components.combat:StartAttack()
             inst.AnimState:PlayAnimation("atk_pre")
             inst.AnimState:PushAnimation("atk", false)
-            
+            inst:ExitParry()
             inst.sg:SetTimeout(13*FRAMES)
         end,
 
         timeline=
         {
             TimeEvent(5*FRAMES, function(inst)
-                inst.components.combat:DoAreaAttack(inst, 5, nil, nil, nil, AREAATTACK_EXCLUDETAGS)
-                --inst.components.combat:DoAttack(inst.sg.statemem.target)
+                --inst.components.combat:DoAreaAttack(inst, 4.5, nil, nil, nil, AREAATTACK_EXCLUDETAGS)
+                inst.components.combat:DoAttack(inst.sg.statemem.target)
             end)
         },
         ontimeout = function (inst)
@@ -233,6 +231,9 @@ local states =
             if math.random()<0.3 then
                 local sword = SpawnPrefab("cs_dreadsword")
                 sword.components.finiteuses:SetPercent(0.1+0.2*math.random())
+                if math.random()<0.7 then
+                    sword:AddComponent("itemmimic")
+                end
                 inst.components.lootdropper:FlingItem(sword)
             end
 

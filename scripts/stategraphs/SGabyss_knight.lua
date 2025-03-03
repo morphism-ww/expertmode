@@ -4,7 +4,7 @@ require("stategraphs/commonstates")
 
 local AOE_RANGE_PADDING = 3
 local AOE_TARGET_MUSTHAVE_TAGS = { "_combat" }
-local AOE_TARGET_CANT_TAGS = { "INLIMBO", "notarget", "noattack", "flight", "invisible", "playerghost","abysscreature","shadowcreature","shadowthrall","shadow","laser_immune" }
+local AOE_TARGET_CANT_TAGS = { "INLIMBO", "noattack", "flight", "invisible", "playerghost","shadowcreature","shadow","shadowthrall","laser_immune" }
 
 local function AOEAttack(inst, dist, radius, targets, mult)
     inst.components.combat.ignorehitrange = true
@@ -33,13 +33,13 @@ local function AOEAttack(inst, dist, radius, targets, mult)
             local dz = z1 - z
 
             if dx * dx + dz * dz < range * range and inst.components.combat:CanTarget(v) then
-                inst.components.combat:DoAttack(v)
                 if targets then
                     targets[v] = true
                 end
                 if mult then
                     v:PushEvent("knockback", { knocker = inst, radius = radius + dist, strengthmult = mult })
                 end
+                inst.components.combat:DoAttack(v)
             end
         end
     end
@@ -271,7 +271,7 @@ local states =
             FrameEvent(18, function(inst) 
                 inst:PlaySound("f18_atk_fx")
                 AOEAttack(inst,0,5,nil,1)
-                inst.components.combat:DoAttack(inst.sg.statemem.target) 
+                --inst.components.combat:DoAttack(inst.sg.statemem.target) 
             end),
         },
         events = OnAnimOver("idle"),

@@ -120,8 +120,8 @@ local function do_echo(inst)
     local players = FindPlayersInRangeSq(x, y, z, TUNING.CORRUPT_HEART_RANGESQ, true)
 	for i, v in ipairs(players) do
 		if v.components.combat:GetAttacked(inst,inst.echodamage) then
-			v:AddDebuff("exhaustion","exhaustion",{duration = 10})
-			v:AddDebuff("vulnerable","vulnerable")
+			v:AddDebuff("buff_exhaustion","buff_exhaustion",{duration = 10})
+			v:AddDebuff("buff_vulnerable","buff_vulnerable")
 		end
 	end
 end
@@ -209,7 +209,11 @@ local function OnLoad(inst,data)
 		end
 	end
 end
-
+local function lootsetfn(self)
+	for i= 1, self.inst.power+1 do
+		table.insert(self.loot,"shadowheart")
+	end 
+end
 
 local function fn()
     local inst = CreateEntity()
@@ -239,7 +243,6 @@ local function fn()
     inst:AddTag("notraptrigger")
     inst:AddTag("shadow_aligned")
     inst:AddTag("shadowheart")
-	inst:AddTag("lightcontroller")
 	inst:AddTag("ignorewalkableplatformdrowning")
 	
 	inst.entity:AddLight()
@@ -277,8 +280,6 @@ local function fn()
 
 	inst:AddComponent("timer")
 
-	inst:AddComponent("drownable")
-
 	local loots = {}
 	for i = 1,10 do
 		table.insert(loots,"armor_sanity")
@@ -286,6 +287,7 @@ local function fn()
 	end
     inst:AddComponent("lootdropper")
     inst.components.lootdropper:SetLoot(loots)
+	inst.components.lootdropper:SetLootSetupFn(lootsetfn)
 
 	inst:AddComponent("leader")
 	inst.components.leader.onremovefollower = KillFollower
@@ -327,6 +329,7 @@ local function fn()
 
 	inst.OnSave = OnSave
 	inst.OnLoad = OnLoad
+	MakeSmartAbsorbDamageEnt(inst)
 
     return inst
 end
